@@ -1266,7 +1266,6 @@ function trig_seq_gen()
 
 function build_trig_byte(B)
 {
-//test
 	var b;
 	var last_b = -1;
 	var high_time;
