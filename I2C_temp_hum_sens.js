@@ -12,7 +12,7 @@ The following commented block allows some related informations to be displayed o
 </DESCRIPTION>
 
 <RELEASE_NOTES>
-
+	V1.33: Prevented incompatible workspaces from using the decoder
 	V1.32: Now the decoding can be aborted
 	V1.31: Corrected some spelling mistakes
 	V1.3:  Bug correction when SDA and SCL are inverted
@@ -42,7 +42,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.32";
+	return "1.33";
 }
 
 /* Author 
@@ -57,7 +57,22 @@ function get_dec_auth()
 function gui()
 {
 	ui_clear();	// clean up the User interface before drawing a new one.
-		
+			
+	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
+	{
+		// Prevented incompatible workspaces from using the decoder
+		if( get_device_max_channels() < 2 )
+		{
+			ui_add_info_label("This device (or workspace configuration) do not have enough channels for this decoder to operate properly");
+			return;
+		}
+	}
+	else
+	{
+		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
+		return;
+	}
+	
 	ui_add_ch_selector("chSda", "(SDA) Serial Data", "SDA");
 	ui_add_ch_selector("chScl", "(SCL) Serial Clock", "SCL");
 	

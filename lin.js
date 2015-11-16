@@ -1,4 +1,3 @@
-
 /*
 *************************************************************************************
 						
@@ -8,7 +7,7 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-	LIN Protocol Decoder.
+    LIN Protocol Decoder.
 	This is a standard Local Interconnect Network bus decoder supporting 1.x and 2.x
 	protocol versions
 
@@ -23,7 +22,6 @@ The following commented block allows some related informations to be displayed o
     V1.15: Added Packet/Hex View support.
 	V1.1:  Timing calculation fix. Stability improvements.
 	V1.0:  Initial release.
-
 </RELEASE_NOTES>
 
 <AUTHOR_URL>
@@ -31,10 +29,15 @@ The following commented block allows some related informations to be displayed o
 	mailto:v.kosinov@ikalogic.com
 
 </AUTHOR_URL>
-						
+
 *************************************************************************************
 */
 
+/*
+*************************************************************************************
+								      INFO
+*************************************************************************************
+*/
 
 /* The decoder name as it will apear to the users of this script 
 */
@@ -59,27 +62,12 @@ function get_dec_auth()
 	return "IKALOGIC";
 }
 
-
-/* Graphical user interface for this decoder
+/*
+*************************************************************************************
+							    GLOBAL VARIABLES
+*************************************************************************************
 */
-function gui()
-{
-	ui_clear();		// clean up the User interface before drawing a new one.
-	ui_add_ch_selector("chLin", "LIN", "LIN");
 
-	ui_add_info_label("<br>");
-	ui_add_separator();
-	ui_add_info_label("<br><b>Hex view options:</b>");
-
-	ui_add_txt_combo("hexView", "Include in HEX view:");
-		ui_add_item_to_txt_combo("DATA fields only", true);
-		ui_add_item_to_txt_combo("DATA and ID fields only", false);
-		ui_add_item_to_txt_combo("Everything", false);
-}
-
-
-/* Constants 
-*/
 var ERR_CODES = 
 {
 	OK         : 0x01,
@@ -133,6 +121,7 @@ var T_WAKEUP_MIN        = 250;
 var T_WAKEUP_MAX        = 5000;
 var T_MAX_BETWEEN_BYTES = 25;	
 var T_MIN_BREAK_BITS    = 10;
+var BIT_RATE_TOLERANCE  = 14;		// in % before synchronization
 var SYNC_FIELD_VALUE    = 0x55;
 var MAX_DATA_LENGTH     = 0x08;
 var GOTO_SLEEP_CMD      = 0x00;
@@ -140,9 +129,6 @@ var LIN_MAX_FREQ_KHZ    = 50;
 var LIN_MAX_FREQ_HZ     = (LIN_MAX_FREQ_KHZ * 1000);
 var LIN_MIN_T           = (1 / LIN_MAX_FREQ_HZ);
 
-
-/* Object definitions
-*/
 function LinObject (type, value, start, end)
 {
 	this.type = type;
@@ -151,9 +137,6 @@ function LinObject (type, value, start, end)
 	this.end = end;
 };
 
-
-/* Global variables
-*/
 var linObjectsArr;
 
 var nData = 8;
@@ -169,6 +152,29 @@ var PKT_COLOR_BREAK_TITLE;
 var PKT_COLOR_SYNC_TITLE;
 var PKT_COLOR_ID_TITLE;
 var PKT_COLOR_CHECK_TITLE;
+
+/*
+*************************************************************************************
+								   DECODER
+*************************************************************************************
+*/
+
+/* Graphical user interface for this decoder
+*/
+function gui()
+{
+	ui_clear();		// clean up the User interface before drawing a new one.
+	ui_add_ch_selector("chLin", "LIN", "LIN");
+
+	ui_add_info_label("<br>");
+	ui_add_separator();
+	ui_add_info_label("<br><b>Hex view options:</b>");
+
+	ui_add_txt_combo("hexView", "Include in HEX view:");
+	ui_add_item_to_txt_combo("DATA fields only", true);
+	ui_add_item_to_txt_combo("DATA and ID fields only", false);
+	ui_add_item_to_txt_combo("Everything", false);
+}
 
 
 /* This is the function that will be called from ScanaStudio
@@ -279,6 +285,7 @@ function decode()
 					dec_item_add_pre_text("START");
 					dec_item_add_pre_text("ST");
 					dec_item_add_comment("START BIT");
+					
 			break;
 
 			case LINOBJECT_TYPE.BYTE:
@@ -382,7 +389,7 @@ function decode()
 						var checkResult = "";
 						var checkOk = true;
 
-						if (check_checksum(dataArr))
+						if (compute_checksum(dataArr))
 						{
 							checkResultStr += "(OK)";
 							checkResult += "OK";
@@ -469,7 +476,7 @@ function decode_signal()
 			else
 			{
 				// Wakeup signal is 250us - 5ms low state
-				if ((get_sample_diff_us(tBreakSt, tBreakEnd) >= 250) && (get_sample_diff_us(tBreakSt, tBreakEnd) <= 5000))
+				if ((get_sample_diff_us(tBreakSt, tBreakEnd) >= T_WAKEUP_MIN) && (get_sample_diff_us(tBreakSt, tBreakEnd) <= T_WAKEUP_MAX))
 				{
 					linObjectsArr.push(new LinObject(LINOBJECT_TYPE.WAKE, true, tBreakSt, tBreakEnd));
 				}
@@ -533,7 +540,7 @@ function decode_signal()
 	
 		trLin = get_next_edge(chLin, trLin);	// Get the last edge of stop bit
 
-		linObjectsArr.push(new LinObject(LINOBJECT_TYPE.START, false, stBitStart, stBitEnd));
+		// linObjectsArr.push(new LinObject(LINOBJECT_TYPE.START, false, stBitStart, stBitEnd));		// OPTIMISATION ISSUE
 
 		if (stBitEnd != t1)
 		{
@@ -582,7 +589,7 @@ function decode_signal()
 				tSample += tBit;
 			}
 
-			linObjectsArr.push(new LinObject(LINOBJECT_TYPE.START, false, stBitStart, stBitEnd));
+			// linObjectsArr.push(new LinObject(LINOBJECT_TYPE.START, false, stBitStart, stBitEnd));		// OPTIMISATION ISSUE
 			linObjectsArr.push(new LinObject(LINOBJECT_TYPE.BYTE, byteValue, stBitEnd, byteEnd - tBs));
 
 			trLinPrev = trLin;
@@ -736,6 +743,374 @@ function test_signal()
 	return ERR_CODES.NO_SIGNAL;							// Any BREAK found, no valid signal
 }
 
+/*
+*************************************************************************************
+							     DEMO BUILDER
+*************************************************************************************
+*/
+
+/*
+*/
+function build_demo_signals()
+{
+	var linBaudRateKbps = 20;	// Common value for LIN bus
+	var tBitUs = ((1 / linBaudRateKbps) * 1000);
+	var i = 0;
+
+	tBit = get_num_samples_for_us(tBitUs);	// Update all others time variables with this new tBit value
+	update_t_variales();
+
+	while (get_samples_acc(chLin) < n_samples)
+	{
+		demo_gen_frame(i);
+		i += 8;
+	}
+}
+
+
+/*
+*/
+function demo_gen_frame (data_offset)
+{
+	var ident = 0x30;
+	var demoDataArr = new Array();
+
+	add_samples(chLin, 1, (n_samples / 100));					// Idle state
+
+	add_samples(chLin, 0, (((T_MIN_BREAK_BITS + 3) * tBit)));	// Break
+	add_samples(chLin, 1, (get_num_samples_for_us(100)));		// Delay
+
+	demo_gen_byte(SYNC_FIELD_VALUE);							// Sync
+	ident = demo_gen_ident(ident)								// Identifer
+	demoDataArr.push(ident);
+
+	for (i = 0; i < 8; i++)				// 8 bytes of data + 1 CRC byte
+	{
+		demo_gen_byte((data_offset + i));
+		demoDataArr.push((data_offset + i));
+	}
+
+	demo_gen_crc(demoDataArr);
+}
+
+
+/*
+*/
+function demo_gen_ident (id)
+{
+	var parity;
+
+	if (id > 0x3F)
+	{
+		id = 0x3F;
+	}
+
+	parity = get_parity(id);
+	id |= (parity << 6);
+
+	demo_gen_byte(id);
+
+	return id;
+}
+
+
+/*
+*/
+function demo_gen_crc (demoData)
+{
+	var checksum = 0;
+	var idField = demoData.shift();
+	var id = (idField.value & ~ID_FIELD_MASK.PARITY);
+
+	if((id != FRAME_ID.CONFIG_0) && (id != FRAME_ID.CONFIG_1))
+	{
+		checksum = idField;
+	}
+
+	while (demoData.length > 0)
+	{
+		var nextByte = demoData.shift();
+
+		checksum += nextByte;
+
+		if (checksum > 0xFF)
+		{
+			checksum -= 0xFF;
+		}
+	}
+
+	checksum = (0xFF - checksum);
+	demo_gen_byte(checksum);
+}
+
+
+/*
+*/
+function demo_gen_byte (data_byte)
+{
+	var i;
+	var bit;
+
+	add_samples(chLin, 0, tBit);		// start bit
+
+	for (i = 0; i < 8; i++)				// 8 bits of data
+	{
+		if ((data_byte & (1 << i)))
+		{
+			bit = 1;
+		}
+		else
+		{
+			bit = 0;
+		}
+
+		add_samples(chLin, bit, tBit);
+	}
+
+	add_samples(chLin, 1, tBit);		// stop bit
+}
+
+/*
+*************************************************************************************
+							       TRIGGER
+*************************************************************************************
+*/
+
+/* Graphical user interface for the trigger configuration
+*/
+function trig_gui()
+{
+	trig_ui_clear();
+
+	trig_ui_add_alternative("alt_any_break", "Trigger on a any BREAK field", true);
+	trig_ui_add_label("lab1", "Due to the nature of LIN protocol you need to specify a baudrate of measured line in range between 1 and 20 kBits/s <br>");
+	trig_ui_add_free_text("trig_baudrate", "Baudrate (kBits/s): ");
+
+	trig_ui_add_alternative("alt_specific_ident", "Trigger on Identifier field value", false);
+	trig_ui_add_label("lab2", "Due to the nature of LIN protocol you need to specify a baudrate of measured line in range between 1 and 20 kBits/s <br>");
+	trig_ui_add_free_text("trig_baudrate", "Baudrate (kBits/s): ");
+	trig_ui_add_label("lab3", "<br>Type decimal value (65) or Hex value (0x41) with or without the parity part <br>");
+	trig_ui_add_free_text("trig_ident", "Trigger Identifier: ");
+}
+
+
+/*
+*/
+function trig_seq_gen()
+{
+    flexitrig_set_async_mode(true);
+	get_ui_vals();
+
+	if (trig_baudrate < 1)
+	{
+		trig_baudrate = 1;
+	}
+
+	if (trig_baudrate > 20)
+	{
+		trig_baudrate = 20;
+	}
+
+	var tBitS = (1 / (trig_baudrate * 1000));
+	var tBitSTolerance = ((tBitS / 100) * BIT_RATE_TOLERANCE);
+	var tBitSMin = tBitS - tBitSTolerance;
+	var tBitSMax = tBitS + tBitSTolerance;
+	var tBreakUsMin = ((T_MIN_BREAK_BITS + 3) * tBitSMin);
+
+	flexitrig_clear();
+
+	if (alt_any_break)
+	{
+		flexitrig_set_summary_text("Trig on LIN Break condition");
+		flexitrig_append(trig_build_step("F"), -1, -1);
+		flexitrig_append(trig_build_step("R"), tBreakUsMin, -1);
+	}
+	else if (alt_specific_ident)
+	{
+		trig_ident = Number(trig_ident);
+		flexitrig_set_summary_text("Trig on LIN Identifer: 0x" + trig_ident.toString(16));
+
+		flexitrig_append(trig_build_step("F"), -1, -1);
+		flexitrig_append(trig_build_step("R"), tBreakUsMin, -1);
+
+		for (var i = 0; i < 5; i++)		// Sync, 10 bits
+		{
+			flexitrig_append(trig_build_step("F"), tBitSMin, tBitSMax);
+			flexitrig_append(trig_build_step("R"), tBitSMin, tBitSMax);
+		}
+
+		var bitSeqArr = new Array();
+		var identParity = get_parity(trig_ident);
+		var step;
+
+		trig_ident &= ~(0xC0);
+		trig_ident |= (identParity << 6);
+
+		flexitrig_append(trig_build_step(0), tBitSMin, tBitSMax);		// Start bit
+
+		for (var i = 0; i < 8; i++)
+		{
+			if ((trig_ident >> i) & 0x01)
+			{
+				bitSeqArr.push(1);
+			}
+			else
+			{
+				bitSeqArr.push(0);
+			}
+		}
+
+		bitSeqArr.push(1);		// Stop bit
+
+		var lastBit = bitSeqArr[0];
+		var lastIndex = 0;
+
+		for (var i = 0; i < bitSeqArr.length; i++)
+		{
+			if (bitSeqArr[i] != lastBit)
+			{
+				var step = trig_build_step(bitSeqArr[i]);
+				flexitrig_append(step, (tBitSMin * (i - lastIndex)), (tBitSMax * (i - lastIndex)));
+
+				lastBit = bitSeqArr[i];
+				lastIndex = i;
+			}
+		}
+	}
+
+	// flexitrig_print_steps();
+}
+
+
+/*
+*/
+function trig_build_step (step_desc)
+{
+	var step = "";
+
+	for (var i = 0; i < get_device_max_channels(); i++)
+	{
+		if (i == chLin)
+		{
+			if (step_desc == 0)
+			{
+				step = "F" + step;
+			}
+			else
+			{
+				step = "R" + step;
+			}
+		}
+		else
+		{
+			step = "X" + step;
+		}
+	}
+
+	return step;
+}
+
+/*
+*************************************************************************************
+							        UTILS
+*************************************************************************************
+*/
+
+/* Get the checksum of all data bytes
+*/
+function compute_checksum (dataArr)
+{
+	var idField = dataArr.shift().value;
+	var id = (idField.value & ~ID_FIELD_MASK.PARITY);
+	var checksumV1xCalc = 0;
+	var checksumV2xCalc = 0;
+
+	if((id != FRAME_ID.CONFIG_0) && (id != FRAME_ID.CONFIG_1))	// Config frame identifiers shall always use classic checksum w/o id field
+	{
+		checksumV2xCalc = idField;
+	}
+
+	while (dataArr.length > 1)
+	{
+		var nextByte = dataArr.shift().value;
+
+		checksumV1xCalc += nextByte;
+
+		if (checksumV1xCalc > 0xFF)
+		{
+			checksumV1xCalc -= 0xFF;
+		}
+		
+		checksumV2xCalc += nextByte;
+		
+		if (checksumV2xCalc > 0xFF)
+		{
+			checksumV2xCalc -= 0xFF;
+		}
+	}
+
+	var checksum = dataArr.shift().value; 	// Get checksum transmitted by a slave
+
+	if (checksumV1xCalc + checksum == 0xFF)
+	{
+		return true;
+	}
+
+	if (checksumV2xCalc + checksum == 0xFF)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+/* Verify parity of frame identifier bits
+*/
+function check_parity (id)
+{
+	var id0 = (id & 0x01) ? 1 : 0;
+	var id1 = (id & 0x02) ? 1 : 0;
+	var id2 = (id & 0x04) ? 1 : 0;
+	var id3 = (id & 0x08) ? 1 : 0;
+	var id4 = (id & 0x10) ? 1 : 0;
+	var id5 = (id & 0x20) ? 1 : 0;
+
+	var p0 = (id & ID_FIELD_MASK.PARITY_0) ? 1 : 0;
+	var p1 = (id & ID_FIELD_MASK.PARITY_1) ? 1 : 0;
+
+	var p0Calc = (id0 ^ id1 ^ id2  ^ id4);	// XOR of bits ID0, ID1, ID2 and ID4
+	var p1Calc = !(id1 ^ id3 ^ id4 ^ id5);  // NOT of XOR of bits ID1, ID3, ID4 and ID5
+
+	if ((p0 == p0Calc) && (p1 == p1Calc))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+/*
+*/
+function get_parity (id)
+{
+	var parity;
+
+	var id0 = (id & 0x01) ? 1 : 0;
+	var id1 = (id & 0x02) ? 1 : 0;
+	var id2 = (id & 0x04) ? 1 : 0;
+	var id3 = (id & 0x08) ? 1 : 0;
+	var id4 = (id & 0x10) ? 1 : 0;
+	var id5 = (id & 0x20) ? 1 : 0;
+
+	var p0 = (id0 ^ id1 ^ id2  ^ id4);
+	var p1 = !(id1 ^ id3 ^ id4 ^ id5);
+
+	parity = (p1 << 1) | p0;
+	return parity;
+}
+
 
 /*
 */
@@ -794,13 +1169,13 @@ function add_pkt_data (start, end, str, strLen)
 		strTemp = strTemp.replace(/,/g, " ");
 
 		pkt_start("DATA");
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(start, end, "DATA", strTemp.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 		pkt_end();
 
 	}
 	else
 	{
-		pkt_add_item(start, end, "DATA", str, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(start, end, "DATA", str.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 	}
 }
 
@@ -811,6 +1186,7 @@ function get_curr_baudrate()
 {
 	var tBitUs = get_sample_diff_us(0, tBit) / 1000;
 	var baudrate = (1 / tBitUs);
+
 	return baudrate.toPrecision(4);
 }
 
@@ -835,87 +1211,12 @@ function update_t_variales()
 }
 
 
-/* Verify parity of frame identifier bits
-*/
-function check_parity (id)
-{
-	var id0 = (id & 0x01) ? 1 : 0;
-	var id1 = (id & 0x02) ? 1 : 0;
-	var id2 = (id & 0x04) ? 1 : 0;
-	var id3 = (id & 0x08) ? 1 : 0;
-	var id4 = (id & 0x10) ? 1 : 0;
-	var id5 = (id & 0x20) ? 1 : 0;
-
-	var p0 = (id & ID_FIELD_MASK.PARITY_0) ? 1 : 0;
-	var p1 = (id & ID_FIELD_MASK.PARITY_1) ? 1 : 0;
-
-	var p0Calc = (id0 ^ id1 ^ id2  ^ id4);	// XOR of bits ID0, ID1, ID2 and ID4
-	var p1Calc = !(id1 ^ id3 ^ id4 ^ id5);  // NOT of XOR of bits ID1, ID3, ID4 and ID5
-
-	if ((p0 == p0Calc) && (p1 == p1Calc))
-	{
-		return true;
-	}
-
-	return false;
-}
-
-
-/* Get the checksum of all data bytes
-*/
-function check_checksum (dataArr)
-{
-	var idField = dataArr.shift().value;
-	var id = (idField.value & ~ID_FIELD_MASK.PARITY);
-	var checksumV1xCalc = 0;
-	var checksumV2xCalc = 0;
-
-	if((id != FRAME_ID.CONFIG_0) && (id != FRAME_ID.CONFIG_1))	// Config frame identifiers shall always use classic checksum w/o id field
-	{
-		checksumV2xCalc = idField;
-	}
-
-	while (dataArr.length > 1)
-	{
-		var nextByte = dataArr.shift().value;
-
-		checksumV1xCalc += nextByte;
-
-		if (checksumV1xCalc > 0xFF)
-		{
-			checksumV1xCalc -= 0xFF;
-		}
-		
-		checksumV2xCalc += nextByte;
-		
-		if (checksumV2xCalc > 0xFF)
-		{
-			checksumV2xCalc -= 0xFF;
-		}
-	}
-
-	var checksum = dataArr.shift().value; 	// Get checksum transmitted by a slave
-
-	if (checksumV1xCalc + checksum == 0xFF)
-	{
-		return true;
-	}
-
-	if (checksumV2xCalc + checksum == 0xFF)
-	{
-		return true;
-	}
-
-	return false;
-}
-
-
 /*
 */
 function check_noise (tr1, tr2)
 {
 	var diff = tr2.sample - tr1.sample;
-	var t = diff * (1 / sample_rate);
+	var t = diff * (1 / get_sample_rate());
 
 	if (t <= LIN_MIN_T)
 	{
@@ -1010,7 +1311,7 @@ function get_next_rising_edge (ch, trSt)
 */
 function get_trsdiff_us (tr1, tr2)
 {
-	return (((tr2.sample - tr1.sample) * 1000000) / sample_rate);
+	return (((tr2.sample - tr1.sample) * 1000000) / get_sample_rate());
 }
 
 
@@ -1018,7 +1319,7 @@ function get_trsdiff_us (tr1, tr2)
 */
 function get_sample_diff_us (sp1, sp2)
 {
-	return (((sp2 - sp1) * 1000000) / sample_rate);
+	return (((sp2 - sp1) * 1000000) / get_sample_rate());
 }
 
 
@@ -1034,7 +1335,7 @@ function get_trsdiff_samples (tr1, tr2)
 */
 function get_num_samples_for_us (us)
 {
-	return ((us * sample_rate) / 1000000);
+	return ((us * get_sample_rate()) / 1000000);
 }
 
 
@@ -1042,7 +1343,7 @@ function get_num_samples_for_us (us)
 */
 function check_scanastudio_support()
 {
-    if (typeof(pkt_start) != "undefined")
+    if (typeof(pkt_start) !== "undefined")
     { 
         return true;
     }
@@ -1051,3 +1352,4 @@ function check_scanastudio_support()
         return false;
     }
 }
+

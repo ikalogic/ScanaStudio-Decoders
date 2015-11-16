@@ -75,7 +75,38 @@ function get_dec_auth()
 
 /*
 *************************************************************************************
-								      GUI
+							    GLOBAL VARIABLES
+*************************************************************************************
+*/
+
+var	GET_CS 	 = 0;
+var	GET_DATA = 10;
+var OPT_IGNORE_NONE = 0;
+var OPT_IGNORE_MOSI = 1;
+var OPT_IGNORE_MISO = 2;
+
+var clk_active;
+var state = GET_CS;
+var s_start;
+var stop = false;
+var n_words = 0;
+var c_idle,c_active;
+var cs_idle,cs_active;
+var samples_per_us;
+var spi_trig_steps = [];
+var b;
+
+function SpiTrigStep (mosi, miso, clk, cs)
+{
+	this.mosi = mosi;
+	this.miso = miso;
+	this.clk  = clk;
+	this.cs   = cs;
+};
+
+/*
+*************************************************************************************
+								   DECODER
 *************************************************************************************
 */
 
@@ -253,62 +284,6 @@ function gui()
 	ui_add_item_to_txt_combo( "Everything" );
 }
 
-
-/* Graphical user interface for the trigger configuration
-*/
-function trig_gui()
-{
-	trig_ui_clear();
-
-	trig_ui_add_alternative("alt_any_byte", "Trigger on a any byte", true);
-	trig_ui_add_label("lab0", "Trigger on any SPI byte");
-
-	trig_ui_add_alternative("alt_specific_byte", "Trigger on byte value", false);
-	
-	trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
-	trig_ui_add_free_text("trig_byte", "Trigger byte: ");
-
-	trig_ui_add_combo("trig_data_line", "Data Line");
-	trig_ui_add_item_to_combo("MOSI", true);
-	trig_ui_add_item_to_combo("MISO", false);
-}
-
-/*
-*************************************************************************************
-							    GLOBAL VARIABLES
-*************************************************************************************
-*/
-
-var	GET_CS 	 = 0;
-var	GET_DATA = 10;
-var OPT_IGNORE_NONE = 0;
-var OPT_IGNORE_MOSI = 1;
-var OPT_IGNORE_MISO = 2;
-
-var clk_active;
-var state = GET_CS;
-var s_start;
-var stop = false;
-var n_words = 0;
-var c_idle,c_active;
-var cs_idle,cs_active;
-var samples_per_us;
-var spi_trig_steps = [];
-var b;
-
-function SpiTrigStep (mosi, miso, clk, cs)
-{
-	this.mosi = mosi;
-	this.miso = miso;
-	this.clk  = clk;
-	this.cs   = cs;
-};
-
-/*
-*************************************************************************************
-								   DECODER
-*************************************************************************************
-*/
 
 /* This is the function that will be called from ScanaStudio
    to update the decoded items
@@ -748,19 +723,29 @@ function demo_add_delay (d, cs_state)
 *************************************************************************************
 */
 
+/* Graphical user interface for the trigger configuration
+*/
+function trig_gui()
+{
+	trig_ui_clear();
+
+	trig_ui_add_alternative("alt_any_byte", "Trigger on a any byte", true);
+	trig_ui_add_label("lab0", "Trigger on any SPI byte");
+
+	trig_ui_add_alternative("alt_specific_byte", "Trigger on byte value", false);
+	
+	trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
+	trig_ui_add_free_text("trig_byte", "Trigger byte: ");
+
+	trig_ui_add_combo("trig_data_line", "Data Line");
+	trig_ui_add_item_to_combo("MOSI", true);
+	trig_ui_add_item_to_combo("MISO", false);
+}
+
 /*
 */
 function trig_seq_gen()
 {
-	/*
-	nbits: 1 - 128
-	cpol: 0 -  clk inactive low, 1 - clk inactive high
-	cspol: 0 - active low, 1 - active high
-	opt_cs: 0, 1 - ignore cs
-	opt: 0, 1 - ignore MOSI, 2 - ignore MISO
-	order: 0 - first bit is MSB, 1 - first bit is LSB
-	*/
-
 	get_ui_vals();
 
 	var i;
@@ -875,7 +860,7 @@ function trig_seq_gen()
 	}
 
 	flexitrig_set_summary_text(summary_text);
-	//flexitrig_print_steps();
+	// flexitrig_print_steps();
 }
 
 
@@ -958,5 +943,6 @@ function get_ch_light_color (k)
 function get_bit_margin()
 {
 	var k = 1;
-	return ((k * sample_rate) / 10000000);
+	return ((k * get_sample_rate()) / 10000000);
 }
+

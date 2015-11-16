@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.26  Prevented incompatible workspaces from using the decoder
 	V1.25  Added HexView support.
 	V1.21: Hotfixes.
 	V1.2:  New decoder mode. Now user will be able to decode multiple lines w/o a clock / strobe signal.
@@ -53,7 +54,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.25";
+	return "1.26";
 }
 
 
@@ -87,20 +88,24 @@ function gui()
 	{
 		ui_add_txt_combo("chD" + i, "Data Line " + i + " Channel");
 			ui_add_item_to_txt_combo("Not Used");
-			ui_add_item_to_txt_combo("Always High");
-			ui_add_item_to_txt_combo("Always Low");
+			
+			if( i <= maxNumLines )
+			{
+				ui_add_item_to_txt_combo("Always High");
+				ui_add_item_to_txt_combo("Always Low");
 
-		for (var k = 1; k <= maxNumLines; k++)
-		{
-			if (i == k)
-			{
-				ui_add_item_to_txt_combo("CH " + k, true);
+				for (var k = 1; k <= maxNumLines; k++)
+				{
+					if (i == k)
+					{
+						ui_add_item_to_txt_combo("CH " + k, true);
+					}
+					else
+					{
+						ui_add_item_to_txt_combo("CH " + k);
+					}
+				}
 			}
-			else
-			{
-				ui_add_item_to_txt_combo("CH " + k);
-			}
-		}
 	}
 
 	ui_add_txt_combo("uiBitOrder", "Bit Order");
@@ -110,7 +115,7 @@ function gui()
 	ui_add_txt_combo("uiClkSource", "Strobe Source");
 		ui_add_item_to_txt_combo("All Data Lines", true);
 
-	for (var i = 1; i <= 9; i++)
+	for (var i = 1; i <= maxNumLines; i++)
 	{
 		ui_add_item_to_txt_combo("CH " + i);
 	}

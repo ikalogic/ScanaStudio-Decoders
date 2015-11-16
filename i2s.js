@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.27: Prevented incompatible workspaces from using the decoder
 	V1.26: Now the decoding can be aborted
 	V1.25: A few minor fixes. New initial offset control.
 	V1.2: Added HexView support.
@@ -47,7 +48,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.26";
+	return "1.27";
 }
 
 
@@ -64,6 +65,22 @@ function get_dec_auth()
 function gui()
 {
 	ui_clear();		// clean up the User interface before drawing a new one.
+	
+	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
+	{
+		// Prevented incompatible workspaces from using the decoder
+		if( get_device_max_channels() < 3 )
+		{
+			ui_add_info_label("This device (or workspace configuration) do not have enough channels for this decoder to operate properly");
+			return;
+		}
+	}
+	else
+	{
+		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
+		return;
+	}
+	
 	ui_add_ch_selector("chSd", "(SD) Serial Data", "SD");
 	ui_add_ch_selector("chSck", "(SCK) Serial Clock", "SCK");
 	ui_add_ch_selector("chWs", "(WS) Word Select", "WS");

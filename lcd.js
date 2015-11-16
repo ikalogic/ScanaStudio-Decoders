@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.09: Prevented incompatible workspaces from using the decoder
 	V1.08: Now the decoding can be aborted
 	V1.07: New Packet View data displaying.
 	V1.05: Added Packet/Hex View support.
@@ -46,7 +47,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.08";
+	return "1.09";
 }
 
 
@@ -63,6 +64,21 @@ function get_dec_auth()
 function gui()
 {
 	ui_clear();		// clean up the User interface before drawing a new one.
+	
+	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
+	{
+		// Prevented incompatible workspaces from using the decoder
+		if( get_device_max_channels() < 7 )
+		{
+			ui_add_info_label("This device (or workspace configuration) do not have enough channels for this decoder to operate properly");
+			return;
+		}
+	}
+	else
+	{
+		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
+		return;
+	}
 	
 	ui_add_ch_selector("chE", "Strobe/Enable (E)", "E");
 	ui_add_ch_selector("chRS", "Registers Select (RS)", "RS");

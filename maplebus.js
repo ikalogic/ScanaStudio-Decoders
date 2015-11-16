@@ -1,32 +1,29 @@
 /*
 *************************************************************************************
               
-			            SCANASTUDIO 2 MAPLE BUS DECODER
+			                    SCANASTUDIO 2 MAPLE BUS DECODER
 
 The following commented block allows some related informations to be displayed online
 
 <DESCRIPTION>
 
-	Maple Bus Protocol Decoder.
+    Maple Bus Protocol Decoder.
 
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
+    V1.01: Prevented incompatible workspaces from using the decoder
 	V1.0: Initial release
  
 </RELEASE_NOTES>
 
 <AUTHOR_URL>
 
-	mailto:ismell@ismell.org
+    mailto:ismell@ismell.org
     mailto:v.kosinov@ikalogic.com
 
 </AUTHOR_URL>
-
-<HELP_URL>
-
-</HELP_URL>
             
 *************************************************************************************
 */
@@ -44,7 +41,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-  return "1.0";
+  return "1.01";
 }
 
 
@@ -60,10 +57,25 @@ function get_dec_auth()
 */
 function gui()
 {
-  ui_clear();   // clean up the User interface before drawing a new one.
+	ui_clear();   // clean up the User interface before drawing a new one.
 
-  ui_add_ch_selector("ch_sdcka","SDCKA (Pin 1)","SDCKA");
-  ui_add_ch_selector("ch_sdckb","SDCKB (Pin 2)","SDCKB");
+	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
+	{
+		// Prevented incompatible workspaces from using the decoder
+		if( get_device_max_channels() < 2 )
+		{
+			ui_add_info_label("This device (or workspace configuration) do not have enough channels for this decoder to operate properly");
+			return;
+		}
+	}
+	else
+	{
+		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
+		return;
+	}
+	
+	ui_add_ch_selector("ch_sdcka","SDCKA (Pin 1)","SDCKA");
+	ui_add_ch_selector("ch_sdckb","SDCKB (Pin 2)","SDCKB");
 
 }
 

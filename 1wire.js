@@ -1,7 +1,7 @@
 /*
 *************************************************************************************
 
-							SCANASTUDIO 2 1-WIRE DECODER
+							SCANASTUDIO 2 - 1-WIRE DECODER
 
 The following commented block allows some related informations to be displayed online
 
@@ -30,13 +30,18 @@ The following commented block allows some related informations to be displayed o
 
 <AUTHOR_URL>
 
-	mailto:mailto:mailto:v.kosinov@ikalogic.com
+	mailto:v.kosinov@ikalogic.com
 
-</AUTHOR_URL></AUTHOR_URL></AUTHOR_URL>
+</AUTHOR_URL>
 
 *************************************************************************************
 */
 
+/*
+*************************************************************************************
+								      INFO
+*************************************************************************************
+*/
 
 /* The decoder name as it will apear to the users of this script 
 */
@@ -61,28 +66,12 @@ function get_dec_auth()
 	return "IKALOGIC";
 }
 
-
-/* Graphical user interface for this decoder
+/*
+*************************************************************************************
+							    GLOBAL VARIABLES
+*************************************************************************************
 */
-function gui()  //graphical user interface
-{
-	ui_clear();  // clean up the User interface before drawing a new one.
-	ui_add_ch_selector( "uiCh", "Channel to decode", "1-Wire" );
-	ui_add_txt_combo( "uiSpeed", "Speed" );
-		ui_add_item_to_txt_combo( "Regular speed", true );
-		ui_add_item_to_txt_combo( "Overdrive speed" );
-	ui_add_separator();
-	ui_add_info_label( "<b>Hex view options:</b>" );
-	ui_add_txt_combo( "uiHexView", "Include in HEX view:" );
-		ui_add_item_to_txt_combo( "DATA fields only", true );
-		ui_add_item_to_txt_combo( "ROM COMMAND fields only" );
-		ui_add_item_to_txt_combo( "ROM ADDRESS fields only" );
-		ui_add_item_to_txt_combo( "Everything" );
-}
 
-
-/* Constants 
-*/
 var STATE = 
 {
 	INIT        : 0x00,
@@ -114,7 +103,7 @@ var OWOBJECT_TYPE =
 	BYTE     : 0x08,
 	UNKNOWN  : 0x16
 };
- 
+
 var DEVICE_FAMILY =
 {
 	DS1990   : {code: 0x01, str: "DS1990(A)/DS2401"},    // Serial number iButton                                    
@@ -193,7 +182,6 @@ var REGULAR_DELAYS =
 	RDV      : 15
 };
 
-
 var OVERDRIVE_DELAYS =
 {
 	// RESET AND PRESENCE PULSE
@@ -240,7 +228,6 @@ var HEXVIEW_OPT =
 	ALL  : 0x03
 };
 
-
 /* Object definitions
 */
 function OWObject (type, value, start, end, duration, isLast)
@@ -253,11 +240,10 @@ function OWObject (type, value, start, end, duration, isLast)
 	this.isLast = isLast;
 };
 
-
-/* Global variables
-*/
 var oWDelays;
 var owObjects;
+var samples_per_us;
+var ow_trig_steps = [];
 
 var PKT_COLOR_DATA;
 var PKT_COLOR_DATA_TITLE;
@@ -268,24 +254,34 @@ var PKT_COLOR_ROMCODE_TITLE;
 var PKT_COLOR_UNKNW_TITLE;
 var PKT_COLOR_OTHER_TITLE;
 
-
 /*
- 	Used by signal builder
+*************************************************************************************
+								   DECODER
+*************************************************************************************
 */
-var samples_per_us;
-// times defined here: http://www.maximintegrated.com/en/app-notes/index.mvp/id/126
-var time_a;
-var time_b;
-var time_c;
-var time_d;
-var time_r;
-var time_rp;	//time between reset and presence
-var time_p;
 
-/*
-	Used by trig sequence generator
+/* Graphical user interface for this decoder
 */
-var ow_trig_steps = [];
+function gui()
+{
+	ui_clear();  // clean up the User interface before drawing a new one.
+
+	ui_add_ch_selector( "uiCh", "Channel to decode", "1-Wire" );
+
+	ui_add_txt_combo( "uiSpeed", "Speed" );
+	ui_add_item_to_txt_combo( "Regular speed", true );
+	ui_add_item_to_txt_combo( "Overdrive speed" );
+
+	ui_add_separator();
+	ui_add_info_label( "<b>Hex view options:</b>" );
+
+	ui_add_txt_combo( "uiHexView", "Include in HEX view:" );
+	ui_add_item_to_txt_combo( "DATA fields only", true );
+	ui_add_item_to_txt_combo( "ROM COMMAND fields only" );
+	ui_add_item_to_txt_combo( "ROM ADDRESS fields only" );
+	ui_add_item_to_txt_combo( "Everything" );
+}
+
 
 /* This is the function that will be called from ScanaStudio 
    to update the decoded items
@@ -293,7 +289,7 @@ var ow_trig_steps = [];
 function decode()
 {
 	var stop = false;
-	var state = STATE.INIT;	 	  	// Initial state
+	var state = STATE.INIT;
 	var owObject;
 
 	if (!check_scanastudio_support())
@@ -931,7 +927,8 @@ function decode_signal (ch)
 		}
 		else
 		{
-			// owObjects.push(new OWObject(OWOBJECT_TYPE.UNKNOWN, true, trLowSt.sample, tr.sample, tLow, false));
+			/* owObjects.push(new OWObject(OWOBJECT_TYPE.UNKNOWN, true, trLowSt.sample, tr.sample, tLow, false));
+			*/
 		}
 	}
 
@@ -985,6 +982,215 @@ function speed_test (ch)
 	return SPEED.UNKNOWN;
 }
 
+/*
+*************************************************************************************
+							     DEMO BUILDER
+*************************************************************************************
+*/
+
+/*
+*/
+function build_demo_signals()
+{
+	var demo_cnt = 0;
+	var test_data;
+
+	samples_per_us = get_sample_rate() / 1000000;
+
+	if (uiSpeed == SPEED.REGULAR)
+	{
+		oWDelays = REGULAR_DELAYS;
+	}
+	else
+	{
+		oWDelays = OVERDRIVE_DELAYS;
+	}
+
+	add_samples(uiCh, 1, samples_per_us * 100);
+
+	while (get_samples_acc(uiCh) < n_samples)
+	{
+		add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10)); 	// reset
+		add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
+		add_samples(uiCh, 0, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence	
+		add_samples(uiCh, 1, samples_per_us * 10);							// delay
+
+		demo_gen_byte(0x33);
+		demo_gen_byte(demo_cnt);
+
+		for (test_data = 1; test_data < 31; test_data++)
+		{
+			demo_gen_byte(test_data);
+		}
+
+		demo_cnt++;
+		add_samples(uiCh, 1, n_samples / 20);	// delay between transactions
+	}
+}
+
+
+/*
+*/
+function demo_gen_byte (code)
+{
+    var i;
+    var b;
+    var lvl;
+	var par;
+
+	for (i = 0; i < 8; i++)
+	{
+		b = ((code >> i) & 0x1)
+
+		if (b == 1)
+		{
+			add_samples(uiCh, 0, samples_per_us * (oWDelays.LOW1_MAX / 2));
+			add_samples(uiCh, 1, samples_per_us * oWDelays.SLOT_MIN);
+		}
+		else
+		{
+			add_samples(uiCh, 0, samples_per_us * oWDelays.LOW0_MIN);
+			add_samples(uiCh, 1, samples_per_us * oWDelays.SLOT_MIN);
+		}
+	}
+
+    add_samples(uiCh, 1, samples_per_us * 100); 	// add delay between bytes
+}
+
+/*
+*************************************************************************************
+							       TRIGGER
+*************************************************************************************
+*/
+
+/* Graphical user interface for the trigger configuration
+*/
+function trig_gui()
+{
+	trig_ui_clear();
+
+	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any valid 1-Wire transaction", false);
+	trig_ui_add_label("label0", "Trigger when a master reset pulse is followed by a valid presence pulse");
+
+	trig_ui_add_alternative("ALT_SPECIFIC_CMD", "Trigger on specific ROM command", true);
+	trig_ui_add_label("label1", "Type decimal value (51) or Hex value (0x33) of the ROM command to be used for trigger");
+
+	trig_ui_add_free_text("trig_rom_cmd","ROM Command:");
+}
+
+
+/*
+*/
+function trig_seq_gen()
+{
+    flexitrig_set_async_mode(true);
+	get_ui_vals();
+
+	if (uiSpeed == SPEED.REGULAR)
+	{
+		oWDelays = REGULAR_DELAYS;
+
+		if ((1 / get_sample_rate()) > (1e-6))
+		{
+			add_to_err_log("Sample rate too low for the 1-Wire protocol trigger");
+		}
+	}
+	else
+	{	
+		oWDelays = OVERDRIVE_DELAYS;
+
+		if ((1 / get_sample_rate()) > (0.1e-6))
+		{
+			add_to_err_log("Sample rate too low for the 1-Wire protocol trigger");
+		}
+	}
+
+	ow_trig_steps.length = 0;
+	flexitrig_clear();
+
+	if (ALT_ANY_FRAME == true)
+	{
+		flexitrig_set_summary_text("1-Wire presence pulse");
+
+		flexitrig_append(build_step("F"), -1, -1);
+		flexitrig_append(build_step("R"), us_to_s(oWDelays.RSTL_MIN), us_to_s(oWDelays.RSTL_STD * 2));
+		flexitrig_append(build_step("F"), us_to_s(oWDelays.PDH_MIN), us_to_s(oWDelays.PDH_MAX * 2));
+	}
+	else if (ALT_SPECIFIC_CMD == true)
+	{
+		flexitrig_set_summary_text("1-Wire ROM: " + trig_rom_cmd);
+		trig_rom_cmd = Number(trig_rom_cmd);
+
+		flexitrig_append(build_step("F"), -1, -1);
+		flexitrig_append(build_step("R"), us_to_s(oWDelays.RSTL_MIN), us_to_s(oWDelays.RSTL_STD * 2));
+		flexitrig_append(build_step("F"), us_to_s(oWDelays.PDH_MIN), us_to_s(oWDelays.PDH_MAX * 2));
+		flexitrig_append(build_step("R"), us_to_s(oWDelays.PDL_MIN), us_to_s(oWDelays.PDL_MIN * 2));
+
+		build_trig_byte(trig_rom_cmd);
+	}
+
+	// flexitrig_print_steps();
+}
+
+
+/*
+*/
+function build_trig_byte (data)
+{
+	if ((data & 0x1) == 0)
+	{
+		flexitrig_append(build_step("F"), -1, -1);
+		flexitrig_append(build_step("R"), us_to_s(oWDelays.LOW0_MIN), us_to_s(oWDelays.LOW0_MAX));
+	}
+	else
+	{
+		flexitrig_append(build_step("F"), -1, -1);
+		flexitrig_append(build_step("R"), us_to_s(oWDelays.REC_MIN), -1);
+	}
+
+	for (var bit = 0; bit < 7; bit++)
+	{
+		if (((data >> bit) & 0x1) == 0)
+		{
+			flexitrig_append(build_step("F"), -1, -1);
+			flexitrig_append(build_step("R"), -1, -1);
+		}
+		else
+		{
+			flexitrig_append(build_step("F"), -1, -1);
+			flexitrig_append(build_step("R"), -1, -1);
+		}
+	}
+}
+
+
+/*
+*/
+function build_step (step_ch_desc)
+{
+	var i;
+	var step = "";
+
+	for (i = 0; i < get_device_max_channels(); i++)
+	{
+		if (i == uiCh)
+		{
+			step = step_ch_desc + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}
+	}
+
+	return step;
+}
+
+/*
+*************************************************************************************
+							        UTILS
+*************************************************************************************
+*/
 
 /*
 */
@@ -1058,14 +1264,21 @@ function add_pkt_data (start, end, str, strLen)
 		strTemp = strTemp.replace(/,/g, " ");
 
 		pkt_start("DATA");
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(start, end, "DATA", strTemp.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 		pkt_end();
-
 	}
 	else
 	{
-		pkt_add_item(start, end, "DATA", str, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(start, end, "DATA", str.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 	}
+}
+
+
+/*
+*/
+function us_to_s (us)
+{
+	return (us * 1e-6);
 }
 
 
@@ -1073,7 +1286,7 @@ function add_pkt_data (start, end, str, strLen)
 */
 function get_timediff_us (tr1, tr2)
 {
-	return (((tr2.sample - tr1.sample) * 1000000) / sample_rate);
+	return (((tr2.sample - tr1.sample) * 1000000) / get_sample_rate());
 }
 
 
@@ -1081,7 +1294,7 @@ function get_timediff_us (tr1, tr2)
 */
 function get_num_samples_for_us (us)
 {
-	return ((us * sample_rate) / 1000000);
+	return ((us * get_sample_rate()) / 1000000);
 }
 
 
@@ -1159,167 +1372,3 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
-
-
-
-function build_demo_signals()
-{
-	var inter_transaction_silence = n_samples/20;
-	samples_per_us = get_sample_rate()/1000000;
-	if (uiSpeed == 0) 
-	{
-		time_a = 6;
-		time_b = 64;
-		time_c = 60;
-		time_d = 10;
-		time_r = 480;
-		time_rp = 35;
-		time_p = 410;
-	}
-	else
-	{
-		time_a = 1;
-		time_b = 7.5;
-		time_c = 7.5;
-		time_d = 2.5;
-		time_r = 70;
-		time_rp = 3;
-		time_p = 40;		
-	}
-	
-	add_samples(uiCh,1,samples_per_us*time_a*5);
-	
-	var demo_cnt = 0;
-	while(get_samples_acc(uiCh) < n_samples)
-	{
-		add_samples(uiCh,0,samples_per_us*time_r); //reset
-		add_samples(uiCh,1,samples_per_us*time_rp);
-		add_samples(uiCh,0,samples_per_us*time_p); //presence	
-		add_samples(uiCh,1,samples_per_us*time_a*3)	//delay
-		put_c(0x33);
-		put_c(demo_cnt);
-		var test_data;
-		for (test_data = 0; test_data < 30; test_data++)
-		{
-			put_c(test_data);
-		}
-		demo_cnt++;
-		add_samples(uiCh,1,inter_transaction_silence);	//delay
-		//add_to_err_log("accumulated samples: " + get_samples_acc(ch) + "\n");
-	}
-	//add_cycle(ch,0.5,100);
-	//add_cycle(ch,0.5,100);	
-	//add_to_err_log("accumulated samples: " + get_samples_acc(ch) + "\n");
-	//add_cycle(1,0.5,(sample_rate/1000));
-	//add_samples(0,0,10);
-}
-
-function put_c(code)
-{
-    var i;
-    var b;
-    var lvl;
-	var par;
-	
-	for (i = 0; i < 8; i++)
-	{
-		b = ((code >> i) & 0x1)
-		if (b == 1)
-		{
-			add_samples(uiCh,0,samples_per_us*time_a);
-			add_samples(uiCh,1,samples_per_us*time_b);
-		}
-		else
-		{
-			add_samples(uiCh,0,samples_per_us*time_c);
-			add_samples(uiCh,1,samples_per_us*time_d);
-		}
-	}
-    add_samples(uiCh,1,samples_per_us*100); //add delay between bytes
-}
-
-function trig_gui()
-{
-        trig_ui_clear();
-        trig_ui_add_alternative("ALT_ANY_FRAME","Trigger on a any valid 1-Wire transaction",false);
-                trig_ui_add_label("label0","Trigger when a master reset pulse is followed by a valid presence pulse");
-        trig_ui_add_alternative("ALT_SPECIFIC_CMD","Trigger on specific ROM command",true);
-                trig_ui_add_label("label1","Type decimal value (51) or Hex value (0x33) of the ROM command to be used for trigger");
-                trig_ui_add_free_text("trig_rom_cmd","ROM Command:");
-}
-
-function trig_seq_gen()
-{
-	get_ui_vals();
-	
-	flexitrig_clear();
-	flexitrig_append(build_step("F"),-1,-1);
-	flexitrig_append(build_step("R"),400e-6,500e-6);
-	
-	
-	
-	
-	//Uncomment this for debug purpsoes
-	//flexitrig_print_steps(); 
-	
-}
-
-function build_trig_byte(B)
-{
-	var b;
-	var last_b = -1;
-	var high_time;
-	for (b= 0; b < 8; b++)
-	{
-		if (last_b == 1)
-		{
-			high_time = time_c;
-		}
-		else
-		{
-			high_time = -1;
-		}
-		
-		if (((B >> b)&0x1) == 0)
-		{
-			flexitrig_append(build_step("F"),high_time,time_r*24);
-			flexitrig_append(build_step("R"),time_c,time_c*1.5);
-		}
-		else
-		{
-			flexitrig_append(build_step("F"),high_time,time_r*24);
-			flexitrig_append(build_step("R"),time_c,time_c*1.5);
-		}
-		last_b = ((B >> b)&0x1);
-	}
-	
-}
-
-function build_step(step_ch_desc)
-{
-	var step = "";
-	var i;
-	
-	for (i = 0; i < get_device_max_channels(); i++)
-	{	
-		
-		if (i == uiCh)
-		{
-			step = step_ch_desc + step;
-		}
-		else
-		{
-			step = "X" + step;
-		}
-	}
-	return step;
-}
-
-
-
-
-
-
-
-
-

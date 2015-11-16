@@ -881,7 +881,3 @@ function set_offset (ch, trSt)
 
 	return tr;
 }
-
-
-
-
