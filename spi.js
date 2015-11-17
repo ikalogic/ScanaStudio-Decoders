@@ -657,7 +657,7 @@ function demo_add_word (w_mosi, w_miso)
 
 	if (order == 1)
 	{
-		for (i = 0; i < (nbits+1); i++)
+		for (i = 0; i < (nbits + 1); i++)
 		{
 			bmosi = ((w_mosi >> i) & 0x1);
 			bmiso = ((w_miso >> i) & 0x1);

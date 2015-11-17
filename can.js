@@ -140,7 +140,7 @@ function decode()
 	{
 		hex_opt = 0;
 	}
-	
+
 	if (!check_scanastudio_support())
     {
         add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
@@ -152,8 +152,8 @@ function decode()
 		return;
 	}
 
-	spb = sample_rate / rate; 	// Calculate the number of Samples Per Bit.
-	m = spb / 10; 				// Margin = 1 tenth of a bit time (expresed in number of samples)
+	spb = sample_rate / rate; 		// Calculate the number of Samples Per Bit.
+	m = spb / 10; 					// Margin = 1 tenth of a bit time (expresed in number of samples)
 
 	var t = trs_get_first(ch);
 
@@ -466,8 +466,7 @@ function decode()
 					}
 					else
 					{
-						//regular bit
-						bits[b] = bit_sampler_next(ch);
+						bits[b] = bit_sampler_next(ch);		// Regular bit
 						dec_item_add_sample_point(ch, s + (rb * spb), DRAW_POINT);
 						
 						bit_pos.push(s + (rb * spb)); 	// Store the position of that bit
@@ -746,11 +745,174 @@ function check_stuffing()
 *************************************************************************************
 */
 
+var demoBitSeqArr = [];
+
 /*
 */
 function build_demo_signals()
 {
+	spb = (get_sample_rate() / rate); 		// Calculate the number of samples per bit
 
+	add_samples(ch, 1, (spb * 10));			// Start delay
+
+	demo_add_base_arbit(0x00, 0x08);
+	// demo_add_data(0, 8);
+	demo_generate();
+
+	add_samples(ch, 1, (spb * 10));
+
+/*
+	while (get_samples_acc(ch) < n_samples)
+	{
+		add_samples(ch, 1, spb);
+		add_samples(ch, 0, spb);
+	}
+*/
+}
+
+
+/*
+*/
+function demo_generate()
+{
+	var i = 0;
+	var temp = 0;
+	var currBit = 0;
+	var lastBit = 1;
+	var sameBitCnt = 0;
+
+	for (i = 0; i < demoBitSeqArr.length; i++)		// Bit stuffing check
+	{
+		if (i > 0)
+		{
+			lastBit = currBit;
+		}
+
+		currBit = demoBitSeqArr[i];
+
+		if (currBit == lastBit)
+		{
+			sameBitCnt++;
+		}
+		else
+		{
+			sameBitCnt = 0;
+		}
+
+		if (sameBitCnt >= 6)
+		{
+			if (lastBit === 0)
+			{
+				demoBitSeqArr.splice(i - 1, 0, 1);
+			}
+			else
+			{
+				demoBitSeqArr.splice(i - 1, 0, 0);
+			}
+
+			sameBitCnt = 0;
+		}
+	}
+
+/*
+	for (i = 0; i < demoBitSeqArr.length; i++)		// Bit stuffing check
+	{
+		temp += demoBitSeqArr[i];
+
+		if (((i % 6) === 0) && (i > 0))
+		{
+			if (temp >= 0x1F)
+			{
+				demoBitSeqArr.splice(i, 0, 0);
+			}
+			else if (temp <= 0)
+			{
+				demoBitSeqArr.splice(i, 0, 1);
+			}
+
+			temp = 0;
+		}
+	}
+*/
+
+	for (var i = 0; i < demoBitSeqArr.length; i++)		// Generation
+	{
+		if (demoBitSeqArr[i])
+		{
+			add_samples(ch, 1, spb);
+		}
+		else
+		{
+			add_samples(ch, 0, spb);
+		}
+	}
+}
+
+
+/*
+*/
+function demo_add_base_arbit (id, dlc)
+{
+	var i = 0;
+
+	demoBitSeqArr.push(0);			// SOF
+
+	for (i = 10; i >= 0; i--)	// Identifier
+	{
+		if (id & (1 << i) !== 0)
+		{
+			demoBitSeqArr.push(1);
+		}
+		else
+		{
+			demoBitSeqArr.push(0);
+		}
+	}
+
+	demoBitSeqArr.push(0);			// RTR: Data
+	demoBitSeqArr.push(0);	        // IDE: Base format
+	demoBitSeqArr.push(0);          // Reserved bit
+
+	for (i = 3; i >= 0; i--)	// DLC
+	{
+		if (dlc & (1 << i) !== 0)
+		{
+			demoBitSeqArr.push(1);
+		}
+		else
+		{
+			demoBitSeqArr.push(0);
+		}
+	}
+}
+
+/*
+*/
+function demo_add_data (offset, len)
+{
+	var i = 0;
+	var k = 0;
+	var dataArr = new Array();
+
+	for (i = offset; i < (offset + len); i++)
+	{
+		dataArr.push(i);
+	}
+
+	for (i = 0; i < dataArr.length; i++)
+	{
+		for (k = 7; k >= 0; k--)
+		{
+			if (dataArr[k] & (1 << k) !== 0)
+			{
+				demoBitSeqArr.push(1);
+			}
+			else
+			{
+				demoBitSeqArr.push(0);
+			}
+		}
+	}
 }
 
 /*
@@ -771,7 +933,9 @@ function trig_gui()
 */
 function trig_seq_gen()
 {
-
+	flexitrig_set_async_mode(true);
+	flexitrig_clear();
+	get_ui_vals();
 }
 
 /*

@@ -915,7 +915,7 @@ function trig_seq_gen()
 	var tBitSTolerance = ((tBitS / 100) * BIT_RATE_TOLERANCE);
 	var tBitSMin = tBitS - tBitSTolerance;
 	var tBitSMax = tBitS + tBitSTolerance;
-	var tBreakUsMin = ((T_MIN_BREAK_BITS + 3) * tBitSMin);
+	var tBreakSMin = ((T_MIN_BREAK_BITS + 3) * tBitSMin);
 
 	flexitrig_clear();
 
@@ -923,7 +923,7 @@ function trig_seq_gen()
 	{
 		flexitrig_set_summary_text("Trig on LIN Break condition");
 		flexitrig_append(trig_build_step("F"), -1, -1);
-		flexitrig_append(trig_build_step("R"), tBreakUsMin, -1);
+		flexitrig_append(trig_build_step("R"), tBreakSMin, -1);
 	}
 	else if (alt_specific_ident)
 	{
@@ -931,7 +931,7 @@ function trig_seq_gen()
 		flexitrig_set_summary_text("Trig on LIN Identifer: 0x" + trig_ident.toString(16));
 
 		flexitrig_append(trig_build_step("F"), -1, -1);
-		flexitrig_append(trig_build_step("R"), tBreakUsMin, -1);
+		flexitrig_append(trig_build_step("R"), tBreakSMin, -1);
 
 		for (var i = 0; i < 5; i++)		// Sync, 10 bits
 		{
