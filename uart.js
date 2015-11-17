@@ -14,10 +14,11 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.36: Added definition of ASYNC mode (required by ScanaStudio V2.4).
+	V1.38: Added ability to trigger on a phrase like "Hello World"
+	V1.37: Added definition of ASYNC mode (required by ScanaStudio V2.4).
 	V1.36: Added more decoder trigger functions
 	V1.35: Added decoder trigger functions
-	V1.34: Increased decoders speed, specially for long captures
+	V1.34: Increased decoder's speed, specially for long captures
 	V1.33: Added support for demo signals generation
 	V1.32: Added channel information to the Packet View.
 	V1.31: Corrected bug related to partity bit in iverted data mode.
@@ -61,7 +62,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.37";
+	return "1.38";
 }
 
 
@@ -646,11 +647,17 @@ function trig_gui()
 	trig_ui_add_alternative("ALT_SPECIFIC","Trigger on byte value",true);
 		trig_ui_add_label("lab1","Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
 		trig_ui_add_free_text("trig_byte","Trigger byte: ");
+	trig_ui_add_alternative("ALT_SPECIFIC_PHRASE","Trigger on a character string");
+		trig_ui_add_label("lab2","The a character string to be used for trigger. E.g.: Hello World");
+		trig_ui_add_free_text("trig_phrase","Trigger phrase: ");
 }
 
 function trig_seq_gen()
 {
-	flexitrig_set_async_mode(true);
+	
+	var c = 0;
+	var first_byte = true;
+	var total_size = 0;
 	get_ui_vals();
 	nbits += 5; 			// readjust the number of bits to start counting from 5 instead of 0.
 	if (stop == 0) 			// readjust number of stop bits
@@ -679,23 +686,12 @@ function trig_seq_gen()
 	//add_to_err_log("trig_byte=" + trig_byte);
 
 
-	var i;
-	var b;
-	var lvl = [];
-	var par;
-	var step;
-	var bit_time = 1/baud;	// [s]
-	//allow 5% margin on bit time <-- this may be configurable later.
-	var bt_max = bit_time * 1.05;
-	var bt_min = bit_time * 0.95;
-	if (bt_max == bt_min)
-	{
-		if (bt_min > 0) bt_min--;
-		else bt_max++;
-	}
+
+
 	
 	if (ALT_ANY_FRAME == true)
 	{
+		flexitrig_set_async_mode(false);
 		flexitrig_clear();
 		step = build_start_bit_step();
 		flexitrig_append(step,-1,-1); //start edge
@@ -703,79 +699,132 @@ function trig_seq_gen()
 	}
 	else if (ALT_SPECIFIC == true)
 	{
+		flexitrig_set_async_mode(true);
 		flexitrig_set_summary_text("Trig on UART byte: 0x" + trig_byte.toString(16) + " ('" + String.fromCharCode(trig_byte) + "')");
-		//first, build trigger bit sequence
-		switch (invert)
-		{
-			case 0:
-				par = 0;
-				lvl[1] = 1;
-				lvl[0] = 0;
-				trig_bit_sequence[0] = 0;
-			break;
-			case 1:
-				par = 1;
-				lvl[1] = 0;
-				lvl[0] = 1;
-				trig_bit_sequence[0] = 1;
-			break;
-			case 2:
-				par = 1;
-				lvl[1] = 0;
-				lvl[0] = 1;
-				trig_bit_sequence[0] = 0;
-			break;
-		}
-		for (i = 0; i < nbits; i++)
-		{
-			
-			if (order == 0) //LSB first
-			{
-				trig_bit_sequence.push(lvl[((trig_byte >> i) & 0x1)]);
-			}
-			else
-			{
-				trig_bit_sequence.push(lvl[((trig_byte >> nbits - i - 1) & 0x1)]);
-			}
-			par = par ^ lvl[((trig_byte >> i) & 0x1)];
-		}
-		if (parity > 0)
-		{
-			switch(parity) //to be tested!
-			{
-				case 1:
-					par = par ^ 1;
-				break;
-				case 2:
-					par = par ^ 0;		
-				break;
-			}
-			trig_bit_sequence.push(par);
-		}
-		//add stop bit
-		trig_bit_sequence.push((~trig_bit_sequence[0])&0x1);
-		
 		//now build trigger step
 		flexitrig_clear();
-		//Start bit
-		step = build_step(0);
-		flexitrig_append(step,-1,-1); //start edge
-		//helper vars
-		var last_lvl = trig_bit_sequence[0];
-		var last_index = 0;
-		
-		for (i = 1; i < trig_bit_sequence.length; i++)
-		{
-			if (trig_bit_sequence[i] != last_lvl)
-			{
-				last_lvl = trig_bit_sequence[i];
-				step = build_step(i);
-				flexitrig_append(step,bt_min*(i-last_index),bt_max*(i-last_index));
-				last_index = i;
-			}
-		}
-		
+		build_trig_byte(trig_byte,true)
+		//flexitrig_print_steps();
 	}
+	else
+	{
+		flexitrig_set_async_mode(false);
+		flexitrig_set_summary_text("Trig on UART Phrase: " + trig_phrase);
+		//add_to_err_log(trig_phrase.length);
+		for (c = 0; c < trig_phrase.length; c++)
+		{
+			//add_to_err_log("char: " + c);
+			if (c == 0) first_byte = true; 
+			else first_byte = false;
+			total_size += build_trig_byte(trig_phrase.charCodeAt(c),first_byte);
+		}
+		if (total_size >= 120)
+		{
+			add_to_err_log("Trigger phrase too large, please use less characters.");
+		}
+		//flexitrig_print_steps();
+		//add_to_err_log("total steps = " + total_size);
+	}
+}
+
+function build_trig_byte(new_byte,first)
+{
+	var lvl = [];
+	var i;
+	var total_steps = 0;
+	var b;
+	var par;
+	var step;
+	var bit_time = 1/baud;	// [s]
+	//allow 5% margin on bit time <-- this may be configurable later.
+	var bt_max = bit_time * 1.05;
+	var bt_min = bit_time * 0.95;
+	trig_bit_sequence = [];
+	if (bt_max == bt_min)
+	{
+		if (bt_min > 0) bt_min--;
+		else bt_max++;
+	}
+	//first, build trigger bit sequence
+	switch (invert)
+	{
+		case 0:
+			par = 0;
+			lvl[1] = 1;
+			lvl[0] = 0;
+			trig_bit_sequence[0] = 0;
+		break;
+		case 1:
+			par = 1;
+			lvl[1] = 0;
+			lvl[0] = 1;
+			trig_bit_sequence[0] = 1;
+		break;
+		case 2:
+			par = 1;
+			lvl[1] = 0;
+			lvl[0] = 1;
+			trig_bit_sequence[0] = 0;
+		break;
+	}
+	for (i = 0; i < nbits; i++)
+	{
+		
+		if (order == 0) //LSB first
+		{
+			trig_bit_sequence.push(lvl[((new_byte >> i) & 0x1)]);
+		}
+		else
+		{
+			trig_bit_sequence.push(lvl[((new_byte >> nbits - i - 1) & 0x1)]);
+		}
+		par = par ^ lvl[((new_byte >> i) & 0x1)];
+	}
+	if (parity > 0)
+	{
+		switch(parity) //to be tested!
+		{
+			case 1:
+				par = par ^ 1;
+			break;
+			case 2:
+				par = par ^ 0;		
+			break;
+		}
+		trig_bit_sequence.push(par);
+	}
+	//add stop bit
+	trig_bit_sequence.push((~trig_bit_sequence[0])&0x1);
+	
+
+	//Start bit
+	step = build_step(0);
+	if (first) //for the very first byte, ignore previous stop byte
+	{
+		flexitrig_append(step,-1,-1); //start edge		
+	}
+	else
+	{
+		flexitrig_append(step,bt_min*stop,-1); //start edge have to be at least "n stop bits" way from the last transition.
+	}
+
+	//helper vars
+	var last_lvl = trig_bit_sequence[0];
+	var last_index = 0;
+	
+	for (i = 1; i < trig_bit_sequence.length; i++)
+	{
+		if (trig_bit_sequence[i] != last_lvl)
+		{
+			last_lvl = trig_bit_sequence[i];
+			step = build_step(i);
+			flexitrig_append(step,bt_min*(i-last_index),bt_max*(i-last_index));
+			last_index = i;
+			total_steps ++;
+		}
+	}
+	
+	return total_steps;
 }
 
 function build_step(step_index)
@@ -835,6 +884,8 @@ function build_start_bit_step()
 	}
 	return step;
 }
+
+
 
 
 
