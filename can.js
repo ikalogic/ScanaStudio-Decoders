@@ -755,7 +755,7 @@ function build_demo_signals()
 
 	add_samples(ch, 1, (spb * 10));			// Start delay
 
-	demo_add_base_arbit(0x00, 0x08);
+	demo_add_base_arbit(0x0, 0x08);
 	// demo_add_data(0, 8);
 	demo_generate();
 
@@ -780,16 +780,15 @@ function demo_generate()
 	var currBit = 0;
 	var lastBit = 1;
 	var sameBitCnt = 0;
-
-	for (i = 0; i < demoBitSeqArr.length; i++)		// Bit stuffing check
+	var stuffed_array = [];
+	
+	//lastBit = demoBitSeqArr[0];
+	stuffed_array.push(demoBitSeqArr[0]);
+	for (i = 1; i < demoBitSeqArr.length; i++)		// Bit stuffing check
 	{
-		if (i > 0)
-		{
-			lastBit = currBit;
-		}
-
+		lastBit = demoBitSeqArr[i-1];
 		currBit = demoBitSeqArr[i];
-
+		stuffed_array.push(demoBitSeqArr[i]);
 		if (currBit == lastBit)
 		{
 			sameBitCnt++;
@@ -798,28 +797,28 @@ function demo_generate()
 		{
 			sameBitCnt = 0;
 		}
+		
 
-		if (sameBitCnt >= 6)
+		if (sameBitCnt >= 4)
 		{
 			if (lastBit === 0)
 			{
-				demoBitSeqArr.splice(i - 1, 0, 1);
+				stuffed_array.push(1);
 			}
 			else
 			{
-				demoBitSeqArr.splice(i - 1, 0, 0);
+				stuffed_array.push(0);			
 			}
-
-			sameBitCnt = 0;
+			sameBitCnt = -1;
 		}
 	}
 
-/*
-	for (i = 0; i < demoBitSeqArr.length; i++)		// Bit stuffing check
+
+	/*for (i = 0; i < demoBitSeqArr.length; i++)		// Bit stuffing check
 	{
 		temp += demoBitSeqArr[i];
 
-		if (((i % 6) === 0) && (i > 0))
+		if (((i % 6) === 0))
 		{
 			if (temp >= 0x1F)
 			{
@@ -832,9 +831,10 @@ function demo_generate()
 
 			temp = 0;
 		}
-	}
-*/
+	}*/
 
+	demoBitSeqArr = stuffed_array;
+	
 	for (var i = 0; i < demoBitSeqArr.length; i++)		// Generation
 	{
 		if (demoBitSeqArr[i])
@@ -859,7 +859,8 @@ function demo_add_base_arbit (id, dlc)
 
 	for (i = 10; i >= 0; i--)	// Identifier
 	{
-		if (id & (1 << i) !== 0)
+		if ((id >> i) & 0x1)
+		//if (id & (1 << i) !== 0)
 		{
 			demoBitSeqArr.push(1);
 		}
@@ -875,7 +876,8 @@ function demo_add_base_arbit (id, dlc)
 
 	for (i = 3; i >= 0; i--)	// DLC
 	{
-		if (dlc & (1 << i) !== 0)
+		if ((dlc >> i) & 0x1)
+		//if (dlc & (1 << i) !== 0)
 		{
 			demoBitSeqArr.push(1);
 		}
@@ -988,3 +990,5 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
+
+
