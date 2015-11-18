@@ -264,11 +264,15 @@ function decode()
 						}
 					}
 
-					if ((ide_mode == true) && (b == 39)) 
+					if ((ide_mode == true) && (b == 39))
+					{
 						break;
+					}
 
-					if ((ide_mode == false) && (b == 19)) 
+					if ((ide_mode == false) && (b == 19))
+					{
 						break;
+					}
 				}
 
 				if (stuffing_ok == false)
@@ -290,9 +294,8 @@ function decode()
 					}
 
 					dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[11] + (0.5 * spb) - m); 		// Add the ID item
-					dec_item_add_pre_text("Identifier: "); 
+					dec_item_add_pre_text("IDENTIFIER: "); 
 					dec_item_add_pre_text("ID: "); 
-					dec_item_add_pre_text("ID "); 
 					dec_item_add_pre_text("ID");
 					dec_item_add_data(val);
 
@@ -342,11 +345,11 @@ function decode()
 					data_size = val;
 
 					dec_item_new(ch,bit_pos[15] - (0.5 * spb) + m, bit_pos[18] + (0.5 * spb) - m); 	// Add the ID item
-					dec_item_add_pre_text("Data Length code "); 
-					dec_item_add_pre_text("Data Length ");
-					dec_item_add_pre_text("DLC ");
+					dec_item_add_pre_text("DATA LENGTH CODE: "); 
+					dec_item_add_pre_text("DATA LENGTH: ");
+					dec_item_add_pre_text("DATA LEN: ");
+					dec_item_add_pre_text("DLC: ");
 					dec_item_add_pre_text("L:");
-					dec_item_add_pre_text("L"); 
 					dec_item_add_data(val);
 
 					if (hex_opt > 1)
@@ -371,10 +374,8 @@ function decode()
 					}
 
 					dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[31] + (0.5 * spb) - m); 	// Add the ID item
-					dec_item_add_pre_text("Extended Identifier: "); 
-					dec_item_add_pre_text("EID : "); 
-					dec_item_add_pre_text("EID ");
-					dec_item_add_pre_text("EID"); 
+					dec_item_add_pre_text("EXTENDED IDENTIFIER: "); 
+					dec_item_add_pre_text("EID: ");
 					dec_item_add_data(val);
 
 					if (hex_opt > 0) 
@@ -421,11 +422,11 @@ function decode()
 					data_size = val;
 
 					dec_item_new(ch, bit_pos[35] - (0.5 * spb) + m, bit_pos[38] + (0.5 * spb) - m); 	// Add the ID item				
-					dec_item_add_pre_text("Data Length code"); 
-					dec_item_add_pre_text("Data Length ");
-					dec_item_add_pre_text("DLC ");
+					dec_item_add_pre_text("DATA LENGTH CODE: "); 
+					dec_item_add_pre_text("DATA LENGTH: ");
+					dec_item_add_pre_text("DATA LEN: ");
+					dec_item_add_pre_text("DLC: ");
 					dec_item_add_pre_text("L:");
-					dec_item_add_pre_text("L"); 
 					dec_item_add_data(val);
 
 					if (hex_opt > 1)
@@ -509,8 +510,7 @@ function decode()
 					}
 
 					dec_item_new(ch, bit_pos[b + (i * 8)] - (0.5 * spb) + m, bit_pos[b + (i * 8) + 7] + (0.5 * spb) - m); 	// Add the ID item
-					dec_item_add_pre_text("Data Field: "); 
-					dec_item_add_pre_text("Data : "); 
+					dec_item_add_pre_text("DATA: ");
 					dec_item_add_pre_text("D: ");
 					dec_item_add_pre_text("D "); 
 					dec_item_add_data(val);
@@ -524,8 +524,8 @@ function decode()
 				b += (data_size * 8);
 				state = GET_CRC;
 
-				//TO DO:
-				//correct all start and end samples
+				// TO DO:
+				// correct all start and end samples
 				// add packet for CRC, and error frames
 				// add the packet stop
 			break;
@@ -603,7 +603,6 @@ function decode()
 				}
 
 				dec_item_new(ch, bit_pos[b] - (0.5 * spb) + m, bit_pos[b + 14] + (0.5 * spb) - m); 	// Add the ID item
-				dec_item_add_pre_text("CRC Field: "); 
 				dec_item_add_pre_text("CRC : "); 
 				dec_item_add_pre_text("CRC ");
 				dec_item_add_pre_text("CRC"); 
@@ -632,7 +631,7 @@ function decode()
 
 					pkt_add_item(-1, -1, "CRC", int_to_str_hex(val) + "(WRONG)", dark_colors.red, channel_color);
 
-					pkt_start("CRC Error");
+					pkt_start("CRC ERROR");
 					pkt_add_item(0, 0, "CRC (captured)",int_to_str_hex(val), dark_colors.red, channel_color);
 					pkt_add_item(0, 0, "CRC (calculated)", int_to_str_hex(crc_rg), dark_colors.red, channel_color);
 					pkt_end();
@@ -667,7 +666,7 @@ function decode()
 
 				if (eof_chk == 7)
 				{
-					dec_item_add_pre_text("End Of Frame OK");
+					dec_item_add_pre_text("END OF FRAME OK");
 					dec_item_add_pre_text("EOF OK");
 					dec_item_add_pre_text("EOF");
 					dec_item_add_pre_text("E");
@@ -675,8 +674,8 @@ function decode()
 				}
 				else
 				{
-					dec_item_add_pre_text("End Of Frame Error");
-					dec_item_add_pre_text("EOF Err!");
+					dec_item_add_pre_text("END OF FRAME ERR");
+					dec_item_add_pre_text("EOF ERR!");
 					dec_item_add_pre_text("!EOF!");
 					dec_item_add_pre_text("!E!");
 					dec_item_add_pre_text("!");
@@ -747,27 +746,24 @@ function check_stuffing()
 
 var demoBitSeqArr = [];
 
+
 /*
 */
 function build_demo_signals()
 {
+	var i = 0;
+
 	spb = (get_sample_rate() / rate); 		// Calculate the number of samples per bit
 
-	add_samples(ch, 1, (spb * 10));			// Start delay
-
-	demo_add_base_arbit(0x0, 0x08);
-	// demo_add_data(0, 8);
-	demo_generate();
-
-	add_samples(ch, 1, (spb * 10));
-
-/*
 	while (get_samples_acc(ch) < n_samples)
 	{
-		add_samples(ch, 1, spb);
-		add_samples(ch, 0, spb);
+		add_samples(ch, 1, (spb * 100));
+		demo_add_base_arbit(0x0, 0x08);
+		demo_add_data(i, 8);
+		demo_add_crc();
+		demo_generate();
+		i += 8;
 	}
-*/
 }
 
 
@@ -778,17 +774,20 @@ function demo_generate()
 	var i = 0;
 	var temp = 0;
 	var currBit = 0;
-	var lastBit = 1;
+	var lastBit = 0;
 	var sameBitCnt = 0;
-	var stuffed_array = [];
-	
-	//lastBit = demoBitSeqArr[0];
-	stuffed_array.push(demoBitSeqArr[0]);
+	var stuffedBitArr = [];
+
+	lastBit = demoBitSeqArr[0];
+	stuffedBitArr.push(lastBit);
+
 	for (i = 1; i < demoBitSeqArr.length; i++)		// Bit stuffing check
 	{
-		lastBit = demoBitSeqArr[i-1];
+		lastBit = demoBitSeqArr[i - 1];
 		currBit = demoBitSeqArr[i];
-		stuffed_array.push(demoBitSeqArr[i]);
+
+		stuffedBitArr.push(currBit);
+
 		if (currBit == lastBit)
 		{
 			sameBitCnt++;
@@ -797,47 +796,34 @@ function demo_generate()
 		{
 			sameBitCnt = 0;
 		}
-		
 
 		if (sameBitCnt >= 4)
 		{
-			if (lastBit === 0)
+			if (lastBit !== 0)
 			{
-				stuffed_array.push(1);
+				stuffedBitArr.push(0);
 			}
 			else
 			{
-				stuffed_array.push(0);			
+				stuffedBitArr.push(1);		
 			}
+
 			sameBitCnt = -1;
 		}
 	}
 
+	stuffedBitArr.push(1);		// CRC delimiter
+	stuffedBitArr.push(0);		// ACK
+	stuffedBitArr.push(1);      // ACK delimiter
 
-	/*for (i = 0; i < demoBitSeqArr.length; i++)		// Bit stuffing check
+	for (i = 0; i < 10; i++)	// EOF
 	{
-		temp += demoBitSeqArr[i];
+		stuffedBitArr.push(1);
+	}
 
-		if (((i % 6) === 0))
-		{
-			if (temp >= 0x1F)
-			{
-				demoBitSeqArr.splice(i, 0, 0);
-			}
-			else if (temp <= 0)
-			{
-				demoBitSeqArr.splice(i, 0, 1);
-			}
-
-			temp = 0;
-		}
-	}*/
-
-	demoBitSeqArr = stuffed_array;
-	
-	for (var i = 0; i < demoBitSeqArr.length; i++)		// Generation
+	for (i = 0; i < stuffedBitArr.length; i++)		// Generation
 	{
-		if (demoBitSeqArr[i])
+		if (stuffedBitArr[i] !== 0)
 		{
 			add_samples(ch, 1, spb);
 		}
@@ -846,6 +832,9 @@ function demo_generate()
 			add_samples(ch, 0, spb);
 		}
 	}
+
+	demoBitSeqArr = [];
+	stuffedBitArr = [];
 }
 
 
@@ -857,10 +846,9 @@ function demo_add_base_arbit (id, dlc)
 
 	demoBitSeqArr.push(0);			// SOF
 
-	for (i = 10; i >= 0; i--)	// Identifier
+	for (i = 10; i >= 0; i--)		// Identifier
 	{
 		if ((id >> i) & 0x1)
-		//if (id & (1 << i) !== 0)
 		{
 			demoBitSeqArr.push(1);
 		}
@@ -874,10 +862,9 @@ function demo_add_base_arbit (id, dlc)
 	demoBitSeqArr.push(0);	        // IDE: Base format
 	demoBitSeqArr.push(0);          // Reserved bit
 
-	for (i = 3; i >= 0; i--)	// DLC
+	for (i = 3; i >= 0; i--)		// DLC
 	{
 		if ((dlc >> i) & 0x1)
-		//if (dlc & (1 << i) !== 0)
 		{
 			demoBitSeqArr.push(1);
 		}
@@ -888,13 +875,14 @@ function demo_add_base_arbit (id, dlc)
 	}
 }
 
+
 /*
 */
 function demo_add_data (offset, len)
 {
 	var i = 0;
 	var k = 0;
-	var dataArr = new Array();
+	var dataArr = [];
 
 	for (i = offset; i < (offset + len); i++)
 	{
@@ -905,7 +893,7 @@ function demo_add_data (offset, len)
 	{
 		for (k = 7; k >= 0; k--)
 		{
-			if (dataArr[k] & (1 << k) !== 0)
+			if ((dataArr[i] >> k) & 0x1)
 			{
 				demoBitSeqArr.push(1);
 			}
@@ -913,6 +901,41 @@ function demo_add_data (offset, len)
 			{
 				demoBitSeqArr.push(0);
 			}
+		}
+	}
+}
+
+
+/*
+*/
+function demo_add_crc()
+{
+	var i = 0;
+	var crc = 0;
+	var currBit = 0;
+
+	for (i = 0; i < demoBitSeqArr.length; i++)
+	{
+		currBit = demoBitSeqArr[i] ^ ((crc >> 14) & 0x1);
+		crc = crc << 1;
+
+		if (currBit == 1)
+		{ 
+			crc ^= 0x4599;
+		}
+
+		crc &= 0x7fff;
+	}
+
+	for (i = 14; i >= 0; i--)
+	{
+		if ((crc >> i) & 0x1)
+		{
+			demoBitSeqArr.push(1);
+		}
+		else
+		{
+			demoBitSeqArr.push(0);
 		}
 	}
 }
