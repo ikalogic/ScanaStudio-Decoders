@@ -755,7 +755,7 @@ function build_demo_signals()
 
 	spb = (get_sample_rate() / rate); 		// Calculate the number of samples per bit
 
-	while (get_samples_acc(ch) < n_samples)
+	while (get_samples_acc(ch) < (n_samples - (spb * 200)))
 	{
 		add_samples(ch, 1, (spb * 100));
 		demo_add_base_arbit(0x0, 0x08);
@@ -958,9 +958,44 @@ function trig_gui()
 */
 function trig_seq_gen()
 {
+	var i = 0;
+
 	flexitrig_set_async_mode(true);
 	flexitrig_clear();
 	get_ui_vals();
+
+	spb = (get_sample_rate() / rate); 	// Calculate the number of samples per bit
+
+	// flexitrig_print_steps();
+}
+
+
+/*
+*/
+function trig_build_step (step_desc)
+{
+	var step = "";
+
+	for (var i = 0; i < get_device_max_channels(); i++)
+	{
+		if (i == ch)
+		{
+			if (step_desc == 0)
+			{
+				step = "F" + step;
+			}
+			else
+			{
+				step = "R" + step;
+			}
+		}
+		else
+		{
+			step = "X" + step;
+		}
+	}
+
+	return step;
 }
 
 /*

@@ -642,14 +642,16 @@ function ini_uart_generator()
 function trig_gui()
 {
 	trig_ui_clear();
-	trig_ui_add_alternative("ALT_ANY_FRAME","Trigger on a any frame",false);
-		trig_ui_add_label("lab0","Trigger on any UART Frame. In other words, this alternative will trigger on any start bit");
-	trig_ui_add_alternative("ALT_SPECIFIC","Trigger on byte value",true);
-		trig_ui_add_label("lab1","Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
-		trig_ui_add_free_text("trig_byte","Trigger byte: ");
+	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", false);
+	trig_ui_add_label("lab0", "Trigger on any UART Frame. In other words, this alternative will trigger on any start bit");
+	
+	trig_ui_add_alternative("ALT_SPECIFIC","Trigger on byte value", true);
+	trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
+	trig_ui_add_free_text("trig_byte", "Trigger byte: ");
+	
 	trig_ui_add_alternative("ALT_SPECIFIC_PHRASE","Trigger on a character string");
-		trig_ui_add_label("lab2","The a character string to be used for trigger. E.g.: Hello World");
-		trig_ui_add_free_text("trig_phrase","Trigger phrase: ");
+	trig_ui_add_label("lab2", "The a character string to be used for trigger. E.g.: Hello World");
+	trig_ui_add_free_text("trig_phrase", "Trigger phrase: ");
 }
 
 function trig_seq_gen()

@@ -883,8 +883,8 @@ function trig_gui()
 	trig_ui_clear();
 
 	trig_ui_add_alternative("alt_any_break", "Trigger on a any BREAK field", true);
-	trig_ui_add_label("lab1", "Due to the nature of LIN protocol you need to specify a baudrate of measured line in range between 1 and 20 kBits/s <br>");
-	trig_ui_add_free_text("trig_baudrate", "Baudrate (kBits/s): ");
+	trig_ui_add_label("lab1", "Due to the nature of LIN protocol you need to specify a bitrate of measured line in range between 1 and 20 kBits/s <br>");
+	trig_ui_add_free_text("trig_baudrate", "Bitrate (kBits/s): ");
 
 	trig_ui_add_alternative("alt_specific_ident", "Trigger on Identifier field value", false);
 	trig_ui_add_label("lab2", "Due to the nature of LIN protocol you need to specify a baudrate of measured line in range between 1 and 20 kBits/s <br>");

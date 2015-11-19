@@ -1174,21 +1174,25 @@ function put_c(data,start,gen_ack,stop)
 function trig_gui()
 {
 	trig_ui_clear();
-	trig_ui_add_alternative("ALT_ANY_FRAME","Trigger on a any frame",false);
-		trig_ui_add_combo("trig_frame_type","Trigger on:");
-		trig_ui_add_item_to_combo("Valid Start condition", true);
-		trig_ui_add_item_to_combo("Valid Stop condition");
-		trig_ui_add_item_to_combo("Any UnAcknowledged address");
-		trig_ui_add_item_to_combo("Any Acknowledged address");
-		trig_ui_add_item_to_combo("test");
-	trig_ui_add_alternative("ALT_SPECIFIC_ADD","Trigger on I2C address",true);
-		trig_ui_add_label("lab1","Type Decimal value (65) or HEX value (0x41). Address is an 8 bit field containing the R/W Flag");
-		trig_ui_add_free_text("trig_add","Slave Address: ");
-		trig_ui_add_check_box("ack_needed_a","Address must be aknowledged by a slave",true);
-	/*trig_ui_add_alternative("ALT_SPECIFIC_BYTE","Trigger on I2C data byte",false);
-		trig_ui_add_label("lab2","Type decimal value (65), Hex value (0x41) or ACII character between apostrophe marks ('A')");
-		trig_ui_add_free_text("trig_byte","Data byte: ");	
-		trig_ui_add_check_box("ack_needed_d","Data byte must be aknowledged",true);*/
+
+	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", false);
+	trig_ui_add_combo("trig_frame_type", "Trigger on:");
+	trig_ui_add_item_to_combo("Valid Start condition", true);
+	trig_ui_add_item_to_combo("Valid Stop condition");
+	trig_ui_add_item_to_combo("Any UnAcknowledged address");
+	trig_ui_add_item_to_combo("Any Acknowledged address");
+
+	trig_ui_add_alternative("ALT_SPECIFIC_ADD", "Trigger on I2C address", true);
+	trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is an 8 bit field containing the R/W Flag");
+	trig_ui_add_free_text("trig_add", "Slave Address: ");
+	trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", true);
+
+	/*
+	trig_ui_add_alternative("ALT_SPECIFIC_BYTE","Trigger on I2C data byte",false);
+	trig_ui_add_label("lab2","Type decimal value (65), Hex value (0x41) or ACII character between apostrophe marks ('A')");
+	trig_ui_add_free_text("trig_byte","Data byte: ");	
+	trig_ui_add_check_box("ack_needed_d","Data byte must be aknowledged",true);
+	*/
 }
 
 function trig_seq_gen()
