@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.30: Added decoder trigger & demo signal builder
 	V1.27: Added LIN WakeUp conditions and baudrate detection.
 	V1.25: Added signal noise handling. Added automatic LIN protocol version detection.
 	V1.22: Variable frame length bug fixed.
@@ -51,7 +52,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.27";
+	return "1.30";
 }
 
 
@@ -883,14 +884,17 @@ function trig_gui()
 	trig_ui_clear();
 
 	trig_ui_add_alternative("alt_any_break", "Trigger on a any BREAK field", true);
-	trig_ui_add_label("lab1", "Due to the nature of LIN protocol you need to specify a bitrate of measured line in range between 1 and 20 kBits/s <br>");
-	trig_ui_add_free_text("trig_baudrate", "Bitrate (kBits/s): ");
+
+		trig_ui_add_label("lab1", "Due to the nature of LIN protocol you need to specify a bitrate of measured line in range between 1 and 20 kBits/s <br>");
+		trig_ui_add_free_text("trig_baudrate", "Bitrate (kBits/s): ");
 
 	trig_ui_add_alternative("alt_specific_ident", "Trigger on Identifier field value", false);
-	trig_ui_add_label("lab2", "Due to the nature of LIN protocol you need to specify a baudrate of measured line in range between 1 and 20 kBits/s <br>");
-	trig_ui_add_free_text("trig_baudrate", "Baudrate (kBits/s): ");
-	trig_ui_add_label("lab3", "<br>Type decimal value (65) or Hex value (0x41) with or without the parity part <br>");
-	trig_ui_add_free_text("trig_ident", "Trigger Identifier: ");
+
+		trig_ui_add_label("lab2", "Due to the nature of LIN protocol you need to specify a baudrate of measured line in range between 1 and 20 kBits/s <br>");
+		trig_ui_add_free_text("trig_baudrate", "Baudrate (kBits/s): ");
+	
+		trig_ui_add_label("lab3", "<br>Type decimal value (65) or Hex value (0x41) with or without the parity part <br>");
+		trig_ui_add_free_text("trig_ident", "Trigger Identifier: ");
 }
 
 
@@ -971,7 +975,6 @@ function trig_seq_gen()
 			{
 				var step = trig_build_step(bitSeqArr[i]);
 				flexitrig_append(step, (tBitSMin * (i - lastIndex)), (tBitSMax * (i - lastIndex)));
-
 				lastBit = bitSeqArr[i];
 				lastIndex = i;
 			}
@@ -992,14 +995,7 @@ function trig_build_step (step_desc)
 	{
 		if (i == chLin)
 		{
-			if (step_desc == 0)
-			{
-				step = "F" + step;
-			}
-			else
-			{
-				step = "R" + step;
-			}
+			step = step_desc + step;
 		}
 		else
 		{
@@ -1352,4 +1348,3 @@ function check_scanastudio_support()
         return false;
     }
 }
-

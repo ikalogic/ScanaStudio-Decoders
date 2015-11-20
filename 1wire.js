@@ -1070,12 +1070,12 @@ function trig_gui()
 	trig_ui_clear();
 
 	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any valid 1-Wire transaction", false);
-	trig_ui_add_label("label0", "Trigger when a master reset pulse is followed by a valid presence pulse");
+		trig_ui_add_label("label0", "Trigger when a master reset pulse is followed by a valid presence pulse");
 
 	trig_ui_add_alternative("ALT_SPECIFIC_CMD", "Trigger on specific ROM command", true);
-	trig_ui_add_label("label1", "Type decimal value (51) or Hex value (0x33) of the ROM command to be used for trigger");
 
-	trig_ui_add_free_text("trig_rom_cmd","ROM Command:");
+		trig_ui_add_label("label1", "Type decimal value (51) or Hex value (0x33) of the ROM command to be used for trigger");
+		trig_ui_add_free_text("trig_rom_cmd","ROM Command:");
 }
 
 

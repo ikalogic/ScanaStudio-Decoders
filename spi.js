@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.53: Added decoder trigger
 	V1.52: Added demo signal building capability
 	V1.50: Better handling of probable noize on CS line (e.g. during system power up)
 	V1.49: Enhanced the way hex data is displayed in packet view (Thanks to user 0xdeadbeef)
@@ -62,7 +63,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.52";
+	return "1.53";
 }
 
 
@@ -730,16 +731,16 @@ function trig_gui()
 	trig_ui_clear();
 
 	trig_ui_add_alternative("alt_any_byte", "Trigger on a any byte", true);
-	trig_ui_add_label("lab0", "Trigger on any SPI byte");
+		trig_ui_add_label("lab0", "Trigger on any SPI byte");
 
 	trig_ui_add_alternative("alt_specific_byte", "Trigger on byte value", false);
 	
-	trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
-	trig_ui_add_free_text("trig_byte", "Trigger byte: ");
+		trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
+		trig_ui_add_free_text("trig_byte", "Trigger byte: ");
 
-	trig_ui_add_combo("trig_data_line", "Data Line");
-	trig_ui_add_item_to_combo("MOSI", true);
-	trig_ui_add_item_to_combo("MISO", false);
+		trig_ui_add_combo("trig_data_line", "Data Line");
+		trig_ui_add_item_to_combo("MOSI", true);
+		trig_ui_add_item_to_combo("MISO", false);
 }
 
 /*
