@@ -41,14 +41,11 @@ The following commented block allows some related informations to be displayed o
 *************************************************************************************
 */
 
-
 /*
-	UART demo builder global vars
+*************************************************************************************
+								      INFO
+*************************************************************************************
 */
-var inverted ;
-var hi,lo;
-var samples_per_bit;
-var trig_bit_sequence = [];
 
 /* The decoder name as it will apear to the users of this script
 */
@@ -73,12 +70,29 @@ function get_dec_auth()
 	return "IKALOGIC";
 }
 
+/*
+*************************************************************************************
+							    GLOBAL VARIABLES
+*************************************************************************************
+*/
+
+var inverted;
+var hi,lo;
+var samples_per_bit;
+var trig_bit_sequence = [];
+
+/*
+*************************************************************************************
+								   DECODER
+*************************************************************************************
+*/
 
 /* graphical user interface
 */
 function gui()  //graphical user interface
 {
 	ui_clear();  // clean up the User interface before drawing a new one.
+
 	ui_add_ch_selector( "ch", "Channel to decode", "UART" );
 	ui_add_baud_selector( "baud", "BAUD rate", 9600 );
 	ui_add_txt_combo( "nbits", "Bits per transfer" );
@@ -94,23 +108,26 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "14" );
 		ui_add_item_to_txt_combo( "15" );
 		ui_add_item_to_txt_combo( "16" );
+	
 	ui_add_txt_combo( "parity", "Parity bit" );
 		ui_add_item_to_txt_combo( "No parity bit", true );
 		ui_add_item_to_txt_combo( "Odd parity bit" );
 		ui_add_item_to_txt_combo( "Even parity bit" );
+	
 	ui_add_txt_combo( "stop", "Stop bits bit" );
 		ui_add_item_to_txt_combo( "1 stop bit", true );
 		ui_add_item_to_txt_combo( "1.5 stop bits" );
 		ui_add_item_to_txt_combo( "2 stop bits" );
-	ui_add_txt_combo( "order", "Bit order" );
-		ui_add_item_to_txt_combo( "LSB First", true );
+	
+	ui_add_txt_combo( "order", "Bit order");
+		ui_add_item_to_txt_combo( "LSB First", true);
 		ui_add_item_to_txt_combo( "MSB First" );
+	
 	ui_add_txt_combo( "invert", "Inverted logic" );
 		ui_add_item_to_txt_combo( "Non inverted logic (default)", true );
 		ui_add_item_to_txt_combo( "Inverted logic: All signals inverted" );
 		ui_add_item_to_txt_combo( "Inverted logic: Only data inverted" );
 }
-
 
 
 /* This is the function that will be called from ScanaStudio
@@ -125,19 +142,20 @@ function decode()
 	var logic1, logic0;
 	var bit;
 
-	
 	if (!check_scanastudio_support())
     {
         add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
         return;
     }
 
+    get_ui_vals();
+
 	var PKT_COLOR_DATA         = get_ch_light_color(ch);
 	var PKT_COLOR_DATA_TITLE   = dark_colors.gray;
 	var PKT_COLOR_START_TITLE  = dark_colors.blue;
 	var PKT_COLOR_PARITY_TITLE = dark_colors.orange;
 	var PKT_COLOR_STOP_TITLE   = dark_colors.green;
-	get_ui_vals();
+
 	var t = trs_get_first(ch);
 
 	nbits += 5; 			// readjust the number of bits to start counting from 5 instead of 0.
@@ -179,7 +197,6 @@ function decode()
 		logic0 = 0;
 	}
 
-	
 	while (trs_is_not_last(ch))
 	{
  	
@@ -189,7 +206,7 @@ function decode()
 			return false;
 		}
 		
-		if (invert == 1)							// search first falling or rising edge - this is a first start
+		if (invert == 1)		// search first falling or rising edge - this is a first start
 		{
 			t = get_next_rising_edge (ch, t);		
 		}
@@ -223,7 +240,7 @@ function decode()
 
 		dec_item_new(ch, t.sample + spb + m, t.sample + (spb * (nbits + 1)) - m);
 		
-		if (invert > 0) //if signals are inverted (1) or data only is inverted (2)
+		if (invert > 0) 	// if signals are inverted (1) or data only is inverted (2)
 		{
 			par = 1;
 		}
@@ -232,7 +249,7 @@ function decode()
 			par = 0;			
 		}
 		val = 0;
-		var midSample = t.sample + (spb * 3 / 2);			// position our reader on the middle of first bit
+		var midSample = t.sample + (spb * 3 / 2);	// position our reader on the middle of first bit
 
 		if (order == 0)
 		{
@@ -349,37 +366,32 @@ function decode()
 
 		pkt_end();
 
-		if (typeof(pkt_start) != "undefined") //if older ScanaStudio version
+		if (typeof(pkt_start) != "undefined") 		// If older ScanaStudio version
 		{
 			t = trs_go_after(ch,t.sample + (spb * stop * 0.5));
 		}
-		else	//much faster :
+		else
 		{
-			//get last navigator position from the bit sampler.
-			t = bit_sampler_get_last_trans(ch);	
+
+			t = bit_sampler_get_last_trans(ch);	 	// get last navigator position from the bit sampler.
 		}
-		//t = trs_go_after(ch,t.sample + (spb * stop * 0.5));
-		
-		//debug("t.sample = " + t.sample);
-		//t = trs_get_next(ch);
-		/*var tmp = (t.sample + (spb * stop * 0.5));
-		while(t.sample < tmp)
-		{
-			if (trs_is_not_last(ch))
-			{
-				t = trs_get_next(ch);
-			}
-			else
-			{
-				break;
-			}
-		}*/
+
 		set_progress(100 * t.sample / n_samples);
 	}
 }
 
+/*
+*************************************************************************************
+							     DEMO BUILDER
+*************************************************************************************
+*/
+
+/*
+*/
 function build_demo_signals()
 {
+	var demo_cnt = 0;
+
 	if (invert > 0)
 	{
 		inverted = true;
@@ -389,7 +401,7 @@ function build_demo_signals()
 		inverted = false; 
 	}
 
-	if (stop == 0) 			// readjust number of stop bits
+	if (stop == 0) 		// readjust number of stop bits
 	{
 		stop = 1;
 	}
@@ -402,35 +414,409 @@ function build_demo_signals()
 		stop = 2;
 	}
 
-	ini_uart_generator();
-	//generate demo signals to fill samples 0 to n_samples; 
-	//get_ui_vals();
+	ini_uart_generator();	
 	
-	/*add_to_err_log("generate demo on ch:" + ch + "\n");
-	add_to_err_log("n_samples: " + n_samples + "\n");
-	add_to_err_log("sample_rate: " + get_sample_rate() + "\n");
-	add_to_err_log("baud: " + baud + "\n");
-	add_to_err_log("samples_per_bit: " + samples_per_bit + "\n");
-	add_to_err_log("parity: " + parity + "\n");*/
+	delay(5);
+	put_str("Hello ScanaStudio tester!");
 	
-	
-	delay(5);	//5 bits delay
-	put_str("Hello ScanaStudio tester!");	
-	var demo_cnt = 0;
-	while(get_samples_acc(ch) < n_samples)
+	while (get_samples_acc(ch) < n_samples)
 	{
-		//add_to_err_log("Generating: " + demo_cnt + "\n");
+
 		put_str("demo " + demo_cnt );	
 		demo_cnt++;
 		delay(5);
-		//add_to_err_log("accumulated samples: " + get_samples_acc(ch) + "\n");
 	}
-	//add_cycle(ch,0.5,100);
-	//add_cycle(ch,0.5,100);	
-	//add_to_err_log("accumulated samples: " + get_samples_acc(ch) + "\n");
-	//add_cycle(1,0.5,(sample_rate/1000));
-	//add_samples(0,0,10);
 }
+
+
+/*
+*/
+function put_str (str)
+{
+    var i;
+    add_samples(ch,hi,samples_per_bit*stop); //add 1 stop first
+    for (i = 0; i < str.length; i++)
+    {
+        put_c(str.charCodeAt(i));
+    }
+}
+
+
+/*
+*/
+function put_c (code)
+{
+    var i;
+    var b;
+    var lvl;
+	var par;
+
+	switch (invert)		//add start bit, depending on data inversion mode:
+	{
+		case 0:	add_samples(ch, 0, samples_per_bit); break;   	// default UART, no inversion
+		case 1: add_samples(ch, 1, samples_per_bit); break;   	// inverted logic
+		case 2: add_samples(ch, 0, samples_per_bit); break; 	// inverted data
+	}
+	
+	if (invert > 0) //if signals are inverted (1) or data only is inverted (2)
+	{
+		par = 1;
+	}
+	else
+	{
+		par = 0;			
+	}
+
+    if (order == 1) 	// MSB first
+    {
+        for (i = 7; i >= 0; i--)
+        {
+            b = ((code >> i) & 0x1)
+            
+            if (b == 1)
+            {
+                lvl = hi;
+            }
+            else
+            {
+                lvl = lo;
+            }
+
+            add_samples(ch, lvl, samples_per_bit);
+			par = par ^ lvl;
+        }
+    }
+    else
+    {
+        for (i = 0; i < 8; i++)
+        {
+            b = ((code >> i) & 0x1)
+
+            if (b == 1)
+            {
+                lvl = hi;
+            }
+            else
+            {
+                lvl = lo;
+            }
+
+            add_samples(ch, lvl, samples_per_bit);
+			par = par ^ lvl;
+        }
+    }
+
+	if (parity > 0)
+	{
+		switch (parity)
+		{
+			case 1: par = par ^ 1; break;
+			case 2: par = par ^ 0; break;
+		}
+
+		add_samples(ch, par, samples_per_bit);
+	}
+
+    add_samples(ch, hi, samples_per_bit * stop); 	// Add stop bits
+}
+
+
+/* Adds a delay expressed in number of bits
+*/
+function delay (n_bits)
+{
+    for (var i = 0; i < n_bits; i++)
+    {
+        add_samples(ch, hi, samples_per_bit);
+    }
+}
+
+
+/*
+*/
+function ini_uart_generator()
+{
+	var sample_r = get_sample_rate();
+
+	samples_per_bit = sample_r / baud;
+
+    if (inverted == false)
+    {
+        hi = 1;
+        lo = 0;
+    }
+    else
+    {
+        hi = 0;
+        lo = 1;
+    }
+}
+
+/*
+*************************************************************************************
+							       TRIGGER
+*************************************************************************************
+*/
+
+/* Graphical user interface for the trigger configuration
+*/
+function trig_gui()
+{
+	trig_ui_clear();
+
+	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", false);
+		trig_ui_add_label("lab0", "Trigger on any UART Frame. In other words, this alternative will trigger on any start bit");
+
+	trig_ui_add_alternative("ALT_SPECIFIC","Trigger on byte value", true);
+		trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
+		trig_ui_add_free_text("trig_byte", "Trigger byte: ");
+
+	trig_ui_add_alternative("ALT_SPECIFIC_PHRASE","Trigger on a character string");
+		trig_ui_add_label("lab2", "The a character string to be used for trigger. E.g.: Hello World");
+		trig_ui_add_free_text("trig_phrase", "Trigger phrase: ");
+}
+
+
+/*
+*/
+function trig_seq_gen()
+{
+	var c = 0;
+	var first_byte = true;
+	var total_size = 0;
+
+	get_ui_vals();
+
+	nbits += 5; 		// Readjust the number of bits to start counting from 5 instead of 0.
+
+	if (stop == 0) 		// Readjust number of stop bits
+	{
+		stop = 1;
+	}
+	else if (stop == 1)
+	{
+		stop = 1.5;
+	}
+	else
+	{
+		stop = 2;
+	}
+
+	if (trig_byte.charAt(0) == "'")
+	{
+		trig_byte = trig_byte.charCodeAt(1);
+	}
+	else
+	{
+		trig_byte = Number(trig_byte);
+	}
+
+	if (ALT_ANY_FRAME == true)
+	{
+		flexitrig_set_async_mode(false);
+		flexitrig_clear();
+		step = build_start_bit_step();
+		flexitrig_append(step, -1, -1); 	// Start edge
+		flexitrig_set_summary_text("Trig on Start bit");
+	}
+	else if (ALT_SPECIFIC == true)
+	{
+		flexitrig_set_async_mode(true);
+		flexitrig_set_summary_text("Trig on UART byte: 0x" + trig_byte.toString(16) + " ('" + String.fromCharCode(trig_byte) + "')");
+		flexitrig_clear();
+		build_trig_byte(trig_byte,true)
+	}
+	else
+	{
+		flexitrig_set_async_mode(false);
+		flexitrig_set_summary_text("Trig on UART Phrase: " + trig_phrase);
+
+		for (c = 0; c < trig_phrase.length; c++)
+		{
+			if (c == 0) first_byte = true; 
+			else first_byte = false;
+			total_size += build_trig_byte(trig_phrase.charCodeAt(c),first_byte);
+		}
+
+		if (total_size >= 120)
+		{
+			add_to_err_log("Trigger phrase too large, please use less characters.");
+		}
+	}
+}
+
+
+/*
+*/
+function build_trig_byte (new_byte, first)
+{
+	var lvl = [];
+	var i;
+	var total_steps = 0;
+	var b;
+	var par;
+	var step;
+	var bit_time = 1/baud;	// [s]
+	var bt_max = bit_time * 1.05;	// Allow 5% margin on bit time <-- this may be configurable later.
+	var bt_min = bit_time * 0.95;
+
+	trig_bit_sequence = [];
+
+	if (bt_max == bt_min)
+	{
+		if (bt_min > 0) bt_min--;
+		else bt_max++;
+	}
+
+	switch (invert)	 // First, build trigger bit sequence
+	{
+		case 0:
+			par = 0;
+			lvl[1] = 1;
+			lvl[0] = 0;
+			trig_bit_sequence[0] = 0;
+		break;
+
+		case 1:
+			par = 1;
+			lvl[1] = 0;
+			lvl[0] = 1;
+			trig_bit_sequence[0] = 1;
+		break;
+
+		case 2:
+			par = 1;
+			lvl[1] = 0;
+			lvl[0] = 1;
+			trig_bit_sequence[0] = 0;
+		break;
+	}
+
+	for (i = 0; i < nbits; i++)
+	{
+		if (order == 0) 	// LSB first
+		{
+			trig_bit_sequence.push(lvl[((new_byte >> i) & 0x1)]);
+		}
+		else
+		{
+			trig_bit_sequence.push(lvl[((new_byte >> nbits - i - 1) & 0x1)]);
+		}
+
+		par = par ^ lvl[((new_byte >> i) & 0x1)];
+	}
+
+	if (parity > 0)
+	{
+		switch(parity) //to be tested!
+		{
+			case 1: par = par ^ 1; break;
+			case 2: par = par ^ 0; break;
+		}
+
+		trig_bit_sequence.push(par);
+	}
+
+	trig_bit_sequence.push((~trig_bit_sequence[0]) & 0x1);	// add stop bit
+
+	step = build_step(0);	// Start bit
+
+	if (first) 	// For the very first byte, ignore previous stop byte
+	{
+		flexitrig_append(step, -1, -1); 	// Start edge		
+	}
+	else
+	{
+		flexitrig_append(step, bt_min*stop, -1); 	// Start edge have to be at least "n stop bits" way from the last transition.
+	}
+
+	var last_lvl = trig_bit_sequence[0];
+	var last_index = 0;
+
+	for (i = 1; i < trig_bit_sequence.length; i++)
+	{
+		if (trig_bit_sequence[i] != last_lvl)
+		{
+			last_lvl = trig_bit_sequence[i];
+			step = build_step(i);
+			flexitrig_append(step,bt_min*(i-last_index),bt_max*(i-last_index));
+			last_index = i;
+			total_steps ++;
+		}
+	}
+
+	return total_steps;
+}
+
+
+/*
+*/
+function build_step (step_index)
+{
+	var step = "";
+	var i;
+	var step_ch_desc;
+	
+	if (trig_bit_sequence[step_index] == 0)
+	{
+		step_ch_desc = "F";
+	}
+	else
+	{
+		step_ch_desc = "R";
+	}
+	
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = step_ch_desc + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+
+	return step;
+}
+
+
+/*
+*/
+function build_start_bit_step()
+{
+	var step = "";
+	var start_bit_desc;
+
+	switch (invert)
+	{
+		case 0:
+		case 2: start_bit_desc = "F"; break;
+		case 1: start_bit_desc = "R"; break;
+	}
+
+	for (var i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = start_bit_desc + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+
+	return step;
+}
+
+
+/*
+*************************************************************************************
+							        UTILS
+*************************************************************************************
+*/
 
 /*
 */
@@ -510,400 +896,3 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
-
-
-/*
-	UART demo builder helper functions
-*/
-
-
-
-function put_str(str)
-{
-    var i;
-    add_samples(ch,hi,samples_per_bit*stop); //add 1 stop first
-    for (i = 0; i < str.length; i++)
-    {
-        put_c(str.charCodeAt(i));
-    }
-}
-
-function put_c(code)
-{
-    var i;
-    var b;
-    var lvl;
-	var par;
-	
-	//add start bit, depending on data inversion mode:
-	switch (invert)
-	{
-		case 0:	//default UART, no inversion
-			add_samples(ch,0,samples_per_bit); 
-		break;
-		case 1: //inverted logic
-			add_samples(ch,1,samples_per_bit); 
-		break;
-		case 2: //inverted data
-			add_samples(ch,0,samples_per_bit); 
-		break;
-	}
-	
-	if (invert > 0) //if signals are inverted (1) or data only is inverted (2)
-	{
-		par = 1;
-	}
-	else
-	{
-		par = 0;			
-	}
-
-    if (order == 1) //msb first
-    {
-        for (i = 7; i >= 0; i--)
-        {
-            b = ((code >> i) & 0x1)
-            if (b == 1)
-            {
-                lvl = hi;
-            }
-            elsep
-            {
-                lvl = lo;
-            }
-            add_samples(ch,lvl,samples_per_bit);
-			par = par ^ lvl;
-        }
-    }
-    else
-    {
-        for (i = 0; i < 8; i++)
-        {
-            b = ((code >> i) & 0x1)
-            if (b == 1)
-            {
-                lvl = hi;
-            }
-            else
-            {
-                lvl = lo;
-            }
-            add_samples(ch,lvl,samples_per_bit);
-			par = par ^ lvl;
-        }
-    }
-	
-	if (parity > 0)
-	{
-		switch(parity) //to be tested!
-		{
-			case 1:
-				par = par ^ 1;
-			break;
-			case 2:
-				par = par ^ 0;		
-			break;
-		}
-		add_samples(ch,par,samples_per_bit);
-	}	
-    add_samples(ch,hi,samples_per_bit*stop); //add stop bits
-}
-
-/*
-	adds a delay expressed in number of bits
-*/
-function delay(n_bits)
-{
-    var i;
-    for (i=0; i < n_bits; i++)
-    {
-        add_samples(ch,hi,samples_per_bit);
-    }
-}
-
-function ini_uart_generator()
-{
-    if (inverted == false)
-    {
-        hi = 1;
-        lo = 0;
-    }
-    else
-    {
-        hi = 0;
-        lo = 1;
-    }
-	var sample_r = get_sample_rate();
-    samples_per_bit = sample_r / baud;
-}
-
-/* Graphical user interface for the trigger configuration
-*/
-function trig_gui()
-{
-	trig_ui_clear();
-	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", false);
-	trig_ui_add_label("lab0", "Trigger on any UART Frame. In other words, this alternative will trigger on any start bit");
-	
-	trig_ui_add_alternative("ALT_SPECIFIC","Trigger on byte value", true);
-	trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
-	trig_ui_add_free_text("trig_byte", "Trigger byte: ");
-	
-	trig_ui_add_alternative("ALT_SPECIFIC_PHRASE","Trigger on a character string");
-	trig_ui_add_label("lab2", "The a character string to be used for trigger. E.g.: Hello World");
-	trig_ui_add_free_text("trig_phrase", "Trigger phrase: ");
-}
-
-function trig_seq_gen()
-{
-	
-	var c = 0;
-	var first_byte = true;
-	var total_size = 0;
-	get_ui_vals();
-	nbits += 5; 			// readjust the number of bits to start counting from 5 instead of 0.
-	if (stop == 0) 			// readjust number of stop bits
-	{
-		stop = 1;
-	}
-	else if (stop == 1)
-	{
-		stop = 1.5;
-	}
-	else
-	{
-		stop = 2;
-	}
-	
-	
-
-	if (trig_byte.charAt(0) == "'")
-	{
-		trig_byte = trig_byte.charCodeAt(1);
-	}
-	else
-	{
-		trig_byte = Number(trig_byte);
-	}
-	//add_to_err_log("trig_byte=" + trig_byte);
-
-
-
-
-	
-	if (ALT_ANY_FRAME == true)
-	{
-		flexitrig_set_async_mode(false);
-		flexitrig_clear();
-		step = build_start_bit_step();
-		flexitrig_append(step,-1,-1); //start edge
-		flexitrig_set_summary_text("Trig on Start bit");
-	}
-	else if (ALT_SPECIFIC == true)
-	{
-		flexitrig_set_async_mode(true);
-		flexitrig_set_summary_text("Trig on UART byte: 0x" + trig_byte.toString(16) + " ('" + String.fromCharCode(trig_byte) + "')");
-		//now build trigger step
-		flexitrig_clear();
-		build_trig_byte(trig_byte,true)
-		//flexitrig_print_steps();
-	}
-	else
-	{
-		flexitrig_set_async_mode(false);
-		flexitrig_set_summary_text("Trig on UART Phrase: " + trig_phrase);
-		//add_to_err_log(trig_phrase.length);
-		for (c = 0; c < trig_phrase.length; c++)
-		{
-			//add_to_err_log("char: " + c);
-			if (c == 0) first_byte = true; 
-			else first_byte = false;
-			total_size += build_trig_byte(trig_phrase.charCodeAt(c),first_byte);
-		}
-		if (total_size >= 120)
-		{
-			add_to_err_log("Trigger phrase too large, please use less characters.");
-		}
-		//flexitrig_print_steps();
-		//add_to_err_log("total steps = " + total_size);
-	}
-}
-
-function build_trig_byte(new_byte,first)
-{
-	var lvl = [];
-	var i;
-	var total_steps = 0;
-	var b;
-	var par;
-	var step;
-	var bit_time = 1/baud;	// [s]
-	//allow 5% margin on bit time <-- this may be configurable later.
-	var bt_max = bit_time * 1.05;
-	var bt_min = bit_time * 0.95;
-	trig_bit_sequence = [];
-	if (bt_max == bt_min)
-	{
-		if (bt_min > 0) bt_min--;
-		else bt_max++;
-	}
-	//first, build trigger bit sequence
-	switch (invert)
-	{
-		case 0:
-			par = 0;
-			lvl[1] = 1;
-			lvl[0] = 0;
-			trig_bit_sequence[0] = 0;
-		break;
-		case 1:
-			par = 1;
-			lvl[1] = 0;
-			lvl[0] = 1;
-			trig_bit_sequence[0] = 1;
-		break;
-		case 2:
-			par = 1;
-			lvl[1] = 0;
-			lvl[0] = 1;
-			trig_bit_sequence[0] = 0;
-		break;
-	}
-	for (i = 0; i < nbits; i++)
-	{
-		
-		if (order == 0) //LSB first
-		{
-			trig_bit_sequence.push(lvl[((new_byte >> i) & 0x1)]);
-		}
-		else
-		{
-			trig_bit_sequence.push(lvl[((new_byte >> nbits - i - 1) & 0x1)]);
-		}
-		par = par ^ lvl[((new_byte >> i) & 0x1)];
-	}
-	if (parity > 0)
-	{
-		switch(parity) //to be tested!
-		{
-			case 1:
-				par = par ^ 1;
-			break;
-			case 2:
-				par = par ^ 0;		
-			break;
-		}
-		trig_bit_sequence.push(par);
-	}
-	//add stop bit
-	trig_bit_sequence.push((~trig_bit_sequence[0])&0x1);
-	
-
-	//Start bit
-	step = build_step(0);
-	if (first) //for the very first byte, ignore previous stop byte
-	{
-		flexitrig_append(step,-1,-1); //start edge		
-	}
-	else
-	{
-		flexitrig_append(step,bt_min*stop,-1); //start edge have to be at least "n stop bits" way from the last transition.
-	}
-
-	//helper vars
-	var last_lvl = trig_bit_sequence[0];
-	var last_index = 0;
-	
-	for (i = 1; i < trig_bit_sequence.length; i++)
-	{
-		if (trig_bit_sequence[i] != last_lvl)
-		{
-			last_lvl = trig_bit_sequence[i];
-			step = build_step(i);
-			flexitrig_append(step,bt_min*(i-last_index),bt_max*(i-last_index));
-			last_index = i;
-			total_steps ++;
-		}
-	}
-	
-	return total_steps;
-}
-
-function build_step(step_index)
-{
-	var step = "";
-	var i;
-	var step_ch_desc;
-	
-	if (trig_bit_sequence[step_index] == 0)
-	{
-		step_ch_desc = "F";
-	}
-	else
-	{
-		step_ch_desc = "R";
-	}
-	
-	for (i = 0; i < get_device_max_channels(); i++)
-	{	
-		if (i == ch)
-		{
-			step = step_ch_desc + step;
-		}
-		else
-		{
-			step = "X" + step;
-		}	
-	}
-	return step;
-}
-
-function build_start_bit_step()
-{
-	var step = "";
-	var i;
-	var start_bit_desc;
-	switch (invert)
-	{
-		case 0:
-		case 2:
-			start_bit_desc = "F";
-		break;
-		case 1:
-			start_bit_desc = "R";
-		break;
-	}		
-	for (i = 0; i < get_device_max_channels(); i++)
-	{	
-		if (i == ch)
-		{
-			step = start_bit_desc + step;
-		}
-		else
-		{
-			step = "X" + step;
-		}	
-	}
-	return step;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
