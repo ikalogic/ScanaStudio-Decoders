@@ -399,7 +399,7 @@ function decode()
 						dec_item_add_pre_text("RESET PULSE");
 						dec_item_add_pre_text("RESET");
 						dec_item_add_pre_text("R");
-						dec_item_add_post_text(" (" + resetStatus + owObject.duration + " us)");
+						dec_item_add_post_text(" (" + resetStatus + (Math.round(owObject.duration * 100) / 100) + " us)");
 
 						if (!firstIter)
 						{
@@ -427,8 +427,8 @@ function decode()
 							dec_item_add_pre_text("PRESENCE");
 							dec_item_add_pre_text("PRES");
 							dec_item_add_pre_text("P");
-							dec_item_add_post_text(" (" + owObject.duration + " us)");
-							pkt_add_item(-1, -1, "PRESENCE", owObject.duration + "us", PKT_COLOR_PRES_TITLE, PKT_COLOR_DATA);
+							dec_item_add_post_text(" (" + (Math.round(owObject.duration * 100) / 100) + " us)");
+							pkt_add_item(-1, -1, "PRESENCE", (Math.round(owObject.duration * 100) / 100) + "us", PKT_COLOR_PRES_TITLE, PKT_COLOR_DATA);
 
 							owObject = owObjects.shift();
 							owObjects.unshift(owObject);
