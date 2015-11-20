@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.30: Added decoder trigger & demo signal builder
 	V1.27: Fixed Hex View wrong endianness
 	V1.26: Now the decoding can be aborted
 	V1.25: Added backward compatibility features (specially related to HEX view support) 
@@ -56,7 +57,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.27";
+	return "1.30";
 }
 
 
@@ -103,6 +104,9 @@ var eof_chk;
 var ack_chk;
 var pkt_data; 			//to accumulate all the data of a packet
 var channel_color;
+
+var trigBitArr = [];
+var demoBitSeqArr = [];
 
 /*
 *************************************************************************************
@@ -744,25 +748,24 @@ function check_stuffing()
 *************************************************************************************
 */
 
-var demoBitSeqArr = [];
-
-
 /*
 */
 function build_demo_signals()
 {
-	var i = 0;
+	var i = 0, k = 0;
 
 	spb = (get_sample_rate() / rate); 		// Calculate the number of samples per bit
 
 	while (get_samples_acc(ch) < (n_samples - (spb * 200)))
 	{
 		add_samples(ch, 1, (spb * 100));
-		demo_add_base_arbit(0x0, 0x08);
+		demo_add_base_arbit(k, 0x08);
 		demo_add_data(i, 8);
 		demo_add_crc();
 		demo_generate();
+
 		i += 8;
+		k++;
 	}
 }
 
@@ -950,7 +953,25 @@ function demo_add_crc()
 */
 function trig_gui()
 {
+	trig_ui_add_alternative("alt_specific_ident", "Trigger on a specific identifier", true);
 
+		trig_ui_add_combo("trig_ident_format", "Message Format:");
+		trig_ui_add_item_to_combo("Base Format (11 identifier bits)", true);
+		trig_ui_add_item_to_combo("Extended Format (29 identifier bits)");
+
+		trig_ui_add_combo("trig_frame_type", "Frame type:");
+		trig_ui_add_item_to_combo("Any Frame", true);
+		trig_ui_add_item_to_combo("Data Frame (RTR = 0)");
+		trig_ui_add_item_to_combo("Remote Frame (RTR = 1)");
+
+		trig_ui_add_label("lab1", "<br>Type decimal value (65) or Hex value (0x41)");
+		trig_ui_add_free_text("trig_ident", "Trigger Identifier: ");
+
+	trig_ui_add_alternative("alt_stuffing_err", "Trigger on bit stuffing error", false);
+
+		trig_ui_add_combo("trig_stuffing_bit", "Error Bit Value:");
+		trig_ui_add_item_to_combo("0", true);
+		trig_ui_add_item_to_combo("1");
 }
 
 
@@ -958,13 +979,101 @@ function trig_gui()
 */
 function trig_seq_gen()
 {
-	var i = 0;
-
-	flexitrig_set_async_mode(true);
 	flexitrig_clear();
 	get_ui_vals();
 
-	spb = (get_sample_rate() / rate); 	// Calculate the number of samples per bit
+	var i = 0;
+	var identBitNum = 0;
+	var bitArr = [];
+	var tBitS = (1 / rate);
+	var tBitSTolerance = ((tBitS / 100) * 5);		// 5% of bit time tolerance
+	var tBitSMin = tBitS - tBitSTolerance;
+	var tBitSMax = tBitS + tBitSTolerance;
+
+	if (alt_specific_ident)
+	{
+		flexitrig_set_async_mode(false);
+
+		trig_ident = Number(trig_ident);
+		flexitrig_set_summary_text("Trig on CAN Identifer: 0x" + trig_ident.toString(16));
+
+		bitArr.push(0);		// SOF
+
+		if (trig_ident_format !== 0)
+		{
+			identBitNum = 29;
+		}
+		else
+		{
+			identBitNum = 11;
+		}
+
+		for (i = (identBitNum - 1); i >= 0; i--)
+		{
+			if ((trig_ident >> i) & 0x01)
+			{
+				bitArr.push(1);
+			}
+			else
+			{
+				bitArr.push(0);
+			}
+
+			if (trig_ident_format != 0)
+			{
+				if (i == 10)
+				{
+					bitArr.push(1);		// SRR
+					bitArr.push(1);		// IDE
+				}
+			}
+		}
+
+		switch (trig_frame_type)
+		{
+			case 0: break;				// RTR = X
+			case 1: bitArr.push(0);		// RTR = 0
+		 	case 2: bitArr.push(1); 	// RTR = 1		
+		}
+
+		trig_add_stuffing_bits(bitArr);
+
+		flexitrig_append(trig_build_step(0), (tBitSMin * 10), -1);	// SOF, must be preceded by 7 bits EOF + 3 Interframe spacing bits
+
+		var lastBit = trigBitArr[0];
+		var lastIndex = 0;
+		var step = 0;
+
+		for (i = 0; i < trigBitArr.length; i++)
+		{
+			if (trigBitArr[i] != lastBit)
+			{
+				if ((trig_frame_type == 1) && (i == trigBitArr.length - 1))
+				{
+					tBitSMax *= 2; 
+				}
+
+				step = trig_build_step(trigBitArr[i]);
+				flexitrig_append(step, (tBitSMin * (i - lastIndex)), (tBitSMax * (i - lastIndex)));
+				lastBit = trigBitArr[i];
+				lastIndex = i;
+			}
+		}
+	}
+	else if (alt_stuffing_err)
+	{
+		flexitrig_set_async_mode(true);
+		flexitrig_set_summary_text("Trig on CAN bit " + trig_stuffing_bit + " stuffing error");
+
+		if (trig_stuffing_bit)
+		{
+			flexitrig_append(trig_build_step(0), (tBitSMin * 7), -1);
+		}
+		else
+		{
+			flexitrig_append(trig_build_step(1), (tBitSMin * 7), -1);
+		}
+	}
 
 	// flexitrig_print_steps();
 }
@@ -980,13 +1089,13 @@ function trig_build_step (step_desc)
 	{
 		if (i == ch)
 		{
-			if (step_desc == 0)
+			if (step_desc !== 0)
 			{
-				step = "F" + step;
+				step = "R" + step;
 			}
 			else
 			{
-				step = "R" + step;
+				step = "F" + step;
 			}
 		}
 		else
@@ -997,6 +1106,53 @@ function trig_build_step (step_desc)
 
 	return step;
 }
+
+
+/*
+*/
+function trig_add_stuffing_bits (bitArr)
+{
+	var i = 0;
+	var lastBit = 0;
+	var currBit = 0;
+	var sameBitCnt = 0;
+
+	trigBitArr = [];
+	lastBit = bitArr[0];
+	trigBitArr.push(lastBit);
+
+	for (i = 1; i < bitArr.length; i++)
+	{
+		lastBit = bitArr[i - 1];
+		currBit = bitArr[i];
+
+		trigBitArr.push(currBit);
+
+		if (currBit == lastBit)
+		{
+			sameBitCnt++;
+		}
+		else
+		{
+			sameBitCnt = 0;
+		}
+
+		if (sameBitCnt >= 4)
+		{
+			if (lastBit !== 0)
+			{
+				trigBitArr.push(0);
+			}
+			else
+			{
+				trigBitArr.push(1);		
+			}
+
+			sameBitCnt = -1;
+		}
+	}
+}
+
 
 /*
 *************************************************************************************
@@ -1048,5 +1204,3 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
-
-
