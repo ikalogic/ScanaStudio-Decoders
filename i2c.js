@@ -46,6 +46,11 @@ The following commented block allows some related informations to be displayed o
 *************************************************************************************
 */
 
+/*
+*************************************************************************************
+								      INFO
+*************************************************************************************
+*/
 
 /* The decoder name as it will apear to the users of this script
 */
@@ -70,46 +75,12 @@ function get_dec_auth()
 	return "IKALOGIC";
 }
 
-
-/* Graphical user interface for this decoder
+/*
+*************************************************************************************
+							    GLOBAL VARIABLES
+*************************************************************************************
 */
-function gui()
-{
-	ui_clear();
-	
-	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
-	{
-		// Prevented incompatible workspaces from using the decoder
-		if( get_device_max_channels() < 2 )
-		{
-			ui_add_info_label("This device (or workspace configuration) do not have enough channels for this decoder to operate properly");
-			return;
-		}
-	}
-	else
-	{
-		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
-		return;
-	}
 
-	ui_add_ch_selector("chSda", "(SDA) Serial Data", "SDA");
-	ui_add_ch_selector("chScl", "(SCL) Serial Clock", "SCL");
-
-	ui_add_txt_combo("adrShow", "Show slave address as");
-		ui_add_item_to_txt_combo("address and separate R/W flag", true);
-		ui_add_item_to_txt_combo("address including R/W flag");
-
-	ui_add_separator();
-	ui_add_info_label("<b>Hex view options:</b>");
-	
-	ui_add_txt_combo("hexView", "Include in HEX view:");
-		ui_add_item_to_txt_combo("DATA fields only", true);
-		ui_add_item_to_txt_combo("ADDRESS fields only", false);
-		ui_add_item_to_txt_combo("Everything", false);
-}
-
-/* Constants 
-*/
 var I2COBJECT_TYPE =
 {
 	START : 0x01,
@@ -153,9 +124,6 @@ var I2C_MAX_FREQ_MHZ = 5;
 var I2C_MAX_FREQ_HZ = (I2C_MAX_FREQ_MHZ * 1000) * 1000;
 var I2C_MIN_T = 1 / I2C_MAX_FREQ_HZ;
 
-
-/* Object definitions
-*/
 function I2cObject (type, value, start, end, count)
 {
 	this.type = type;
@@ -171,11 +139,10 @@ function i2c_trig_step_t (sda, scl)
 	this.scl = scl;
 };
 
-
-/* Global variables
-*/
 var i2cObjectsArr;
 var AvgtHigh;
+var i2c_trig_steps = [];
+var samples_per_scl_cycle;
 
 var PKT_COLOR_DATA;
 var PKT_COLOR_DATA_TITLE;
@@ -186,9 +153,49 @@ var PKT_COLOR_NACK_TITLE;
 var PKT_COLOR_STOP_TITLE;
 var PKT_COLOR_NOISE_TITLE;
 
-/* 	I2C Trigger generator variables
+/*
+*************************************************************************************
+								   DECODER
+*************************************************************************************
 */
-var i2c_trig_steps = [];
+
+/* Graphical user interface for this decoder
+*/
+function gui()
+{
+	ui_clear();
+
+	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
+	{
+		// Prevented incompatible workspaces from using the decoder
+		if (get_device_max_channels() < 2)
+		{
+			ui_add_info_label("This device (or workspace configuration) do not have enough channels for this decoder to operate properly");
+			return;
+		}
+	}
+	else
+	{
+		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
+		return;
+	}
+
+	ui_add_ch_selector("chSda", "(SDA) Serial Data", "SDA");
+	ui_add_ch_selector("chScl", "(SCL) Serial Clock", "SCL");
+
+	ui_add_txt_combo("adrShow", "Show slave address as");
+		ui_add_item_to_txt_combo("address and separate R/W flag", true);
+		ui_add_item_to_txt_combo("address including R/W flag");
+
+	ui_add_separator();
+	ui_add_info_label("<b>Hex view options:</b>");
+	
+	ui_add_txt_combo("hexView", "Include in HEX view:");
+		ui_add_item_to_txt_combo("DATA fields only", true);
+		ui_add_item_to_txt_combo("ADDRESS fields only", false);
+		ui_add_item_to_txt_combo("Everything", false);
+}
+
 
 /* This is the function that will be called from ScanaStudio
    to update the decoded items
@@ -769,6 +776,7 @@ function decode_signal()
 	return true;
 }
 
+
 /*
 */
 function decode_invalid_data()
@@ -883,6 +891,285 @@ function test_signal()
 	}
 }
 
+/*
+*************************************************************************************
+							     DEMO BUILDER
+*************************************************************************************
+*/
+
+/*
+*/
+function build_demo_signals()
+{
+	var demo_cnt = 0;
+	var inter_transaction_silence = n_samples / 100;
+	
+	samples_per_scl_cycle = (get_sample_rate() / 100000) / 2; 	// Samples per half SCL cycle
+
+	add_samples(chScl, 1, samples_per_scl_cycle * 10);
+	add_samples(chSda, 1, samples_per_scl_cycle * 10);
+	add_samples(chSda, 1, samples_per_scl_cycle / 10); 			// Delay chSda wrt chScl by 1/10 of scl cycle.
+
+	while ((get_samples_acc(chSda) < n_samples) && (get_samples_acc(chScl) < n_samples))
+	{				
+		put_c(0xA2,true, true, false);
+		put_c(demo_cnt, false, true, false);
+		put_c(0xA3, true, true, false);
+
+		var test_data;
+
+		for (test_data = 0; test_data < 10; test_data++)
+		{
+			put_c(test_data, false, true, false);
+		}
+
+		put_c(test_data, false, false, true);
+		demo_cnt++;
+
+		add_samples(chScl, 1, inter_transaction_silence);
+		add_samples(chSda, 1, inter_transaction_silence);
+	}
+}
+
+
+/*
+*/
+function put_c (data, start, gen_ack, stop)
+{
+	var i = 0, b = 0;
+
+	if (start == true)
+	{		
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 1, samples_per_scl_cycle);
+		add_samples(chScl, 1, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);
+	}
+
+	for (i = 0; i < 8; i++)
+	{
+		b = ((data >> (7 - i)) & 0x1);
+
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, b, samples_per_scl_cycle);
+		add_samples(chScl, 1, samples_per_scl_cycle);
+		add_samples(chSda, b, samples_per_scl_cycle);
+	}
+
+	if (gen_ack == true)
+	{		
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);
+		add_samples(chScl, 1, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);
+				
+	}
+	else
+	{
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 1, samples_per_scl_cycle);
+		add_samples(chScl, 1, samples_per_scl_cycle);
+		add_samples(chSda, 1, samples_per_scl_cycle);
+		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);
+	}
+
+	if (stop == true)
+	{		
+		add_samples(chScl, 1, samples_per_scl_cycle);
+		add_samples(chSda, 0, samples_per_scl_cycle);	
+		add_samples(chScl, 1, samples_per_scl_cycle);
+		add_samples(chSda, 1, samples_per_scl_cycle);	
+	}
+}
+
+/*
+*************************************************************************************
+							       TRIGGER
+*************************************************************************************
+*/
+
+/*
+*/
+function trig_gui()
+{
+	trig_ui_clear();
+
+	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", false);
+		
+		trig_ui_add_combo("trig_frame_type", "Trigger on:");
+		trig_ui_add_item_to_combo("Valid Start condition", true);
+		trig_ui_add_item_to_combo("Valid Stop condition");
+		trig_ui_add_item_to_combo("Any UnAcknowledged address");
+		trig_ui_add_item_to_combo("Any Acknowledged address");
+
+	trig_ui_add_alternative("ALT_SPECIFIC_ADD", "Trigger on I2C address", true);
+	
+		trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is an 8 bit field containing the R/W Flag");
+		trig_ui_add_free_text("trig_add", "Slave Address: ");
+		trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", true);
+}
+
+
+/*
+*/
+function trig_seq_gen()
+{
+	var i = 0;
+	var i2c_step = {sda: "", scl:""};
+
+	get_ui_vals();
+
+	i2c_trig_steps.length = 0;
+
+	if (ALT_ANY_FRAME == true)
+	{
+		switch (trig_frame_type)
+		{
+			case 0: 	// Trig on start
+
+				flexitrig_set_summary_text("Trig on I2C start condition");
+
+				i2c_step.sda = "F";
+				i2c_step.scl = "1";
+
+				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));
+
+				break;
+
+			case 1: 	// Trig on stop
+
+				flexitrig_set_summary_text("Trig on I2C start condition");
+
+				i2c_step.sda = "R";
+				i2c_step.scl = "1";
+				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));	
+
+				break;
+
+			case 2: 	// Trig on NACK
+
+				flexitrig_set_summary_text("Trig on I2C NACK condition");
+				
+				i2c_step.sda = "F";
+				i2c_step.scl = "1";
+
+				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));
+
+				for (i = 7; i >= 0; i--)	// Add address and R/W field
+				{
+					i2c_step.sda = "X"; 	// Any address read or write!
+					i2c_step.scl = "R";
+
+					i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));
+				}
+
+				i2c_step.sda = "1"; 		// NACK
+				i2c_step.scl = "R";
+
+				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));
+
+			break;
+
+			case 3: 	// Trig on ACK
+
+				flexitrig_set_summary_text("Trig on I2C ACK condition");
+
+				i2c_step.sda = "F";
+				i2c_step.scl = "1";
+
+				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));
+
+				for (i = 7; i >= 0; i--)	// Add address and R/W field
+				{
+					i2c_step.sda = "X"; 	// Any address read or write!
+					i2c_step.scl = "R";
+
+					i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));
+				}
+
+				i2c_step.sda = "0"; 		// ACK
+				i2c_step.scl = "R";
+
+				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda, i2c_step.scl));
+			
+			break;					
+		}
+	}
+	else if (ALT_SPECIFIC_ADD == true)
+	{
+		trig_add = Number(trig_add);
+
+		i2c_step.sda = "F";		// Add the start condition
+		i2c_step.scl = "1";
+		
+		i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
+
+		for (i = 7; i >= 0; i--)	// Add address and R/W field
+		{
+			i2c_step.sda = ((trig_add >> i) & 0x1).toString();
+			i2c_step.scl = "R";
+
+			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
+		}
+		
+		if (ack_needed_a == true)	// Add ACK field (if needed)
+		{
+			i2c_step.sda = "0";
+			i2c_step.scl = "R";
+
+			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
+		}
+
+		flexitrig_set_summary_text("Trig on I2C Add: 0x" + trig_add.toString(16));
+	}
+
+	flexitrig_clear();
+
+	for (i = 0; i < i2c_trig_steps.length; i++)		// Now actualy build flexitrig array
+	{
+		flexitrig_append(trig_build_step(i2c_trig_steps[i]),-1,-1);
+	}
+}
+
+
+/*
+*/
+function trig_build_step (i2c_s)
+{
+	var step = "";
+	var step_ch_desc;
+	
+	for (var i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == chSda)
+		{
+			step = i2c_s.sda + step;
+		}
+		else if (i == chScl)
+		{
+			step = i2c_s.scl + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}
+	}
+
+	return step;
+}
+
+/*
+*************************************************************************************
+							        UTILS
+*************************************************************************************
+*/
 
 /*
 */
@@ -1074,274 +1361,3 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
-
-
-var samples_per_scl_cycle;
-
-
-function build_demo_signals()
-{
-	var inter_transaction_silence = n_samples/100;
-	samples_per_scl_cycle = (get_sample_rate()/100000)/2; //samples per half SCL cycle
-	//add_to_err_log("samples_per_scl_cycle = "+ samples_per_scl_cycle);
-	//add_to_err_log("scl = " + chScl);
-	//add_to_err_log("SDA = " + chSda);
-	//add some delay		
-	add_samples(chScl,1,samples_per_scl_cycle*10);
-	add_samples(chSda,1,samples_per_scl_cycle*10);
-	
-	add_samples(chSda,1,samples_per_scl_cycle/10); //delay chSda wrt chScl by 1/10 of scl cycle.
-	
-//	return;
-	var demo_cnt = 0;
-	while((get_samples_acc(chSda) < n_samples) && (get_samples_acc(chScl) < n_samples))
-	{				
-		
-		put_c(0xA2,true,true,false);
-		put_c(demo_cnt,false,true,false);
-		put_c(0xA3,true,true,false);
-		var test_data;
-		for (test_data = 0; test_data < 10; test_data++)
-		{
-			put_c(test_data,false,true,false);
-		}
-		put_c(test_data,false,false,true);
-		demo_cnt++;
-		
-		//add_samples(chScl,1,samples_per_scl_cycle*20);
-		add_samples(chScl,1,inter_transaction_silence);
-		//add_samples(chSda,1,samples_per_scl_cycle*20);
-		add_samples(chSda,1,inter_transaction_silence);
-	}
-}
-
-function put_c(data,start,gen_ack,stop)
-{
-
-	var i,b;
-	
-	if (start == true)
-	{		
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);	
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,1,samples_per_scl_cycle);	
-		add_samples(chScl,1,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);	
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);
-	}
-	for (i=0; i < 8; i++)
-	{
-		b = ((data >> (7-i)) & 0x1);
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,b,samples_per_scl_cycle);
-		add_samples(chScl,1,samples_per_scl_cycle);
-		add_samples(chSda,b,samples_per_scl_cycle);
-	}
-	if (gen_ack == true)
-	{		
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);
-		add_samples(chScl,1,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);							
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);
-//		add_samples(chScl,1,samples_per_scl_cycle);
-//		add_samples(chSda,0,samples_per_scl_cycle);
-				
-	}
-	else
-	{
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,1,samples_per_scl_cycle);
-		add_samples(chScl,1,samples_per_scl_cycle);
-		add_samples(chSda,1,samples_per_scl_cycle);
-		add_samples(chScl,0,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);		
-//		add_samples(chScl,1,samples_per_scl_cycle);
-//		add_samples(chSda,0,samples_per_scl_cycle);				
-	}
-	if (stop == true)
-	{		
-		add_samples(chScl,1,samples_per_scl_cycle);
-		add_samples(chSda,0,samples_per_scl_cycle);	
-		add_samples(chScl,1,samples_per_scl_cycle);
-		add_samples(chSda,1,samples_per_scl_cycle);	
-	}
-}
-
-function trig_gui()
-{
-	trig_ui_clear();
-
-	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", false);
-	trig_ui_add_combo("trig_frame_type", "Trigger on:");
-	trig_ui_add_item_to_combo("Valid Start condition", true);
-	trig_ui_add_item_to_combo("Valid Stop condition");
-	trig_ui_add_item_to_combo("Any UnAcknowledged address");
-	trig_ui_add_item_to_combo("Any Acknowledged address");
-
-	trig_ui_add_alternative("ALT_SPECIFIC_ADD", "Trigger on I2C address", true);
-	trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is an 8 bit field containing the R/W Flag");
-	trig_ui_add_free_text("trig_add", "Slave Address: ");
-	trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", true);
-
-	/*
-	trig_ui_add_alternative("ALT_SPECIFIC_BYTE","Trigger on I2C data byte",false);
-	trig_ui_add_label("lab2","Type decimal value (65), Hex value (0x41) or ACII character between apostrophe marks ('A')");
-	trig_ui_add_free_text("trig_byte","Data byte: ");	
-	trig_ui_add_check_box("ack_needed_d","Data byte must be aknowledged",true);
-	*/
-}
-
-function trig_seq_gen()
-{
-	get_ui_vals();
-	var i2c_step = {sda: "", scl:""};
-	var i;
-	i2c_trig_steps.length = 0; //clear array
-	
-	if (ALT_ANY_FRAME == true)
-	{
-		switch(trig_frame_type)
-		{
-			case 0: //trig on start
-				i2c_step.sda = "F";
-				i2c_step.scl = "1";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));	
-				flexitrig_set_summary_text("Trig on I2C start condition");
-				break;
-			case 1: //trig on stop
-				i2c_step.sda = "R";
-				i2c_step.scl = "1";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));	
-				flexitrig_set_summary_text("Trig on I2C start condition");
-				break;
-			break;
-			case 2: // trig on NACK
-				i2c_step.sda = "F";
-				i2c_step.scl = "1";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				//add address and R/W field
-				for (i = 7; i >= 0; i--)
-				{
-					i2c_step.sda = "X"; //any address read or write!
-					i2c_step.scl = "R";
-					i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				}
-				i2c_step.sda = "1"; //NACK
-				i2c_step.scl = "R";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));				
-			break;
-			case 3: // trig on ACK
-				i2c_step.sda = "F";
-				i2c_step.scl = "1";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				//add address and R/W field
-				for (i = 7; i >= 0; i--)
-				{
-					i2c_step.sda = "X"; //any address read or write!
-					i2c_step.scl = "R";
-					i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				}
-				i2c_step.sda = "0"; //ACK
-				i2c_step.scl = "R";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-			break;	
-			case 4: // teest
-				i2c_step.sda = "F";
-				i2c_step.scl = "1";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				
-				/*i2c_step.sda = "0"; 
-				i2c_step.scl = "F";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				*/
-				//add address and R/W field
-				/*for (i = 3; i >= 0; i--)
-				{
-					i2c_step.sda = "X"; //any address read or write!
-					i2c_step.scl = "R";
-					i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				}*/
-				/*
-				i2c_step.sda = "0"; //ACK
-				i2c_step.scl = "R";
-				i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-				*/
-				
-				flexitrig_clear();
-				flexitrig_append("XX1F",-1,-1);
-				flexitrig_append("XXF0",-1,-1);				
-				flexitrig_set_summary_text("TEST");
-				return;
-				
-			break;					
-		}
-	}
-	else if (ALT_SPECIFIC_ADD == true)
-	{
-		trig_add = Number(trig_add);
-		//add the start condition
-		i2c_step.sda = "F";
-		i2c_step.scl = "1";
-		i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-		//add address and R/W field
-		for (i = 7; i >= 0; i--)
-		{
-			i2c_step.sda = ((trig_add >> i) & 0x1).toString();
-			i2c_step.scl = "R";
-			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-		}
-		
-		//add ACK field (if needed)
-		if (ack_needed_a == true)
-		{
-			i2c_step.sda = "0";
-			i2c_step.scl = "R";
-			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-		}
-		flexitrig_set_summary_text("Trig on I2C Add: 0x" + trig_add.toString(16));
-		
-	}
-	else if (ALT_SPECIFIC_BYTE == true)
-	{
-		//not implemented for now.
-	}
-	
-	//Now actualy build flexitrig array:
-	flexitrig_clear();
-	for (i = 0; i < i2c_trig_steps.length; i++)
-	{
-		flexitrig_append(build_step(i2c_trig_steps[i]),-1,-1);
-	}
-}
-
-function build_step(i2c_s)
-{
-	var step = "";
-	var i;
-	var step_ch_desc;
-	
-	for (i = 0; i < get_device_max_channels(); i++)
-	{	
-		if (i == chSda)
-		{
-			step = i2c_s.sda + step;
-		}
-		else if (i == chScl)
-		{
-			step = i2c_s.scl + step;
-		}
-		else
-		{
-			step = "X" + step;
-		}
-	}
-	return step;
-}
-
-
-
-
