@@ -588,6 +588,7 @@ function decode()
 function build_demo_signals()
 {
 	var demo_cnt = 0;
+	var offset = 0;
 
 	if (cpol == 0)
 	{
@@ -618,15 +619,25 @@ function build_demo_signals()
 	{
 		demo_gen_cs(true);
 
-		for (test_data = 0; test_data < 30; test_data++)
+		for (var i = 0; i < 10; i++)
 		{
-			demo_add_word(demo_cnt, test_data);
+			demo_add_word(demo_cnt, i + offset);
 			demo_add_delay(samples_per_us, cs_active);
 		}
 
 		demo_gen_cs(false);
 		demo_add_delay(samples_per_us * 20, cs_idle);
+
 		demo_cnt++;
+
+		if  (offset < 0xF5)
+		{
+			offset += 10; 
+		}
+		else
+		{
+			offset = 0;
+		}
 	}
 }
 
@@ -747,6 +758,7 @@ function trig_gui()
 */
 function trig_seq_gen()
 {
+	flexitrig_set_async_mode(false);
 	get_ui_vals();
 
 	var i;
@@ -769,17 +781,6 @@ function trig_seq_gen()
 	{
 		if (opt_cs != 1)			// opt_cs: 0 - normal cs, 1 - ignore cs
 		{
-			if (cspol == 0)			// cspol: 0 - cs active low, 1 - cs active high
-			{
-				spi_step.cs = "F";
-			}
-			else
-			{
-				spi_step.cs = "R";
-			}
-
-			spi_trig_steps.push(new SpiTrigStep(spi_step.mosi, spi_step.miso, spi_step.clk, spi_step.cs));
-
 			if (cspol == 0)			// cspol: 0 - cs active low, 1 - cs active high
 			{
 				spi_step.cs = "0";
