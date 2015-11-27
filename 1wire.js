@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.23: More realistic demo signals generation
 	V1.22: Added protocol based trigger capability
 	V1.21: Added demo signal generation.
 	V1.20: Fixed false error messages.
@@ -55,11 +56,11 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.22";
+	return "1.23";
 }
 
 
-/* Author 
+/* Author
 */
 function get_dec_auth()
 {
@@ -993,7 +994,8 @@ function speed_test (ch)
 function build_demo_signals()
 {
 	var demo_cnt = 0;
-	var test_data;
+	var samples_per_frame = 0;
+	var frames_to_disp = 0;
 
 	samples_per_us = get_sample_rate() / 1000000;
 
@@ -1006,25 +1008,46 @@ function build_demo_signals()
 		oWDelays = OVERDRIVE_DELAYS;
 	}
 
-	add_samples(uiCh, 1, samples_per_us * 100);
+	samples_per_frame = (oWDelays.RSTL_STD + 10);
+	samples_per_frame += (oWDelays.PDH_MAX / 2);
+	samples_per_frame += (oWDelays.PDL_MAX / 2);
+	samples_per_frame += (samples_per_us * 10);
 
-	while (get_samples_acc(uiCh) < n_samples)
+	for (var i = 0; i < 10; i++)
 	{
-		add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10)); 	// reset
-		add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
-		add_samples(uiCh, 0, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence	
-		add_samples(uiCh, 1, samples_per_us * 10);							// delay
-
-		demo_gen_byte(0x33);
-		demo_gen_byte(demo_cnt);
-
-		for (test_data = 1; test_data < 31; test_data++)
+		for (var k = 0; k < 8; k++)
 		{
-			demo_gen_byte(test_data);
+			samples_per_frame += oWDelays.LOW0_MIN + oWDelays.SLOT_MIN;
+			samples_per_frame += 100;
 		}
+	}
 
-		demo_cnt++;
-		add_samples(uiCh, 1, n_samples / 20);	// delay between transactions
+	samples_per_frame += 100;
+	samples_per_frame *= samples_per_us;
+	frames_to_disp = n_samples / samples_per_frame;
+
+	if (frames_to_disp > 0)
+	{
+		add_samples(uiCh, 1, samples_per_us * 100);
+
+		for (var j = 0; j < frames_to_disp; j++)
+		{
+			add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10)); 	// reset
+			add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
+			add_samples(uiCh, 0, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence	
+			add_samples(uiCh, 1, samples_per_us * 10);							// delay
+
+			demo_gen_byte(0x33);
+			demo_gen_byte(demo_cnt);
+
+			for (var i = 1; i < 8; i++)
+			{
+				demo_gen_byte(i);
+			}
+
+			demo_cnt++;
+			add_samples(uiCh, 1, n_samples / 20);	// delay between transactions
+		}
 	}
 }
 
