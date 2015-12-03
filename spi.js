@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.55: New options for trigger part
 	V1.54: Trigger fix
 	V1.53: Added decoder trigger
 	V1.52: Added demo signal building capability
@@ -64,7 +65,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.54";
+	return "1.55";
 }
 
 
