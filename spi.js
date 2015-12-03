@@ -746,14 +746,17 @@ function trig_gui()
 		trig_ui_add_label("lab0", "Trigger on any SPI byte");
 
 	trig_ui_add_alternative("alt_specific_byte", "Trigger on byte value", false);
-	
-		trig_ui_add_label("lab1", "Type decimal value (65), Hex value (0x41) or ASCII code ('A')");
-		trig_ui_add_free_text("trig_byte", "Trigger byte: ");
+
+		trig_ui_add_label("lab1", "All text fields can accept decimal value (65), hex value (0x41) or ASCII character ('A'). Byte position value begins with 1 <br>");
+		trig_ui_add_free_text("trig_byte", "Trigger byte value: ");
+
+		trig_ui_add_free_text("byte_pos", "Byte position in the frame: ");
 
 		trig_ui_add_combo("trig_data_line", "Data Line");
 		trig_ui_add_item_to_combo("MOSI", true);
 		trig_ui_add_item_to_combo("MISO", false);
 }
+
 
 /*
 */
@@ -762,7 +765,7 @@ function trig_seq_gen()
 	flexitrig_set_async_mode(false);
 	get_ui_vals();
 
-	var i;
+	var i, k;
 	var spi_step = {mosi: "X", miso: "X", clk: "X", cs: "X"};
 	var summary_text = "";
 
@@ -782,6 +785,17 @@ function trig_seq_gen()
 	{
 		if (opt_cs != 1)			// opt_cs: 0 - normal cs, 1 - ignore cs
 		{
+ 			if (cspol == 0)			// cspol: 0 - cs active low, 1 - cs active high
+ 			{
+				spi_step.cs = "F";
+			}
+			else
+			{
+				spi_step.cs = "R";
+			}
+
+			spi_trig_steps.push(new SpiTrigStep(spi_step.mosi, spi_step.miso, spi_step.clk, spi_step.cs));
+
 			if (cspol == 0)			// cspol: 0 - cs active low, 1 - cs active high
 			{
 				spi_step.cs = "0";
@@ -815,7 +829,21 @@ function trig_seq_gen()
 			}
 		}
 
-		if (order == 0)				// order: 0 - first bit is MSB, 1 - first bit is LSB
+		if (typeof byte_pos !== 'undefined')
+		{
+			if (+byte_pos > 1)						// Ajust an offset if nessecary
+			{
+				for (k = 0; k < (byte_pos - 1); k++)
+				{
+					for (i = 0; i <= nbits; i++)	// nbits: 1 - 128 bits in data byte
+					{
+						spi_trig_steps.push(new SpiTrigStep(spi_step.mosi, spi_step.miso, spi_step.clk, spi_step.cs));
+					}
+				}
+			}
+		}
+
+		if (order == 0)							// Order: 0 - first bit is MSB, 1 - first bit is LSB
 		{
 			for (i = nbits; i >= 0; i--)		// nbits: 1 - 128 bits in byte
 			{
@@ -836,7 +864,7 @@ function trig_seq_gen()
 		}
 		else
 		{
-			for (i = 0; i < nbits; i++)			// nbits: 1 - 128 bits in byte
+			for (i = 0; i <= nbits; i++)		// nbits: 1 - 128 bits in data byte
 			{
 			    if (alt_specific_byte)
 				{
@@ -948,4 +976,5 @@ function get_bit_margin()
 	var k = 1;
 	return ((k * get_sample_rate()) / 10000000);
 }
+
 
