@@ -380,6 +380,12 @@ function decode()
 	}
 }
 
+
+function generator_template()
+{
+	//test
+}
+
 /*
 *************************************************************************************
 							     DEMO BUILDER
@@ -896,3 +902,4 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
