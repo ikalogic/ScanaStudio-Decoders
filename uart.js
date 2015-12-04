@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.39: Added Signal Generator capability
 	V1.38: Added ability to trigger on a phrase like "Hello World"
 	V1.37: Added definition of ASYNC mode (required by ScanaStudio V2.4).
 	V1.36: Added more decoder trigger functions
@@ -59,7 +60,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.38";
+	return "1.39";
 }
 
 
@@ -76,10 +77,22 @@ function get_dec_auth()
 *************************************************************************************
 */
 
-var inverted;
 var hi,lo;
 var samples_per_bit;
 var trig_bit_sequence = [];
+
+//constants
+var PARITY_NONE = 0;
+var PARITY_ODD = 1;
+var PARITY_EVEN = 2;
+
+var LSB_FIRST = 0;
+var MSB_FIRST = 1;
+
+var INVERT_NONE = 0;
+var INVERT_ALL = 1;
+var INVERT_DATA = 2;
+
 
 /*
 *************************************************************************************
@@ -380,6 +393,45 @@ function decode()
 	}
 }
 
+
+/*
+*************************************************************************************
+							     Signal Generator
+*************************************************************************************
+*/
+
+function generator_template()
+{
+	/*
+		Configuration part : !! Configure this part !!
+		(Do not change variables names)
+	*/
+	
+	ch = 0;	//The channel on which signal are generated
+	stop = 1; //nomber of stop bits (1,1.5 or 2)
+	baud = 9600;
+	nbits = 8; //bit per word
+	
+	parity = PARITY_NONE; // options are PARITY_NONE, PARITY_ODD, PARITY_EVEN;
+	order = LSB_FIRST;	//options are LSB_FIRST, MSB_FIRST
+	invert = INVERT_NONE; //options are INVERT_NONE, INVERT_DATA, INVERT_ALL
+	
+	ini_uart_generator(); //must be called to initialise the UART generator.
+	
+
+	/*
+		Signal generation part !! Change this part according to your application !!
+	*/
+	
+	delay(50); //Idle state for 50 bits time - This is recommended in most cases
+	put_c(10);
+	put_c(11);
+	put_c(12);
+	
+	delay(50);
+	put_str("Hello World");
+}
+
 /*
 *************************************************************************************
 							     DEMO BUILDER
@@ -392,14 +444,7 @@ function build_demo_signals()
 {
 	var demo_cnt = 0;
 
-	if (invert > 0)
-	{
-		inverted = true;
-	}
-	else
-	{
-		inverted = false; 
-	}
+	
 
 	if (stop == 0) 		// readjust number of stop bits
 	{
@@ -539,17 +584,18 @@ function ini_uart_generator()
 	var sample_r = get_sample_rate();
 
 	samples_per_bit = sample_r / baud;
-
-    if (inverted == false)
-    {
-        hi = 1;
+	
+	if (invert == 0)
+	{
+		hi = 1;
         lo = 0;
-    }
-    else
-    {
-        hi = 0;
+	}
+	else
+	{
+		hi = 0;
         lo = 1;
-    }
+	}
+	
 }
 
 /*
@@ -896,3 +942,5 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
+
