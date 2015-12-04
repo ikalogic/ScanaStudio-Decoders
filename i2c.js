@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.61: Fixed a ScanaQuad compatibility issue
 	V1.60: More realistic demo signals generation
 	V1.59: Added more decoder trigger options.
 	V1.58: Added decoder trigger
@@ -64,7 +65,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.60";
+	return "1.61";
 }
 
 
@@ -554,6 +555,8 @@ function decode_signal()
 {
 	var startStopArr = new Array();							// Array of START / STOP conditions in chronological order
 
+	var valScl
+	var type;
 	var trSda = trs_get_first(chSda);						// Position the navigator for sda/scl channels at the first transition
 	var trScl = trs_get_first(chScl);
 	var trSdaPrev = trSda;
@@ -572,12 +575,11 @@ function decode_signal()
 			return false;
 		}
 
-		var valScl = sample_val(chScl, trSda.sample);
-		var type;
+		valScl = sample_val(chScl, trSda.sample);
 
 		if (valScl == 1)
 		{
-			if (get_tr_diff_us(trScl, trSda) > 10)
+			if (+get_tr_diff_us(trScl, trSda) > 1)
 			{
 				if (trSda.val == FALLING)
 				{
@@ -594,12 +596,12 @@ function decode_signal()
 
 		trSdaPrev = trSda;
 		trSda = trs_get_next(chSda);
-		trScl = trs_get_next(chScl);
+		trScl = trs_go_before(chScl, chSda.sample);
 
 		noiseSda = check_noise(trSdaPrev, trSda);
 
 		if (noiseSda == true)
-		{
+		{	
 			i2cObjectsArr.push(new I2cObject(I2COBJECT_TYPE.NOISE, I2C_NOISE.SDA, trSda.sample, false, false));
 
 			var trSdaTemp = trSda;
@@ -615,6 +617,11 @@ function decode_signal()
 		}
 	}
 
+	if (startStopArr.length < 1)	// No start / stop conditions?
+	{
+		return;
+	}
+
 	// Find each bit of all data
 	trSda = trs_get_first(chSda);
 	trScl = trs_get_first(chScl);
@@ -628,7 +635,7 @@ function decode_signal()
 		startStop = startStopArr.shift();				// Get first START condition
 	}
 	while (startStop.type != I2COBJECT_TYPE.START);
-	
+
 	nextStartStopPos = startStop.start;
 
 	while ((trs_is_not_last(chScl) != false))			// Read data for a whole transfer
