@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.62: Fixed (N)ACK display error
 	V1.61: Fixed a ScanaQuad compatibility issue
 	V1.60: More realistic demo signals generation
 	V1.59: Added more decoder trigger options.
@@ -65,7 +66,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.61";
+	return "1.62";
 }
 
 
@@ -488,21 +489,21 @@ function decode()
 					{
 						dec_item_new(chSda, i2cObject.start, i2cObject.end);
 					
-						dec_item_add_pre_text("SLAVE ACKNOWLEDGE");
+						dec_item_add_pre_text("ACKNOWLEDGE");
 						dec_item_add_pre_text("ACKNOWLEDGE");
 						dec_item_add_pre_text("ACK");
 						dec_item_add_pre_text("A");
-						dec_item_add_comment("SLAVE ACKNOWLEDGE");
+						dec_item_add_comment("ACKNOWLEDGE");
 					}
 					else if (i2cObject.value == 1)
 					{
 						dec_item_new(chSda, i2cObject.start, i2cObject.end);
 
-						dec_item_add_pre_text("SLAVE NO ACKNOWLEDGE");
+						dec_item_add_pre_text("NO ACKNOWLEDGE");
 						dec_item_add_pre_text("NO ACKNOWLEDGE");
 						dec_item_add_pre_text("NACK");
 						dec_item_add_pre_text("N");
-						dec_item_add_comment("SLAVE NO ACKNOWLEDGE");
+						dec_item_add_comment("NO ACKNOWLEDGE");
 					}
 					else
 					{
