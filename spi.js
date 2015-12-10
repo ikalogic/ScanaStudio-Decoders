@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.56: Added generator capability
 	V1.55: New options for trigger part
 	V1.54: Trigger fix
 	V1.53: Added decoder trigger
@@ -65,7 +66,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.55";
+	return "1.56";
 }
 
 
@@ -96,8 +97,20 @@ var n_words = 0;
 var c_idle,c_active;
 var cs_idle,cs_active;
 var samples_per_us;
+var samples_per_bit;
+var gen_bit_rate;
 var spi_trig_steps = [];
 var b;
+
+// constants
+var MSB_FIRST = 0;
+var LSB_FIRST = 1;
+var CPOL_ACTIVE_HIGH = 0;
+var CPOL_ACTIVE_LOW = 1;
+var CPHA_SAMP_LEADING = 0;
+var CPHA_SAMP_TRAILING = 1;
+var CS_ACTIVE_LOW = 0;
+var CS_ACTIVE_HIGH = 1;
 
 function SpiTrigStep (mosi, miso, clk, cs)
 {
@@ -579,6 +592,90 @@ function decode()
 	}
 }
 
+
+/*
+*************************************************************************************
+							     Signal Generator
+*************************************************************************************
+*/
+
+function generator_template()
+{
+	/*
+		Quick Help
+		~~~~~~~~~~
+		Start by configuring the SPI decoder with the variables
+		in the "configuration" part.
+		
+		Then, use the following functions to generate SPI packets:
+
+		gen_add_delay(delay,cs_state)
+		=============================
+			Description
+			-----------
+			Adds a delay
+			
+			Parameters
+			----------
+			delay: the delay expressed in number of samples_per_bit
+			cs_state: either cs_active or cs_idle
+			
+		gen_cs(active)
+		===============
+			Description
+			-----------
+			Sets the state of CS line
+			
+			Parameters
+			----------
+			active: set to "true" for CS active state, "false" otherwise.
+			
+		gen_add_word(d_mosi, d_miso)
+		===============
+			Description
+			-----------
+			Sets the state of CS line
+			
+			Parameters
+			----------
+			d_mosi: data word for the mosi line
+			d_miso: data word for the miso line
+	*/
+	
+	/*
+		Configuration part : !! Configure this part !!
+		(Do not change variables names)
+	*/
+	ch_mosi = 0;
+	ch_miso = 1;
+	ch_clk = 2;
+	ch_cs = 3;
+	nbits = spi_n_bits(8); //bits per word
+	order = MSB_FIRST;
+	cpol = CPOL_ACTIVE_HIGH;
+	cpha = CPHA_SAMP_LEADING;
+	cspol = CS_ACTIVE_LOW;
+	
+	
+	gen_bit_rate = 1000000; // bit rate expressed in Hz
+	
+	ini_spi_generator();
+
+	/*
+		Signal generation part !! Change this part according to your application !!
+	*/
+	
+	
+	gen_add_delay(samples_per_us * 5, cs_idle);
+	gen_cs(true);
+		for (var i = 0; i < 10; i++)
+		{
+			gen_add_word(10, i);
+			gen_add_delay(samples_per_us, cs_active);
+		}
+	gen_cs(false);
+}
+
 /*
 *************************************************************************************
 							     DEMO BUILDER
@@ -592,43 +689,25 @@ function build_demo_signals()
 	var demo_cnt = 0;
 	var offset = 0;
 
-	if (cpol == 0)
-	{
-		c_idle = 0;
-		c_active = 1;
-	}
-	else
-	{
-		c_idle = 0;
-		c_active = 1;
-	}
+	gen_bit_rate = 1000000; // bit rate expressed in Hz
 
-	if (cspol == 0)
-	{
-		cs_idle = 1;
-		cs_active = 0;
-	}
-	else
-	{
-		cs_idle = 0;
-		cs_active = 1;
-	}
+	ini_spi_generator();
 
-	samples_per_us = get_sample_rate() / 1000000;
-	demo_add_delay(samples_per_us * 5, cs_idle);
+	//samples_per_us = get_sample_rate() / 1000000;
+	gen_add_delay(samples_per_us * 5, cs_idle);
 
 	while (get_samples_acc(ch_clk) < n_samples)
 	{
-		demo_gen_cs(true);
+		gen_cs(true);
 
 		for (var i = 0; i < 10; i++)
 		{
-			demo_add_word(demo_cnt, i + offset);
-			demo_add_delay(samples_per_us, cs_active);
+			gen_add_word(demo_cnt, i + offset);
+			gen_add_delay(samples_per_us, cs_active);
 		}
 
-		demo_gen_cs(false);
-		demo_add_delay(samples_per_us * 20, cs_idle);
+		gen_cs(false);
+		gen_add_delay(samples_per_us * 20, cs_idle);
 
 		demo_cnt++;
 
@@ -643,39 +722,75 @@ function build_demo_signals()
 	}
 }
 
-
-/*
-*/
-function demo_gen_cs (st_sp)
+function ini_spi_generator()
 {
-	add_samples(ch_mosi, 0, samples_per_us);
-	add_samples(ch_miso, 0, samples_per_us);
-	add_samples(ch_clk, c_idle, samples_per_us);
-
-	if (st_sp)
+	samples_per_bit = get_sample_rate() / gen_bit_rate;
+	if (samples_per_bit < 2)
 	{
-		add_samples(ch_cs, cs_active, samples_per_us);
+		add_to_err_log("SPI generator Bit rate too high compared to device sampling rate");
+	}
+	samples_per_us = get_sample_rate() / 1000000;
+	
+	if (cpol == 0)
+	{
+		c_idle = 0;
+		c_active = 1;
 	}
 	else
 	{
-		add_samples(ch_cs, cs_idle, samples_per_us);
+		c_idle = 0;
+		c_active = 1;
+	}
+	
+	if (cspol == 0)
+	{
+		cs_idle = 1;
+		cs_active = 0;
+	}
+	else
+	{
+		cs_idle = 0;
+		cs_active = 1;
 	}
 }
 
+/*
+*/
+function gen_cs (st_sp)
+{
+	add_samples(ch_mosi, 0, samples_per_bit);
+	add_samples(ch_miso, 0, samples_per_bit);
+	add_samples(ch_clk, c_idle, samples_per_bit);
+
+	if (st_sp)
+	{
+		add_samples(ch_cs, cs_active, samples_per_bit);
+	}
+	else
+	{
+		add_samples(ch_cs, cs_idle, samples_per_bit);
+	}
+}
+
+function spi_n_bits(b)
+{
+	return b-1;
+}
 
 /*
 */
-function demo_add_word (w_mosi, w_miso)
+function gen_add_word (w_mosi, w_miso)
 {
-	var bmosi, bmiso;
-
+	var bmosi;
+	var bmiso;
+	
 	if (order == 1)
 	{
 		for (i = 0; i < (nbits + 1); i++)
 		{
 			bmosi = ((w_mosi >> i) & 0x1);
 			bmiso = ((w_miso >> i) & 0x1);
-			demo_add_bit(bmosi, bmiso);
+			gen_add_bit(bmosi, bmiso);
 		}
 	}
 	else
@@ -684,47 +799,49 @@ function demo_add_word (w_mosi, w_miso)
 		{
 			bmosi = ((w_mosi >> i) & 0x1);
 			bmiso = ((w_miso >> i) & 0x1);
-			demo_add_bit(bmosi, bmiso);
+			gen_add_bit(bmosi, bmiso);
 		}	
 	}
+	
 }
 
 
 /*
 */
-function demo_add_bit (b_mosi, b_miso)
+function gen_add_bit (b_mosi, b_miso)
 {
 	if (cpha == 0)
 	{
-		add_samples(ch_mosi, b_mosi, samples_per_us);
-		add_samples(ch_miso, b_miso, samples_per_us);
-		add_samples(ch_clk, c_idle, samples_per_us);
-		add_samples(ch_cs, cs_active, samples_per_us);
+		add_samples(ch_mosi, b_mosi, samples_per_bit);
+		add_samples(ch_miso, b_miso, samples_per_bit);
+		add_samples(ch_clk, c_idle, samples_per_bit);
+		add_samples(ch_cs, cs_active, samples_per_bit);
 
-		add_samples(ch_mosi, b_mosi, samples_per_us);
-		add_samples(ch_miso, b_miso, samples_per_us);
-		add_samples(ch_clk, c_active, samples_per_us);
-		add_samples(ch_cs, cs_active, samples_per_us);
+		add_samples(ch_mosi, b_mosi, samples_per_bit);
+		add_samples(ch_miso, b_miso, samples_per_bit);
+		add_samples(ch_clk, c_active, samples_per_bit);
+		add_samples(ch_cs, cs_active, samples_per_bit);
 	}
 	else
 	{
-		add_samples(ch_mosi, b_mosi, samples_per_us);
-		add_samples(ch_miso, b_miso, samples_per_us);
-		add_samples(ch_clk, c_active, samples_per_us);
-		add_samples(ch_cs, cs_active, samples_per_us);
+		add_samples(ch_mosi, b_mosi, samples_per_bit);
+		add_samples(ch_miso, b_miso, samples_per_bit);
+		add_samples(ch_clk, c_active, samples_per_bit);
+		add_samples(ch_cs, cs_active, samples_per_bit);
 		
-		add_samples(ch_mosi, b_mosi, samples_per_us);
-		add_samples(ch_miso, b_miso, samples_per_us);
-		add_samples(ch_clk, c_idle, samples_per_us);
-		add_samples(ch_cs, cs_active, samples_per_us);
+		add_samples(ch_mosi, b_mosi, samples_per_bit);
+		add_samples(ch_miso, b_miso, samples_per_bit);
+		add_samples(ch_clk, c_idle, samples_per_bit);
+		add_samples(ch_cs, cs_active, samples_per_bit);
 	}
 }
 
 
 /*
 */
-function demo_add_delay (d, cs_state)
+function gen_add_delay (d, cs_state)
 {
+	
 	add_samples(ch_mosi, 0, d);
 	add_samples(ch_miso, 0, d);
 	add_samples(ch_clk, c_idle, d);
@@ -977,5 +1094,8 @@ function get_bit_margin()
 	var k = 1;
 	return ((k * get_sample_rate()) / 10000000);
 }
+
+
+
 
 
