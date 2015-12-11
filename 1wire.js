@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.24: Added CRC support in demo signal, and added signal generator capability
 	V1.23: More realistic demo signals generation
 	V1.22: Added protocol based trigger capability
 	V1.21: Added demo signal generation.
@@ -23,7 +24,7 @@ The following commented block allows some related informations to be displayed o
 	V1.18: Solved minor bug.
 	V1.17: Extended protocol delays support.
 	V1.15: Added Packet/Hex View support.
-	V1.11: Added new device family codes. 
+	V1.11: Added new device family codes.
 	V1.1:  Fixed timing values.
 	V1.0:  Initial release.g
 
@@ -56,7 +57,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.23";
+	return "1.24";
 }
 
 
@@ -1004,10 +1005,10 @@ function generator_template()
 	/*
 		Quick Help
 		~~~~~~~~~~
-		Start by configuring the SPI decoder with the variables
+		Start by configuring the decoder with the variables
 		in the "configuration" part.
 		
-		Then, use the following functions to generate SPI packets:
+		Then, use the following functions to generate 1-Wire packets:
 
 		gen_add_delay(delay)
 		=============================
@@ -1019,32 +1020,46 @@ function generator_template()
 			----------
 			delay: the delay expressed in number of samples
 			
-		gen_cs(active)
-		===============
-			Description
-			-----------
-			Sets the state of CS line
-			
-			Parameters
-			----------
-			active: set to "true" for CS active state, "false" otherwise.
-			
 		gen_byte(data)
 		===============
 			Description
 			-----------
-			generates one byte of data
+			generates one byte of data on the 1-Wire bus
+			
+		gen_reset()
+		===============
+			Description
+			-----------
+			generates a master reset timeslot
+			
+		gen_presence(p)
+		===============
+			Description
+			-----------
+			generates a presence timeslot
+			
+			Parameters:
+			-----------
+			p: set to "true" if you wish to force the presence timeslot to low (as if a slave have responded).
+				set to false otherwize.
+			
+		get_crc8_from_array(a)
+		=====================
+			Description
+			-----------
+			generates an 8-bit CRC from an array of bytes
 			
 			Parameters
 			----------
-			d_mosi: data word for the mosi line
-			d_miso: data word for the miso line
+			a: array of bytes
+						
 	*/
 	
 	/*
 		Configuration part : !! Configure this part !!
 		(Do not change variables names)
 	*/
+	
 	uiCh = 0; //Generate on CH 1
 	uiSpeed = SPEED.REGULAR; //regular speed (you can also use SPEED.OVERDRIVE)
 	
