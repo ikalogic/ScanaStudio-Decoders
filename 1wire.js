@@ -96,6 +96,14 @@ var ROM_CMD =
 	ALARM_SEARCH  : {code: 0xEC, str: "ALARM SEARCH "}
 };
 
+var ROM_CMD_READ_ROM = 0x33;
+var ROM_CMD_MATCH_ROM = 0x55;
+var ROM_CMD_OVD_MATCH_ROM = 0x69;
+var ROM_CMD_SKIP_ROM = 0xCC;
+var ROM_CMD_OVD_SKIP_ROM = 0x3C;
+var ROM_CMD_SEARCH_ROM = 0xF0;
+var ROM_CMD_ALARM_SEARCH = 0xEC;
+
 var OWOBJECT_TYPE = 
 {
 	RESET    : 0x01,
@@ -254,6 +262,7 @@ var PKT_COLOR_ROMCMD_TITLE;
 var PKT_COLOR_ROMCODE_TITLE;
 var PKT_COLOR_UNKNW_TITLE;
 var PKT_COLOR_OTHER_TITLE;
+
 
 /*
 *************************************************************************************
@@ -983,6 +992,89 @@ function speed_test (ch)
 	return SPEED.UNKNOWN;
 }
 
+
+/*
+*************************************************************************************
+							     Signal Generator
+*************************************************************************************
+*/
+
+function generator_template()
+{
+	/*
+		Quick Help
+		~~~~~~~~~~
+		Start by configuring the SPI decoder with the variables
+		in the "configuration" part.
+		
+		Then, use the following functions to generate SPI packets:
+
+		gen_add_delay(delay)
+		=============================
+			Description
+			-----------
+			Adds a delay
+			
+			Parameters
+			----------
+			delay: the delay expressed in number of samples
+			
+		gen_cs(active)
+		===============
+			Description
+			-----------
+			Sets the state of CS line
+			
+			Parameters
+			----------
+			active: set to "true" for CS active state, "false" otherwise.
+			
+		gen_byte(data)
+		===============
+			Description
+			-----------
+			generates one byte of data
+			
+			Parameters
+			----------
+			d_mosi: data word for the mosi line
+			d_miso: data word for the miso line
+	*/
+	
+	/*
+		Configuration part : !! Configure this part !!
+		(Do not change variables names)
+	*/
+	uiCh = 0; //Generate on CH 1
+	uiSpeed = SPEED.REGULAR; //regular speed (you can also use SPEED.OVERDRIVE)
+	
+	ini_1w_generator();
+
+	/*
+		Signal generation part !! Change this part according to your application !!
+	*/
+	
+	var rom_code = new Array();
+	var test = 0;
+	
+	gen_add_delay(samples_per_us*100);
+	gen_reset();
+	gen_presence(false);
+	
+	gen_byte(ROM_CMD_READ_ROM);
+	
+	rom_code.length = 0; //clear array
+	rom_code.push(test);
+	gen_byte(test);
+	
+	for (var i = 1; i < 7; i++)
+	{
+		rom_code.push(i);
+		gen_byte(i);
+	}
+	gen_byte(get_crc8_from_array(rom_code));
+}
+
 /*
 *************************************************************************************
 							     DEMO BUILDER
@@ -996,17 +1088,9 @@ function build_demo_signals()
 	var demo_cnt = 0;
 	var samples_per_frame = 0;
 	var frames_to_disp = 0;
+	var demo_rom_code = new Array();
+	ini_1w_generator();
 
-	samples_per_us = get_sample_rate() / 1000000;
-
-	if (uiSpeed == SPEED.REGULAR)
-	{
-		oWDelays = REGULAR_DELAYS;
-	}
-	else
-	{
-		oWDelays = OVERDRIVE_DELAYS;
-	}
 
 	samples_per_frame = (oWDelays.RSTL_STD + 10);
 	samples_per_frame += (oWDelays.PDH_MAX / 2);
@@ -1028,22 +1112,27 @@ function build_demo_signals()
 
 	if (frames_to_disp > 0)
 	{
-		add_samples(uiCh, 1, samples_per_us * 100);
+		gen_add_delay(samples_per_us*100);
 
 		for (var j = 0; j < frames_to_disp; j++)
 		{
-			add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10)); 	// reset
-			add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
-			add_samples(uiCh, 0, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence	
-			add_samples(uiCh, 1, samples_per_us * 10);							// delay
+			gen_reset();
+			gen_presence(true);
 
-			demo_gen_byte(0x33);
-			demo_gen_byte(demo_cnt);
-
-			for (var i = 1; i < 8; i++)
+			gen_byte(0x33);
+			
+			demo_rom_code.length = 0; //clear array
+			
+			demo_rom_code.push(demo_cnt);
+			gen_byte(demo_cnt);
+			
+			for (var i = 1; i < 7; i++)
 			{
-				demo_gen_byte(i);
+				demo_rom_code.push(i);
+				gen_byte(i);
 			}
+			
+			gen_byte(get_crc8_from_array(demo_rom_code));
 
 			demo_cnt++;
 			add_samples(uiCh, 1, n_samples / 20);	// delay between transactions
@@ -1051,10 +1140,51 @@ function build_demo_signals()
 	}
 }
 
+function ini_1w_generator()
+{
+	samples_per_us = get_sample_rate() / 1000000;
+	if (samples_per_us < 2)
+	{
+		add_to_err_log("SPI generator Bit rate too high compared to device sampling rate");
+	}
+	
+	if (uiSpeed == SPEED.REGULAR)
+	{
+		oWDelays = REGULAR_DELAYS;
+	}
+	else
+	{
+		oWDelays = OVERDRIVE_DELAYS;
+	}
+}
+
+function gen_add_delay(n)
+{
+	add_samples(uiCh, 1, n);
+}
+
+function gen_reset()
+{
+	add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10)); 	// reset
+	add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
+}
+
+function gen_presence(force_present)
+{
+	if (force_present)
+	{
+		add_samples(uiCh, 0, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence		
+	}
+	else
+	{
+		add_samples(uiCh, 1, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence		
+	}
+	add_samples(uiCh, 1, samples_per_us * 10);							// delay	
+}
 
 /*
 */
-function demo_gen_byte (code)
+function gen_byte (code)
 {
     var i;
     var b;
@@ -1362,6 +1492,19 @@ function get_crc8 (romCode)
 	return crc;
 }
 
+function get_crc8_from_array (a)
+{
+	var crc;
+	
+	for (var i = 0; i < 7; i++)
+	{
+		crc = compute_crc8(a[i], crc);
+	}
+	
+	return crc;
+}
+
+
 
 /* Get next transition with falling edge
 */
@@ -1395,3 +1538,5 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
+
