@@ -15,6 +15,8 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.64: Fix for slow decoding speed, progress report 
+	       and demo generator overflow
 	V1.63: Added generator capability
 	V1.62: Fixed (N)ACK display error
 	V1.61: Fixed a ScanaQuad compatibility issue
@@ -67,7 +69,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.63";
+	return "1.64";
 }
 
 
@@ -969,8 +971,6 @@ function generator_template()
 	
 }
 
-
-
 /*
 *************************************************************************************
 							     DEMO BUILDER
@@ -981,18 +981,16 @@ function generator_template()
 */
 function build_demo_signals()
 {
-	debug("");
-
+	var last_samples_acc = 0;
 	var demo_cnt = 0;
 	var inter_transaction_silence = n_samples / 100;
 	var samples_per_us = get_sample_rate()/1000000;
 	gen_bit_rate = 100000;
-	
 
 	ini_i2c_generator();
 
 	while ((get_samples_acc(chSda) < n_samples) && (get_samples_acc(chScl) < n_samples))
-	{				
+	{
 		put_c(0xA2,true, true, false);
 		put_c(demo_cnt, false, true, false);
 		put_c(0xA3, true, true, false);
@@ -1009,6 +1007,13 @@ function build_demo_signals()
 
 		add_samples(chScl, 1, inter_transaction_silence);
 		add_samples(chSda, 1, inter_transaction_silence);
+
+		if (get_samples_acc() < last_samples_acc)	 //overflow condition (only for very large captures)
+		{
+			break;
+		}
+
+		last_samples_acc = get_samples_acc();
 	}
 }
 
@@ -1018,7 +1023,7 @@ function ini_i2c_generator()
 		
 	add_samples(chScl, 1, samples_per_scl_cycle * 10);
 	add_samples(chSda, 1, samples_per_scl_cycle * 10);
-	add_samples(chSda, 1, samples_per_scl_cycle *2 / 10); 			// Delay chSda wrt chScl by 2/10 of scl cycle.		
+	add_samples(chSda, 1, samples_per_scl_cycle * 5 / 10); 			// Delay chSda wrt chScl by 2/10 of scl cycle.		
 						
 	last_scl_lvl = 1;
 	last_sda_lvl = 1;
