@@ -461,6 +461,8 @@ function build_demo_signals()
 
 	ini_uart_generator();	
 	
+	var inter_transaction_silence = n_samples / (100 * samples_per_bit);
+	//debug("inter_transaction_silence = " + inter_transaction_silence);
 	delay(5);
 	put_str("Hello ScanaStudio tester!");
 	
@@ -469,7 +471,7 @@ function build_demo_signals()
 
 		put_str("demo " + demo_cnt );	
 		demo_cnt++;
-		delay(5);
+		delay(inter_transaction_silence);
 	}
 }
 
@@ -942,5 +944,7 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
+
 
 
