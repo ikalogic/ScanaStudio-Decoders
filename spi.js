@@ -834,7 +834,6 @@ function gen_add_bit (b_mosi, b_miso)
 		add_samples(ch_clk, c_idle, samples_per_bit);
 		add_samples(ch_cs, cs_active, samples_per_bit);
 	}
-	debug("b");
 }
 
 
@@ -1095,6 +1094,7 @@ function get_bit_margin()
 	var k = 1;
 	return ((k * get_sample_rate()) / 10000000);
 }
+
 
 
 
