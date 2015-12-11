@@ -617,7 +617,7 @@ function generator_template()
 			
 			Parameters
 			----------
-			delay: the delay expressed in number of samples_per_bit
+			delay: the delay expressed in number of samples
 			cs_state: either cs_active or cs_idle
 			
 		gen_cs(active)
@@ -646,10 +646,10 @@ function generator_template()
 		Configuration part : !! Configure this part !!
 		(Do not change variables names)
 	*/
-	ch_mosi = 0;
-	ch_miso = 1;
-	ch_clk = 2;
-	ch_cs = 3;
+	ch_mosi = 0; //MOSI on CH 1
+	ch_miso = -1; //set to -1 to inhibit generator on MISO channel
+	ch_clk = 2;	//CLK on CH 3
+	ch_cs = 3;	//CS on CH 4
 	nbits = spi_n_bits(8); //bits per word
 	order = MSB_FIRST;
 	cpol = CPOL_ACTIVE_HIGH;
@@ -670,7 +670,7 @@ function generator_template()
 	gen_cs(true);
 		for (var i = 0; i < 10; i++)
 		{
-			gen_add_word(10, i);
+			gen_add_word(i, 0);
 			gen_add_delay(samples_per_us, cs_active);
 		}
 	gen_cs(false);
@@ -834,6 +834,7 @@ function gen_add_bit (b_mosi, b_miso)
 		add_samples(ch_clk, c_idle, samples_per_bit);
 		add_samples(ch_cs, cs_active, samples_per_bit);
 	}
+	debug("b");
 }
 
 
@@ -1094,6 +1095,10 @@ function get_bit_margin()
 	var k = 1;
 	return ((k * get_sample_rate()) / 10000000);
 }
+
+
+
+
 
 
 

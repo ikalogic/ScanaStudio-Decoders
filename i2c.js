@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.63: Added generator capability
 	V1.62: Fixed (N)ACK display error
 	V1.61: Fixed a ScanaQuad compatibility issue
 	V1.60: More realistic demo signals generation
@@ -66,7 +67,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.62";
+	return "1.63";
 }
 
 
@@ -145,6 +146,9 @@ var i2cObjectsArr;
 var AvgtHigh;
 var i2c_trig_steps = [];
 var samples_per_scl_cycle;
+var gen_bit_rate;
+var last_sda_lvl;
+var last_scl_lvl;
 
 var PKT_COLOR_DATA;
 var PKT_COLOR_DATA_TITLE;
@@ -898,6 +902,77 @@ function test_signal()
 
 /*
 *************************************************************************************
+							     Signal Generator
+*************************************************************************************
+*/
+
+function generator_template()
+{
+	/*
+		Quick Help
+		~~~~~~~~~~
+		Start by configuring the protocol with the variables
+		in the "configuration" part.
+		
+		Then, use the following functions to generate packets:
+
+		gen_add_delay(delay)
+		====================
+			Description
+			-----------
+			Adds a delay, keeping SCL and SDA at their last known level
+			
+			Parameters
+			----------
+			delay: the delay expressed in number of samples. 
+			
+		put_c(data,start,ack,stop)
+		===============
+			Description
+			-----------
+			Builds an I2C data word. this can either be an address or a regular data byte. If it's an address, the R/W bit must be inluded
+			in the data byte.
+			
+			Parameters
+			----------
+			data: Value of the I2C byte to be generated
+			start: Set to true to generate a start condition
+			ack: Set to true to force ACK bit to an active state (i.e. 0 level)
+			stop: Set to true to generate a stop condition
+	*/
+	
+	/*
+		Configuration part : !! Configure this part !!
+		(Do not change variables names)
+	*/
+	
+	chSda = 0; //SDA on CH 1
+	chScl = 1; //SCL on ch 2
+	
+	gen_bit_rate = 100000; // bit rate expressed in Hz
+	var samples_per_us = get_sample_rate()/1000000;
+	ini_i2c_generator();
+
+	/*
+		Signal generation part !! Change this part according to your application !!
+	*/
+	
+	gen_add_delay(samples_per_us * 15);
+	put_c(0xA2,true, true, false);
+	put_c(0x55,false, true, false);
+	gen_add_delay(samples_per_us * 15);
+	put_c(0xA2,true, false, false);
+	put_c(0x55,false, false, true);
+	gen_add_delay(samples_per_us * 15);
+	put_c(0xA2,true, false, false);
+	put_c(0x55,false, false, true);
+	
+}
+
+
+
+/*
+*************************************************************************************
 							     DEMO BUILDER
 *************************************************************************************
 */
@@ -910,12 +985,11 @@ function build_demo_signals()
 
 	var demo_cnt = 0;
 	var inter_transaction_silence = n_samples / 100;
+	var samples_per_us = get_sample_rate()/1000000;
+	gen_bit_rate = 100000;
 	
-	samples_per_scl_cycle = (get_sample_rate() / 100000) / 2; 	// Samples per half SCL cycle
 
-	add_samples(chScl, 1, samples_per_scl_cycle * 10);
-	add_samples(chSda, 1, samples_per_scl_cycle * 10);
-	add_samples(chSda, 1, samples_per_scl_cycle *5 / 10); 			// Delay chSda wrt chScl by 1/10 of scl cycle.
+	ini_i2c_generator();
 
 	while ((get_samples_acc(chSda) < n_samples) && (get_samples_acc(chScl) < n_samples))
 	{				
@@ -938,6 +1012,23 @@ function build_demo_signals()
 	}
 }
 
+function ini_i2c_generator()
+{
+	samples_per_scl_cycle = (get_sample_rate() / gen_bit_rate) / 2; 	// Samples per half SCL cycle
+		
+	add_samples(chScl, 1, samples_per_scl_cycle * 10);
+	add_samples(chSda, 1, samples_per_scl_cycle * 10);
+	add_samples(chSda, 1, samples_per_scl_cycle *2 / 10); 			// Delay chSda wrt chScl by 2/10 of scl cycle.		
+						
+	last_scl_lvl = 1;
+	last_sda_lvl = 1;
+}
+
+function gen_add_delay(s)
+{
+	add_samples(chScl, last_scl_lvl, s);
+	add_samples(chSda, last_sda_lvl, s);
+}
 
 /*
 */
@@ -947,13 +1038,20 @@ function put_c (data, start, gen_ack, stop)
 
 	if (start == true)
 	{		
-		add_samples(chScl, 0, samples_per_scl_cycle);
-		add_samples(chSda, 0, samples_per_scl_cycle);
-		add_samples(chScl, 0, samples_per_scl_cycle);
-		add_samples(chSda, 1, samples_per_scl_cycle);
+		//add_samples(chScl, last_scl_lvl, samples_per_scl_cycle);
+		//add_samples(chSda, last_sda_lvl, samples_per_scl_cycle);
+		if (last_sda_lvl != 1)
+		{
+			add_samples(chScl, 0, samples_per_scl_cycle);
+			add_samples(chSda, last_sda_lvl, samples_per_scl_cycle);
+			add_samples(chScl, 0, samples_per_scl_cycle);
+			add_samples(chSda, 1, samples_per_scl_cycle);
+		}
+		
 		add_samples(chScl, 1, samples_per_scl_cycle);
-		add_samples(chSda, 0, samples_per_scl_cycle);
-		add_samples(chScl, 0, samples_per_scl_cycle);
+		add_samples(chSda, 1, samples_per_scl_cycle);
+		
+		add_samples(chScl, 1, samples_per_scl_cycle);
 		add_samples(chSda, 0, samples_per_scl_cycle);
 	}
 
@@ -974,8 +1072,7 @@ function put_c (data, start, gen_ack, stop)
 		add_samples(chScl, 1, samples_per_scl_cycle);
 		add_samples(chSda, 0, samples_per_scl_cycle);
 		add_samples(chScl, 0, samples_per_scl_cycle);
-		add_samples(chSda, 0, samples_per_scl_cycle);
-				
+		add_samples(chSda, 1, samples_per_scl_cycle);				
 	}
 	else
 	{
@@ -984,16 +1081,38 @@ function put_c (data, start, gen_ack, stop)
 		add_samples(chScl, 1, samples_per_scl_cycle);
 		add_samples(chSda, 1, samples_per_scl_cycle);
 		add_samples(chScl, 0, samples_per_scl_cycle);
-		add_samples(chSda, 0, samples_per_scl_cycle);
+		add_samples(chSda, 1, samples_per_scl_cycle);
 	}
-
+	
+	last_scl_lvl = 0;
+	last_sda_lvl = 1;
+	
 	if (stop == true)
 	{		
-		add_samples(chScl, 1, samples_per_scl_cycle);
+		/*add_samples(chScl, 1, samples_per_scl_cycle);
 		add_samples(chSda, 0, samples_per_scl_cycle);	
 		add_samples(chScl, 1, samples_per_scl_cycle);
 		add_samples(chSda, 1, samples_per_scl_cycle);	
+			*/
+		if (last_sda_lvl != 0)
+		{
+			add_samples(chScl, 0, samples_per_scl_cycle);
+			add_samples(chSda, last_sda_lvl, samples_per_scl_cycle);
+			add_samples(chScl, 0, samples_per_scl_cycle);
+			add_samples(chSda, 0, samples_per_scl_cycle);			
+			add_samples(chScl, 1, samples_per_scl_cycle);
+			add_samples(chSda, 0, samples_per_scl_cycle);
+		}
+
+		
+		add_samples(chScl, 1, samples_per_scl_cycle);
+		add_samples(chSda, 1, samples_per_scl_cycle);
+		
+			
+		last_scl_lvl = 1;
+		last_sda_lvl = 1;			
 	}
+	
 }
 
 /*
@@ -1376,4 +1495,5 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
+
 
