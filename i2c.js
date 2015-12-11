@@ -253,7 +253,9 @@ function decode()
 	{
 		i2cObject = i2cObjectsArr[i2cObjCnt];
 		i2cObjCnt++;
-	
+
+		set_progress(50 * i2cObjCnt / i2cObjectsArr.length);
+
 	    if (abort_requested() == true)
 		{
 			return false;
@@ -554,15 +556,14 @@ function decode()
 */
 function decode_signal()
 {
-	var startStopArr = new Array();							// Array of START / STOP conditions in chronological order
-
-	var valScl
 	var type;
+	var valSclBefore, valSclAfter;
 	var trSda = trs_get_first(chSda);						// Position the navigator for sda/scl channels at the first transition
 	var trScl = trs_get_first(chScl);
 	var trSdaPrev = trSda;
 	var noiseSda = false, noiseScl = false;
 	var sclSemiPeriod = 0;
+	var startStopArr = new Array();							// Array of START / STOP conditions in chronological order
 
 	AvgtHigh = get_avg_thigh(trScl);						// Get average high time of SCL signal (1/2 of period)
 
@@ -576,29 +577,25 @@ function decode_signal()
 			return false;
 		}
 
-		valScl = sample_val(chScl, trSda.sample);
+		valSclBefore = sample_val(chScl, (trSda.sample - (get_num_samples_for_us(1) / 4)));		// - 250ns
+		valSclAfter  = sample_val(chScl, (trSda.sample + (get_num_samples_for_us(1) / 4)));		// + 250ns
 
-		if (valScl == 1)
+		if (valSclBefore == 1 && valSclAfter == 1)
 		{
-			if (+get_tr_diff_us(trScl, trSda) > 1)
+			if (trSda.val == FALLING)
 			{
-				if (trSda.val == FALLING)
-				{
-					type = I2COBJECT_TYPE.START;
-				}
-				else
-				{
-					type = I2COBJECT_TYPE.STOP;
-				}
-
-				startStopArr.push(new I2cObject(type, true, trSda.sample, false, false));
+				type = I2COBJECT_TYPE.START;
 			}
+			else
+			{
+				type = I2COBJECT_TYPE.STOP;
+			}
+
+			startStopArr.push(new I2cObject(type, true, trSda.sample, false, false));
 		}
 
 		trSdaPrev = trSda;
 		trSda = trs_get_next(chSda);
-		trScl = trs_go_before(chScl, chSda.sample);
-
 		noiseSda = check_noise(trSdaPrev, trSda);
 
 		if (noiseSda == true)
@@ -646,7 +643,7 @@ function decode_signal()
 			return false;
 		}
 
-		set_progress(100 * trScl.sample / n_samples);	// Give feedback to ScanaStudio about decoding progress
+		set_progress(50 * trScl.sample / n_samples);	// Give feedback to ScanaStudio about decoding progress
 
 		trScl = trs_go_after(chScl, nextStartStopPos);	// We must begin right after the START / STOP condition
 
@@ -909,6 +906,8 @@ function test_signal()
 */
 function build_demo_signals()
 {
+	debug("");
+
 	var demo_cnt = 0;
 	var inter_transaction_silence = n_samples / 100;
 	
@@ -916,7 +915,7 @@ function build_demo_signals()
 
 	add_samples(chScl, 1, samples_per_scl_cycle * 10);
 	add_samples(chSda, 1, samples_per_scl_cycle * 10);
-	add_samples(chSda, 1, samples_per_scl_cycle / 10); 			// Delay chSda wrt chScl by 1/10 of scl cycle.
+	add_samples(chSda, 1, samples_per_scl_cycle *5 / 10); 			// Delay chSda wrt chScl by 1/10 of scl cycle.
 
 	while ((get_samples_acc(chSda) < n_samples) && (get_samples_acc(chScl) < n_samples))
 	{				
@@ -1325,6 +1324,14 @@ function get_avg_thigh (trSt)
 }
 
 
+/*  Get number of samples for the specified duration in microseconds
+*/
+function get_num_samples_for_us (us)
+{
+	return ((us * get_sample_rate()) / 1000000);
+}
+
+
 /* Get time difference in microseconds between two transitions
 */
 function get_tr_diff_us (tr1, tr2)
@@ -1369,3 +1376,4 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
+
