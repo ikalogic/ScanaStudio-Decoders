@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.25: Correc a bug that caused decoding to be aborted.
 	V1.24: Added CRC support in demo signal, and added signal generator capability
 	V1.23: More realistic demo signals generation
 	V1.22: Added protocol based trigger capability
@@ -57,7 +58,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.24";
+	return "1.25";
 }
 
 
@@ -343,13 +344,13 @@ function decode()
 		{
 			return false;
 		}
+		
 
 		/* Start of state machine 
 		*/
 		switch (state)
 		{
 			case STATE.INIT:
-
 					var measuredSpeed = speed_test(uiCh);
 
 					if (measuredSpeed != uiSpeed)
@@ -390,7 +391,6 @@ function decode()
 			break;
 
 			case STATE.RESET:
-
 					owObject = owObjects.shift();
 
 					if (owObject.type == OWOBJECT_TYPE.RESET)
@@ -426,7 +426,6 @@ function decode()
 			break;
 
 			case STATE.PRESENCE:
-
 					owObject = owObjects.shift();
 
 					if (owObject.type == OWOBJECT_TYPE.PRESENCE)
@@ -443,7 +442,7 @@ function decode()
 
 							owObject = owObjects.shift();
 							owObjects.unshift(owObject);
-
+							
 							if (owObject.type == OWOBJECT_TYPE.RESET)
 							{
 								state = STATE.RESET;
@@ -472,7 +471,6 @@ function decode()
 			break;
 
 			case STATE.ROM_COMMAND:
-
 					var romCmd = false;
 					var romCmdStr;
 					var owByte = get_ow_byte(uiCh);
@@ -517,7 +515,6 @@ function decode()
 			break;
 
 			case STATE.SHOW_ROM:
-
 					/* 64-bit ROM code:
 					   [LSB] 8-bit Family Code | 48-bit Serial Number | 8-bit CRC | [MSB]
 					*/
@@ -632,7 +629,6 @@ function decode()
 			break;
 
 			case STATE.SEARCH_ROM:
-
  					var owByte;
  					var owByteCnt = 0;
  					var firstByte = get_ow_byte(uiCh);
@@ -658,7 +654,6 @@ function decode()
 			break;
 
 			case STATE.DATA:
-
 					/* Get and show all data */
 
 					owObject = owObjects.shift();
@@ -720,8 +715,9 @@ function decode()
 			break;
 
 			case STATE.END:
+					state = STATE.RESET;
 					pkt_end();
-					stop = true;	// Nothing to decode. Quit
+					//stop = true;	// Nothing to decode. Quit
 			break;
 		}
 	}
@@ -745,6 +741,8 @@ function get_ow_byte (ch)
 	{
 		do
 		{
+			if (owObjects.length == 0) break;
+			
 			owObject = owObjects.shift();
 
 			if (owObject.type != OWOBJECT_TYPE.BIT)
@@ -1553,5 +1551,7 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
+
 
 
