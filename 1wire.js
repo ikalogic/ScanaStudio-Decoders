@@ -265,7 +265,6 @@ var PKT_COLOR_ROMCODE_TITLE;
 var PKT_COLOR_UNKNW_TITLE;
 var PKT_COLOR_OTHER_TITLE;
 
-
 /*
 *************************************************************************************
 								   DECODER
@@ -344,13 +343,13 @@ function decode()
 		{
 			return false;
 		}
-		
 
 		/* Start of state machine 
 		*/
 		switch (state)
 		{
 			case STATE.INIT:
+
 					var measuredSpeed = speed_test(uiCh);
 
 					if (measuredSpeed != uiSpeed)
@@ -391,6 +390,7 @@ function decode()
 			break;
 
 			case STATE.RESET:
+
 					owObject = owObjects.shift();
 
 					if (owObject.type == OWOBJECT_TYPE.RESET)
@@ -426,6 +426,7 @@ function decode()
 			break;
 
 			case STATE.PRESENCE:
+
 					owObject = owObjects.shift();
 
 					if (owObject.type == OWOBJECT_TYPE.PRESENCE)
@@ -471,6 +472,7 @@ function decode()
 			break;
 
 			case STATE.ROM_COMMAND:
+
 					var romCmd = false;
 					var romCmdStr;
 					var owByte = get_ow_byte(uiCh);
@@ -515,6 +517,7 @@ function decode()
 			break;
 
 			case STATE.SHOW_ROM:
+
 					/* 64-bit ROM code:
 					   [LSB] 8-bit Family Code | 48-bit Serial Number | 8-bit CRC | [MSB]
 					*/
@@ -529,7 +532,7 @@ function decode()
 					}
 					while ((owByte.isLast != true) && (romCode.length < 8))
 
-					if(romCode.length == 8)
+					if (romCode.length == 8)
 					{
 						// Calc CRC
 						var calcCrc = get_crc8(romCode);
@@ -629,6 +632,7 @@ function decode()
 			break;
 
 			case STATE.SEARCH_ROM:
+
  					var owByte;
  					var owByteCnt = 0;
  					var firstByte = get_ow_byte(uiCh);
@@ -654,6 +658,7 @@ function decode()
 			break;
 
 			case STATE.DATA:
+
 					/* Get and show all data */
 
 					owObject = owObjects.shift();
@@ -673,7 +678,7 @@ function decode()
  					do
 					{
 						owByte = get_ow_byte(uiCh);
-						
+
 						if (owByte.isLast != true)
 						{
 							dec_item_new(uiCh, owByte.start, owByte.end);
@@ -715,6 +720,7 @@ function decode()
 			break;
 
 			case STATE.END:
+
 					state = STATE.RESET;
 					pkt_end();
 					//stop = true;	// Nothing to decode. Quit
@@ -991,10 +997,9 @@ function speed_test (ch)
 	return SPEED.UNKNOWN;
 }
 
-
 /*
 *************************************************************************************
-							     Signal Generator
+							     SIGNAL GENERATOR
 *************************************************************************************
 */
 
@@ -1005,7 +1010,7 @@ function generator_template()
 		~~~~~~~~~~
 		Start by configuring the decoder with the variables
 		in the "configuration" part.
-		
+
 		Then, use the following functions to generate 1-Wire packets:
 
 		gen_add_delay(delay)
@@ -1050,42 +1055,124 @@ function generator_template()
 			Parameters
 			----------
 			a: array of bytes
-						
 	*/
 	
 	/*
 		Configuration part : !! Configure this part !!
 		(Do not change variables names)
 	*/
-	
-	uiCh = 0; //Generate on CH 1
-	uiSpeed = SPEED.REGULAR; //regular speed (you can also use SPEED.OVERDRIVE)
-	
-	ini_1w_generator();
+
+	uiCh = 0; 				  // Generate on CH 1
+	uiSpeed = SPEED.REGULAR;  // Regular speed (you can also use SPEED.OVERDRIVE)
+
+	gen_init();
 
 	/*
 		Signal generation part !! Change this part according to your application !!
 	*/
-	
+
 	var rom_code = new Array();
 	var test = 0;
-	
-	gen_add_delay(samples_per_us*100);
+
+	gen_add_delay(samples_per_us * 100);
 	gen_reset();
 	gen_presence(false);
-	
+
 	gen_byte(ROM_CMD_READ_ROM);
-	
-	rom_code.length = 0; //clear array
+
+	rom_code.length = 0; 	  // Clear array
 	rom_code.push(test);
 	gen_byte(test);
-	
+
 	for (var i = 1; i < 7; i++)
 	{
 		rom_code.push(i);
 		gen_byte(i);
 	}
+
 	gen_byte(get_crc8_from_array(rom_code));
+}
+
+
+/*
+*/
+function gen_init()
+{
+	samples_per_us = get_sample_rate() / 1000000;
+	
+	if (samples_per_us < 2)
+	{
+		add_to_err_log("SPI generator Bit rate too high compared to device sampling rate");
+	}
+
+	if (uiSpeed == SPEED.REGULAR)
+	{
+		oWDelays = REGULAR_DELAYS;
+	}
+	else
+	{
+		oWDelays = OVERDRIVE_DELAYS;
+	}
+}
+
+
+/*
+*/
+function gen_reset()
+{
+	add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10));
+	add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
+}
+
+
+/*
+*/
+function gen_presence (force_present)
+{
+	if (force_present)
+	{
+		add_samples(uiCh, 0, samples_per_us * (oWDelays.PDL_MAX / 2));	
+	}
+	else
+	{
+		add_samples(uiCh, 1, samples_per_us * (oWDelays.PDL_MAX / 2));	
+	}
+
+	add_samples(uiCh, 1, samples_per_us * 10);	
+}
+
+
+/*
+*/
+function gen_byte (code)
+{
+    var b, lvl, par;
+
+	for (var i = 0; i < 8; i++)
+	{
+		b = ((code >> i) & 0x1)
+
+		if (b == 1)
+		{
+			add_samples(uiCh, 0, samples_per_us * (oWDelays.LOW1_MAX / 2));
+			add_samples(uiCh, 1, samples_per_us * oWDelays.SLOT_MIN);
+		}
+		else
+		{
+			add_samples(uiCh, 0, samples_per_us * oWDelays.LOW0_MIN);
+			add_samples(uiCh, 1, samples_per_us * oWDelays.SLOT_MIN);
+		}
+	}
+
+    add_samples(uiCh, 1, samples_per_us * 100); 	// add delay between bytes
+}
+
+
+/*
+*/
+function gen_add_delay (n)
+{
+	add_samples(uiCh, 1, n);
 }
 
 /*
@@ -1102,8 +1189,8 @@ function build_demo_signals()
 	var samples_per_frame = 0;
 	var frames_to_disp = 0;
 	var demo_rom_code = new Array();
-	ini_1w_generator();
 
+	gen_init();
 
 	samples_per_frame = (oWDelays.RSTL_STD + 10);
 	samples_per_frame += (oWDelays.PDH_MAX / 2);
@@ -1151,76 +1238,6 @@ function build_demo_signals()
 			add_samples(uiCh, 1, n_samples / 20);	// delay between transactions
 		}
 	}
-}
-
-function ini_1w_generator()
-{
-	samples_per_us = get_sample_rate() / 1000000;
-	if (samples_per_us < 2)
-	{
-		add_to_err_log("SPI generator Bit rate too high compared to device sampling rate");
-	}
-	
-	if (uiSpeed == SPEED.REGULAR)
-	{
-		oWDelays = REGULAR_DELAYS;
-	}
-	else
-	{
-		oWDelays = OVERDRIVE_DELAYS;
-	}
-}
-
-function gen_add_delay(n)
-{
-	add_samples(uiCh, 1, n);
-}
-
-function gen_reset()
-{
-	add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10)); 	// reset
-	add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
-}
-
-function gen_presence(force_present)
-{
-	if (force_present)
-	{
-		add_samples(uiCh, 0, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence		
-	}
-	else
-	{
-		add_samples(uiCh, 1, samples_per_us * (oWDelays.PDL_MAX / 2)); 		// presence		
-	}
-	add_samples(uiCh, 1, samples_per_us * 10);							// delay	
-}
-
-/*
-*/
-function gen_byte (code)
-{
-    var i;
-    var b;
-    var lvl;
-	var par;
-
-	for (i = 0; i < 8; i++)
-	{
-		b = ((code >> i) & 0x1)
-
-		if (b == 1)
-		{
-			add_samples(uiCh, 0, samples_per_us * (oWDelays.LOW1_MAX / 2));
-			add_samples(uiCh, 1, samples_per_us * oWDelays.SLOT_MIN);
-		}
-		else
-		{
-			add_samples(uiCh, 0, samples_per_us * oWDelays.LOW0_MIN);
-			add_samples(uiCh, 1, samples_per_us * oWDelays.SLOT_MIN);
-		}
-	}
-
-    add_samples(uiCh, 1, samples_per_us * 100); 	// add delay between bytes
 }
 
 /*

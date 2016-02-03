@@ -19,10 +19,10 @@ The following commented block allows some related informations to be displayed o
 	V1.27: Prevented incompatible workspaces from using the decoder
 	V1.26: Now the decoding can be aborted
 	V1.25: A few minor fixes. New initial offset control.
-	V1.2: Added HexView support.
+	V1.2:  Added HexView support.
 	V1.15: UI improvements.
-	V1.1: Added support of 16 / 24 / 32-bit word size. Bug fixes.
-	V1.0: Initial release
+	V1.1:  Added support of 16 / 24 / 32-bit word size. Bug fixes.
+	V1.0:  Initial release
 
 </RELEASE_NOTES>
 
@@ -35,6 +35,11 @@ The following commented block allows some related informations to be displayed o
 *************************************************************************************
 */
 
+/*
+*************************************************************************************
+								      INFO
+*************************************************************************************
+*/
 
 /* The decoder name as it will apear to the users of this script 
 */
@@ -59,6 +64,32 @@ function get_dec_auth()
 	return "IKALOGIC";
 }
 
+/*
+*************************************************************************************
+							    GLOBAL VARIABLES
+*************************************************************************************
+*/
+
+var MAX_BITS_IN_WORD = 32;
+
+function I2sObject (type, value, ws, start, end)
+{
+	this.type = type;
+	this.value = value;
+	this.ws = ws;
+	this.start = start;
+	this.end = end;
+};
+
+var i2sObjectsArr;
+var bitsInWord;
+var avgtHigh;
+
+/*
+*************************************************************************************
+								   DECODER
+*************************************************************************************
+*/
 
 /* Graphical user interface for this decoder
 */
@@ -91,30 +122,6 @@ function gui()
 		ui_add_item_to_txt_combo("24");
 		ui_add_item_to_txt_combo("32");
 }
-
-
-/* Constants 
-*/
-var MAX_BITS_IN_WORD = 32;
-
-
-/* Object definitions
-*/
-function I2sObject (type, value, ws, start, end)
-{
-	this.type = type;
-	this.value = value;
-	this.ws = ws;
-	this.start = start;
-	this.end = end;
-};
-
-
-/* Global variables
-*/
-var i2sObjectsArr;
-var bitsInWord;
-var avgtHigh;
 
 
 /* This is the function that will be called from ScanaStudio
@@ -269,6 +276,37 @@ function decode_signal()
 	return true;
 }
 
+/*
+*************************************************************************************
+							    SIGNAL GENERATOR
+*************************************************************************************
+*/
+
+/*
+*/
+function generator_template()
+{
+	
+}
+
+/*
+*************************************************************************************
+							     DEMO BUILDER
+*************************************************************************************
+*/
+
+/*
+*/
+function build_demo_signals()
+{
+	
+}
+
+/*
+*************************************************************************************
+							        UTILS
+*************************************************************************************
+*/
 
 /*
 */

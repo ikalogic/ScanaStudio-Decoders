@@ -27,7 +27,6 @@ The following commented block allows some related informations to be displayed o
 
     mailto:ianmac51@gmail.com
     mailto:rolf.ziegler@z-control.ch
-    mailto:v.kosinov@ikalogic.com
 
 </AUTHOR_URL>
 
@@ -54,7 +53,7 @@ function get_dec_ver()
 */
 function get_dec_auth()
 {
-    return "IJM, RZI, IKALOGIC";
+    return "IJM, RZI";
 }
 
 
@@ -325,10 +324,10 @@ function get_preamble_data (ch, t)
     var next = 0;
 
     t = get_next_falling_edge(ch, t);  // Falling edge is start of data
-    trStart = t.sample;             
+    trStart = t.sample;
 
     t = get_next_rising_edge(ch, t);
-    next = t.sample;    
+    next = t.sample;
 
     tranLen = tr_len_us((next - trStart));
 

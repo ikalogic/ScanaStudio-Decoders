@@ -592,10 +592,9 @@ function decode()
 	}
 }
 
-
 /*
 *************************************************************************************
-							     Signal Generator
+							    SIGNAL GENERATOR
 *************************************************************************************
 */
 
@@ -646,33 +645,33 @@ function generator_template()
 		Configuration part : !! Configure this part !!
 		(Do not change variables names)
 	*/
-	ch_mosi = 0; //MOSI on CH 1
-	ch_miso = -1; //set to -1 to inhibit generator on MISO channel
-	ch_clk = 2;	//CLK on CH 3
-	ch_cs = 3;	//CS on CH 4
-	nbits = spi_n_bits(8); //bits per word
+
+	ch_mosi = 0; 			// MOSI on CH 1
+	ch_miso = -1; 			// set to -1 to inhibit generator on MISO channel
+	ch_clk = 2;				// CLK on CH 3
+	ch_cs = 3;				// CS on CH 4
+	nbits = spi_n_bits(8); 	// bits per word
 	order = MSB_FIRST;
 	cpol = CPOL_ACTIVE_HIGH;
 	cpha = CPHA_SAMP_LEADING;
 	cspol = CS_ACTIVE_LOW;
-	
-	
+
 	gen_bit_rate = 1000000; // bit rate expressed in Hz
-	
+
 	ini_spi_generator();
 
 	/*
 		Signal generation part !! Change this part according to your application !!
 	*/
-	
-	
 	gen_add_delay(samples_per_us * 5, cs_idle);
 	gen_cs(true);
-		for (var i = 0; i < 10; i++)
-		{
-			gen_add_word(i, 0);
-			gen_add_delay(samples_per_us, cs_active);
-		}
+
+	for (var i = 0; i < 10; i++)
+	{
+		gen_add_word(i, 0);
+		gen_add_delay(samples_per_us, cs_active);
+	}
+
 	gen_cs(false);
 }
 
@@ -693,7 +692,6 @@ function build_demo_signals()
 
 	ini_spi_generator();
 
-	//samples_per_us = get_sample_rate() / 1000000;
 	gen_add_delay(samples_per_us * 5, cs_idle);
 
 	while (get_samples_acc(ch_clk) < n_samples)
@@ -722,15 +720,20 @@ function build_demo_signals()
 	}
 }
 
+
+/*
+*/
 function ini_spi_generator()
 {
 	samples_per_bit = get_sample_rate() / gen_bit_rate;
+
 	if (samples_per_bit < 2)
 	{
 		add_to_err_log("SPI generator Bit rate too high compared to device sampling rate");
 	}
+
 	samples_per_us = get_sample_rate() / 1000000;
-	
+
 	if (cpol == 0)
 	{
 		c_idle = 0;
@@ -754,6 +757,7 @@ function ini_spi_generator()
 	}
 }
 
+
 /*
 */
 function gen_cs (st_sp)
@@ -772,10 +776,14 @@ function gen_cs (st_sp)
 	}
 }
 
+
+/*
+*/
 function spi_n_bits(b)
 {
 	return b-1;
 }
+
 
 /*
 */
