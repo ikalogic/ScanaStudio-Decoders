@@ -16,7 +16,8 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.25: Correc a bug that caused decoding to be aborted.
+	V1.26: New Packet View layout.
+	V1.25: Correct a bug that caused decoding to be aborted.
 	V1.24: Added CRC support in demo signal, and added signal generator capability
 	V1.23: More realistic demo signals generation
 	V1.22: Added protocol based trigger capability
@@ -58,7 +59,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.25";
+	return "1.26";
 }
 
 
@@ -251,8 +252,21 @@ function OWObject (type, value, start, end, duration, isLast)
 	this.isLast = isLast;
 };
 
+function PktObject (title, titleColor, data, dataLen, dataObjArr, dataColor, start, end)
+{
+	this.title = title;
+	this.titleColor = titleColor;
+	this.data = data;
+	this.dataLen = dataLen;
+	this.dataObjArr = dataObjArr;
+	this.dataColor = dataColor;
+	this.start = start;
+	this.end = end;
+};
+
 var oWDelays;
 var owObjects;
+var pktObjects;
 var samples_per_us;
 var ow_trig_steps = [];
 
@@ -318,6 +332,8 @@ function decode()
 	PKT_COLOR_UNKNW_TITLE   = dark_colors.black;
 	PKT_COLOR_OTHER_TITLE   = dark_colors.yellow;
 
+	pktObjects = [];
+
 	get_ui_vals();				 	// Update the content of all user interface related variables
 	var tr = trs_get_first(uiCh);	// Position the navigator for 'ch' channel at the first transition
 	clear_dec_items();			 	// Clears all the the decoder items and its content
@@ -333,7 +349,7 @@ function decode()
 
 	decode_signal(uiCh);
 
-	var firstIter = true;
+	var firstRun = true;
 
 	/* Do for all transitions
 	*/
@@ -412,14 +428,15 @@ function decode()
 						dec_item_add_pre_text("R");
 						dec_item_add_post_text(" (" + resetStatus + (Math.round(owObject.duration * 100) / 100) + " us)");
 
-						if (!firstIter)
+						if (!firstRun)
 						{
-							pkt_end();
+							// display new packet
+							show_new_packet();
 						}
 
-						pkt_start("1-WIRE");
-						pkt_add_item(-1, -1, "RESET", resetStatus + owObject.duration + "us", PKT_COLOR_RESET_TITLE, PKT_COLOR_DATA);
-						firstIter = false;
+						firstRun = false;
+
+						pktObjects.push(new PktObject("RESET", PKT_COLOR_RESET_TITLE, (resetStatus + owObject.duration + "us"), 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
 
 						state = STATE.PRESENCE;
 					}
@@ -430,7 +447,7 @@ function decode()
 					owObject = owObjects.shift();
 
 					if (owObject.type == OWOBJECT_TYPE.PRESENCE)
-					{						
+					{
 						if (owObject.value == true)
 						{
 							dec_item_new(uiCh, owObject.start, owObject.end);
@@ -439,7 +456,8 @@ function decode()
 							dec_item_add_pre_text("PRES");
 							dec_item_add_pre_text("P");
 							dec_item_add_post_text(" (" + (Math.round(owObject.duration * 100) / 100) + " us)");
-							pkt_add_item(-1, -1, "PRESENCE", (Math.round(owObject.duration * 100) / 100) + "us", PKT_COLOR_PRES_TITLE, PKT_COLOR_DATA);
+
+							pktObjects.push(new PktObject("PRESENCE", PKT_COLOR_PRES_TITLE, ((Math.round(owObject.duration * 100) / 100) + "us"), 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
 
 							owObject = owObjects.shift();
 							owObjects.unshift(owObject);
@@ -460,7 +478,8 @@ function decode()
 							dec_item_add_pre_text("PRESENCE MISSING");
 							dec_item_add_pre_text("MISSING");
 							dec_item_add_pre_text("M");
-							pkt_add_item(-1, -1, "PRESENCE", "PRESENCE MISSING", PKT_COLOR_PRES_TITLE, PKT_COLOR_DATA);
+
+							pktObjects.push(new PktObject("PRESENCE", PKT_COLOR_PRES_TITLE, "PRESENCE MISSING", 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
 
 							state = STATE.RESET;
 						}
@@ -498,8 +517,9 @@ function decode()
 						{
 							dec_item_add_pre_text(cmd.str);
 							dec_item_add_data(owByte.value);
-							pkt_add_item(-1, -1, "ROM COMMAND", cmd.str, PKT_COLOR_ROMCMD_TITLE, PKT_COLOR_DATA);
 
+							pktObjects.push(new PktObject("ROM COMMAND", PKT_COLOR_ROMCMD_TITLE, cmd.str, 0, 0, PKT_COLOR_DATA, owByte.start, owByte.end));
+							
 							switch (cmd)
 							{
 								case ROM_CMD.READ_ROM:
@@ -522,7 +542,7 @@ function decode()
 					   [LSB] 8-bit Family Code | 48-bit Serial Number | 8-bit CRC | [MSB]
 					*/
 					var owByte;
-					var romCode = new Array();
+					var romCode = [];
 					var pktFamilyCode = "", pktSerialStr = "", pktCrcStr = "";
 
 					do
@@ -602,22 +622,18 @@ function decode()
 
 						if (deviceCrc.value == calcCrc)
 						{
-							pktCrcStr += "(OK)";
+							pktCrcStr += " (OK)";
 							dec_item_add_post_text(" (OK)");
 						}
 						else
 						{
-							pktCrcStr += "(WRONG)";
+							pktCrcStr += " (WRONG)";
 							dec_item_add_post_text(" (WRONG)");
 						}
-
-						pkt_add_item(familyCode.start, deviceCrc.end, "ROM CODE", pktFamilyCodeStr, PKT_COLOR_ROMCODE_TITLE, PKT_COLOR_DATA);
-
-						pkt_start("ROM CODE");
-						pkt_add_item(familyCode.start, familyCode.end, "FAMILY CODE", pktFamilyCodeStr, PKT_COLOR_ROMCODE_TITLE, PKT_COLOR_DATA);
-						pkt_add_item(romCode[0].start, romCode[romCode.length - 2].end, "SERIAL CODE", pktSerialStr, PKT_COLOR_ROMCODE_TITLE, PKT_COLOR_DATA);
-						pkt_add_item(deviceCrc.start, deviceCrc.end, "CRC", pktCrcStr, PKT_COLOR_ROMCODE_TITLE, PKT_COLOR_DATA);
-						pkt_end();
+					
+						pktObjects.push(new PktObject("FAMILY CODE", PKT_COLOR_ROMCODE_TITLE, pktFamilyCodeStr, 0, 0, PKT_COLOR_DATA, familyCode.start, familyCode.end));
+						pktObjects.push(new PktObject("SERIAL CODE", PKT_COLOR_ROMCODE_TITLE, pktSerialStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 2].end));
+						pktObjects.push(new PktObject("CRC", PKT_COLOR_ROMCODE_TITLE, pktCrcStr, 0, 0, PKT_COLOR_DATA, deviceCrc.start, deviceCrc.end));
 					}
 					else if (romCode.length < 8)
 					{
@@ -625,7 +641,8 @@ function decode()
 
 						dec_item_new(uiCh, romCode[0].start, romCode[romCode.length - 1].end);
 						dec_item_add_pre_text(errStr);
-						pkt_add_item(-1, -1, "ROM CODE", errStr, PKT_COLOR_ROMCODE_TITLE, PKT_COLOR_DATA);
+
+						pktObjects.push(new PktObject("ROM CODE", PKT_COLOR_ROMCODE_TITLE, errStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 1].end));
 					}
 
 					state = STATE.DATA;
@@ -652,7 +669,8 @@ function decode()
 
 					dec_item_new(uiCh, firstByte.start, lastByte.end);
 					dec_item_add_pre_text("SEARCH ROM SEQUENCE");
-					pkt_add_item(-1, -1, "SEARCH ROM SEQUENCE", (owByteCnt * 8) + " bits", PKT_COLOR_OTHER_TITLE, PKT_COLOR_DATA);
+
+					pktObjects.push(new PktObject("SEARCH ROM SEQUENCE", PKT_COLOR_OTHER_TITLE, ((owByteCnt * 8) + " bits"), 0, 0, PKT_COLOR_DATA, firstByte.start, lastByte.end));
 
 					state = STATE.RESET;
 			break;
@@ -671,10 +689,16 @@ function decode()
 					}
 
 					var owByte;
-					var pktDataStr = "";
-					var pktDataStart = false, pktDataEnd;
-					var pktDataCnt = 0;
- 
+					var pktObj = new PktObject();
+
+					pktObj.title = "DATA";
+					pktObj.data = "";
+					pktObj.titleColor = PKT_COLOR_DATA_TITLE;
+					pktObj.dataColor = PKT_COLOR_DATA;
+					pktObj.dataObjArr = [];
+					pktObj.start = false;
+					pktObj.dataLen = 0;
+
  					do
 					{
 						owByte = get_ow_byte(uiCh);
@@ -684,20 +708,23 @@ function decode()
 							dec_item_new(uiCh, owByte.start, owByte.end);
 							dec_item_add_data(owByte.value);
 
-							pktDataStr += int_to_str_hex(owByte.value) + " ";
-							pktDataCnt++;
-
-							if (!pktDataStart)
-							{
-								pktDataStart = owByte.start;
-							}
-
-							pktDataEnd = owByte.end;
-
 							if ((uiHexView != HEXVIEW_OPT.ROM) && (uiHexView != HEXVIEW_OPT.ADR))
 							{
 								hex_add_byte(uiCh, -1, -1, owByte.value);
 							}
+
+							var dataStr = int_to_str_hex(owByte.value);
+							pktObj.data +=  dataStr + " ";
+							owByte.value = dataStr;
+							pktObj.dataObjArr.push(owByte);
+							pktObj.dataLen++;
+
+							if (!pktObj.start)
+							{
+								pktObj.start = owByte.start;
+							}
+
+							pktObj.end = owByte.end;
 						}
 
 						if (owByte.duration == true)
@@ -705,15 +732,17 @@ function decode()
 							dec_item_new(uiCh, owByte.start, owByte.end);
 							dec_item_add_pre_text("INVALID BYTE");
 
-							pktDataStr += " INVALID_BYTE ";
-							pktDataCnt++;
+							pktObj.data += "INVALID_BYTE" + " ";
+							owByte.value = "INVALID_BYTE";
+							pktObj.dataObjArr.push(owByte);
+							pktObj.dataLen++;
 						}
 
 					} while (owByte.isLast != true);
 
-					if (pktDataCnt > 0)
+					if (pktObj.dataLen > 0)
 					{
-						add_pkt_data(pktDataStart, pktDataEnd, pktDataStr, pktDataCnt);
+						pktObjects.push(pktObj);
 					}
 
 					state = STATE.RESET;
@@ -723,7 +752,6 @@ function decode()
 
 					state = STATE.RESET;
 					pkt_end();
-					//stop = true;	// Nothing to decode. Quit
 			break;
 		}
 	}
@@ -815,7 +843,7 @@ function get_ow_byte (ch)
 */
 function decode_signal (ch)
 {
-	owObjects = new Array();
+	owObjects = [];
 
 	var tr = trs_get_first(ch);
 
@@ -1071,7 +1099,7 @@ function generator_template()
 		Signal generation part !! Change this part according to your application !!
 	*/
 
-	var rom_code = new Array();
+	var rom_code = [];
 	var test = 0;
 
 	gen_add_delay(samples_per_us * 100);
@@ -1188,7 +1216,7 @@ function build_demo_signals()
 	var demo_cnt = 0;
 	var samples_per_frame = 0;
 	var frames_to_disp = 0;
-	var demo_rom_code = new Array();
+	var demo_rom_code = [];
 
 	gen_init();
 
@@ -1392,6 +1420,101 @@ function check_scanastudio_support()
 
 /*
 */
+function show_new_packet()
+{
+	var obj;
+	var desc = "";
+	var objCnt = 0;
+	var pktDataPerLine = 8;
+
+	if (pktObjects.length < 1)
+	{
+		return;
+	}
+
+	while (pktObjects.length > objCnt)
+	{
+		obj = pktObjects[objCnt];
+		objCnt++;
+
+		if (obj.title.localeCompare("RESET") == 0)       desc = desc + "RST ";
+		if (obj.title.localeCompare("PRESENCE") == 0)    desc = desc + "PR ";
+		if (obj.title.localeCompare("ROM COMMAND") == 0) desc = desc + "CMD ";
+		if (obj.title.localeCompare("FAMILY CODE") == 0) desc = desc + "ROM ";
+		if (obj.title.localeCompare("SEARCH ROM SEQUENCE") == 0) desc = desc + "SRCH ";
+		if (obj.title.localeCompare("DATA") == 0)        desc = desc + "DATA ";
+	}
+
+	objCnt = 0;
+
+	var pktStart = pktObjects[0].start;
+	var pktEnd = pktObjects[pktObjects.length - 1].end;
+
+	pkt_start("1-WIRE");
+	pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+	pkt_start("NEW FRAME");
+
+	while (pktObjects.length > objCnt)
+	{
+		obj = pktObjects[objCnt];
+		objCnt++;
+
+		if (obj.title.localeCompare("DATA") == 0)
+		{
+			if (obj.dataLen > pktDataPerLine)
+			{
+				var dataLine = "";
+				var lineStart = false, lineEnd;
+				var cnt = 0;
+
+				while (obj.dataObjArr.length > 0)
+				{
+					if (cnt < pktDataPerLine)
+					{
+						if (!lineStart)
+						{
+							lineStart = obj.dataObjArr[0].start;
+						}
+
+						lineEnd = obj.dataObjArr[0].end;
+						dataLine = dataLine + obj.dataObjArr.shift().value + " ";
+						cnt++;
+					}
+					else
+					{
+						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+						lineStart = false;
+						dataLine = "";
+						cnt = 0;
+					}
+				}
+
+				if (cnt > 0)
+				{
+					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+				}
+			}
+			else
+			{
+				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			}
+		}
+		else
+		{
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+		}
+	}
+
+	pkt_end();
+	pkt_end();
+
+	pktObjects.length = 0;
+	pktObjects = [];
+}
+
+
+/*
+*/
 function int_to_str_hex (num) 
 {
 	var temp = "0x";
@@ -1418,42 +1541,6 @@ function get_ch_light_color (k)
 	chColor.b = (chColor.b * 1 + 255 * 3) / 4;
 
 	return chColor;
-}
-
-
-/*
-*/
-function add_pkt_data (start, end, str, strLen)
-{
-	var pktDataPerLine = 10;
-
-	if (strLen > pktDataPerLine)
-	{
-		var strArr = str.split(" ", pktDataPerLine);
-		var strTemp = strArr.toString();
-		strTemp = strTemp.replace(/,/g, " ");
-		strTemp += " ...";
-
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-
-		strArr = str.split(" ");
-
-		for (var i = pktDataPerLine - 1; i < strArr.length; i += pktDataPerLine)
-		{
-			strArr[i] += "\n";
-		}
-
-		strTemp = strArr.toString();
-		strTemp = strTemp.replace(/,/g, " ");
-
-		pkt_start("DATA");
-		pkt_add_item(start, end, "DATA", strTemp.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-		pkt_end();
-	}
-	else
-	{
-		pkt_add_item(start, end, "DATA", str.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-	}
 }
 
 
