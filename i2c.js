@@ -15,30 +15,31 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.65: Added ScanaStudio 2.3xx compatibility.
 	V1.64: Fix for slow decoding speed, progress report 
-	       and demo generator overflow
-	V1.63: Added generator capability
-	V1.62: Fixed (N)ACK display error
-	V1.61: Fixed a ScanaQuad compatibility issue
-	V1.60: More realistic demo signals generation
+	       and demo generator overflow.
+	V1.63: Added generator capability.
+	V1.62: Fixed (N)ACK display error.
+	V1.61: Fixed a ScanaQuad compatibility issue.
+	V1.60: More realistic demo signals generation.
 	V1.59: Added more decoder trigger options.
-	V1.58: Added decoder trigger
-	V1.57: Added demo signal builder
-	V1.56: Fixed ACK missing display bug
-	V1.55: Solved major decoding bug
-	V1.54: Prevented incompatible workspaces from using this decoder
-	V1.53: Now the decoding can be aborted
+	V1.58: Added decoder trigger.
+	V1.57: Added demo signal builder.
+	V1.56: Fixed ACK missing display bug.
+	V1.55: Solved major decoding bug.
+	V1.54: Prevented incompatible workspaces from using this decoder.
+	V1.53: Now the decoding can be aborted.
 	V1.52: Removed Deprecated parts. Fixed bug with very slow i2c signals.
 	V1.50: Added new error messages. Bug fixes.
 	V1.45: A lot of bugs fixes. Performance improvements.
-	V1.40: UI improvements. New scl frequency option
-	V1.35: Added Packet/Hex View support
-	V1.30: Performance optimizations. Decoding time decreased by half
-	V1.25: Visual improvements. Added signal noise handling
-	V1.20: Some user error messages removed
-	V1.15: Bug fixes
-	V1.10: A bunch of small compatibility fixes
-	V1.00: Initial release
+	V1.40: UI improvements. New scl frequency option.
+	V1.35: Added Packet/Hex View support.
+	V1.30: Performance optimizations. Decoding time decreased by half.
+	V1.25: Visual improvements. Added signal noise handling.
+	V1.20: Some user error messages removed.
+	V1.15: Bug fixes.
+	V1.10: A bunch of small compatibility fixes.
+	V1.00: Initial release.
 
 </RELEASE_NOTES>
 
@@ -69,7 +70,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.64";
+	return "1.65";
 }
 
 
@@ -223,12 +224,6 @@ function decode()
 	PKT_COLOR_NACK_TITLE  = dark_colors.red;
 	PKT_COLOR_STOP_TITLE  = dark_colors.blue;
 	PKT_COLOR_NOISE_TITLE = dark_colors.black;
-
-	if (!check_scanastudio_support())
-    {
-        add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
-        return;
-    }
 
 	var errSig = test_signal();
 
@@ -952,7 +947,7 @@ function generator_template()
 	chScl = 1; //SCL on ch 2
 	
 	gen_bit_rate = 100000; // bit rate expressed in Hz
-	var samples_per_us = get_sample_rate()/1000000;
+	var samples_per_us = get_srate()/1000000;
 	ini_i2c_generator();
 
 	/*
@@ -984,7 +979,7 @@ function build_demo_signals()
 	var last_samples_acc = 0;
 	var demo_cnt = 0;
 	var inter_transaction_silence = n_samples / 100;
-	var samples_per_us = get_sample_rate()/1000000;
+	var samples_per_us = get_srate() / 1000000;
 	gen_bit_rate = 100000;
 
 	ini_i2c_generator();
@@ -1019,7 +1014,7 @@ function build_demo_signals()
 
 function ini_i2c_generator()
 {
-	samples_per_scl_cycle = (get_sample_rate() / gen_bit_rate) / 2; 	// Samples per half SCL cycle
+	samples_per_scl_cycle = (get_srate() / gen_bit_rate) / 2; 	// Samples per half SCL cycle
 		
 	add_samples(chScl, 1, samples_per_scl_cycle * 10);
 	add_samples(chSda, 1, samples_per_scl_cycle * 10);
@@ -1335,21 +1330,6 @@ function get_ch_light_color (k)
 
 /*
 */
-function check_scanastudio_support()
-{
-    if (typeof(pkt_start) != "undefined")
-    { 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-
-/*
-*/
 function add_pkt_data (start, end, str, strLen)
 {
 	var pktDataPerLine = 10;
@@ -1448,11 +1428,26 @@ function get_avg_thigh (trSt)
 }
 
 
+/* ScanaStudio 2.3 compatibility function
+*/
+function get_srate()
+{
+	if (typeof get_sample_rate === "function")
+	{
+		return get_sample_rate();
+	}
+	else
+	{
+		return sample_rate;
+	}
+}
+
+
 /*  Get number of samples for the specified duration in microseconds
 */
 function get_num_samples_for_us (us)
 {
-	return ((us * get_sample_rate()) / 1000000);
+	return ((us * get_srate()) / 1000000);
 }
 
 

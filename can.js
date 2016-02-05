@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.31: Added ScanaStudio 2.3xx compatibility.
 	V1.30: Added decoder trigger & demo signal builder
 	V1.27: Fixed Hex View wrong endianness
 	V1.26: Now the decoding can be aborted
@@ -57,7 +58,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.30";
+	return "1.31";
 }
 
 
@@ -144,12 +145,6 @@ function decode()
 	{
 		hex_opt = 0;
 	}
-
-	if (!check_scanastudio_support())
-    {
-        add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
-        return;
-    }
 
 	if (rate == 0)
 	{
@@ -754,7 +749,7 @@ function build_demo_signals()
 {
 	var i = 0, k = 0;
 
-	spb = (get_sample_rate() / rate); 		// Calculate the number of samples per bit
+	spb = (get_srate() / rate); 	// Calculate the number of samples per bit
 
 	while (get_samples_acc(ch) < (n_samples - (spb * 200)))
 	{
@@ -1153,25 +1148,24 @@ function trig_add_stuffing_bits (bitArr)
 	}
 }
 
-
 /*
 *************************************************************************************
 							        UTILS
 *************************************************************************************
 */
 
-/*
+/* ScanaStudio 2.3 compatibility function
 */
-function check_scanastudio_support()
+function get_srate()
 {
-    if (typeof(pkt_start) != "undefined")
-    { 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+	if (typeof get_sample_rate === "function")
+	{
+		return get_sample_rate();
+	}
+	else
+	{
+		return sample_rate;
+	}
 }
 
 

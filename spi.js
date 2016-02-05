@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.57: Added ScanaStudio 2.3xx compatibility.
 	V1.56: Added generator capability
 	V1.55: New options for trigger part
 	V1.54: Trigger fix
@@ -66,7 +67,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.56";
+	return "1.57";
 }
 
 
@@ -309,12 +310,6 @@ function decode()
 	get_ui_vals();
 
 	nbits = nbits + 1;		// readjust the number of bits variable
-
-	if (!check_scanastudio_support())
-    {
-        add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
-        return;
-    }
 
 	if (n_to_decode == 0) n_to_decode = 500;
 	if (n_to_decode == 1) n_to_decode = 1000;
@@ -725,14 +720,14 @@ function build_demo_signals()
 */
 function ini_spi_generator()
 {
-	samples_per_bit = get_sample_rate() / gen_bit_rate;
+	samples_per_bit = get_srate() / gen_bit_rate;
 
 	if (samples_per_bit < 2)
 	{
 		add_to_err_log("SPI generator Bit rate too high compared to device sampling rate");
 	}
 
-	samples_per_us = get_sample_rate() / 1000000;
+	samples_per_us = get_srate() / 1000000;
 
 	if (cpol == 0)
 	{
@@ -1068,21 +1063,6 @@ function int_to_str_hex (num)
 
 /*
 */
-function check_scanastudio_support()
-{
-    if (typeof(pkt_start) != "undefined")
-    { 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-
-/*
-*/
 function get_ch_light_color (k)
 {
     var chColor = get_ch_color(k);
@@ -1095,20 +1075,25 @@ function get_ch_light_color (k)
 }
 
 
+/* ScanaStudio 2.3 compatibility function
+*/
+function get_srate()
+{
+	if (typeof get_sample_rate === "function")
+	{
+		return get_sample_rate();
+	}
+	else
+	{
+		return sample_rate;
+	}
+}
+
+
 /*
 */
 function get_bit_margin()
 {
 	var k = 1;
-	return ((k * get_sample_rate()) / 10000000);
+	return ((k * get_srate()) / 10000000);
 }
-
-
-
-
-
-
-
-
-
-

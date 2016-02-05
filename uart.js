@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.40: Added ScanaStudio 2.3xx compatibility.
 	V1.39: Added Signal Generator capability
 	V1.38: Added ability to trigger on a phrase like "Hello World"
 	V1.37: Added definition of ASYNC mode (required by ScanaStudio V2.4).
@@ -60,7 +61,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.39";
+	return "1.40";
 }
 
 
@@ -154,12 +155,6 @@ function decode()
 	var m; 					// margin between blocks
 	var logic1, logic0;
 	var bit;
-
-	if (!check_scanastudio_support())
-    {
-        add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
-        return;
-    }
 
     get_ui_vals();
 
@@ -583,7 +578,7 @@ function delay (n_bits)
 */
 function ini_uart_generator()
 {
-	var sample_r = get_sample_rate();
+	var sample_r = get_srate();
 
 	samples_per_bit = sample_r / baud;
 	
@@ -885,21 +880,6 @@ function int_to_str_hex (num)
 
 /*
 */
-function check_scanastudio_support()
-{
-    if (typeof(pkt_start) != "undefined")
-    { 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-
-/*
-*/
 function get_ch_light_color (k)
 {
     var chColor = get_ch_color(k);
@@ -909,6 +889,21 @@ function get_ch_light_color (k)
     chColor.b = (chColor.b * 1 + 255 * 3) / 4;
 
     return chColor;
+}
+
+
+/* ScanaStudio 2.3 compatibility function
+*/
+function get_srate()
+{
+	if (typeof get_sample_rate === "function")
+	{
+		return get_sample_rate();
+	}
+	else
+	{
+		return sample_rate;
+	}
 }
 
 
