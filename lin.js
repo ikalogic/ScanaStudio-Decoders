@@ -15,6 +15,9 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.31: Fixed bug with first BREAK field detection.
+	       Added ScanaStudio 2.3xx compatibility.
+		   New Packet View layout.
 	V1.30: Added decoder trigger & demo signal builder
 	V1.27: Added LIN WakeUp conditions and baudrate detection.
 	V1.25: Added signal noise handling. Added automatic LIN protocol version detection.
@@ -52,7 +55,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.30";
+	return "1.31";
 }
 
 
@@ -138,7 +141,20 @@ function LinObject (type, value, start, end)
 	this.end = end;
 };
 
+function PktObject (title, titleColor, data, dataLen, dataObjArr, dataColor, start, end)
+{
+	this.title = title;
+	this.titleColor = titleColor;
+	this.data = data;
+	this.dataLen = dataLen;
+	this.dataObjArr = dataObjArr;
+	this.dataColor = dataColor;
+	this.start = start;
+	this.end = end;
+};
+
 var linObjectsArr;
+var pktObjects;
 
 var nData = 8;
 var tBit, tBfs, tEbs, tLbs, tBs;
@@ -186,12 +202,6 @@ function decode()
 	get_ui_vals();			// Update the content of all user interface related variables
 	clear_dec_items();		// Clears all the the decoder items and its content
 
-	if (!check_scanastudio_support())
-    {
-        add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
-        return;
-    }
-
 	PKT_COLOR_DATA        = get_ch_light_color(chLin);
 	PKT_COLOR_INVALID     = dark_colors.red;
 	PKT_COLOR_WAKE_TITLE  = dark_colors.yellow;
@@ -201,6 +211,9 @@ function decode()
 	PKT_COLOR_ID_TITLE    = dark_colors.green;
 	PKT_COLOR_CHECK_TITLE = dark_colors.blue;
 
+	pktObjects = [];
+
+	var pktOk = true;
 	var errSig = test_signal();
 
 	if (errSig == ERR_CODES.ERR_SIGNAL)
@@ -228,35 +241,41 @@ function decode()
 		switch (linObject.type)
 		{
 			case LINOBJECT_TYPE.BREAK:
-
-					pkt_start("LIN");
+			
+					if (pktObjects.length > 0)
+					{
+						pkt_add_packet(pktOk);
+					}
 
 					if (linObject.value != false)
 					{
 						dec_item_add_pre_text("BREAK");
 						dec_item_add_pre_text("BR");
 						dec_item_add_comment("BREAK");
-						pkt_add_item(-1, -1, "BREAK", "", PKT_COLOR_BREAK_TITLE, PKT_COLOR_DATA, true);
+
+						pktObjects.push(new PktObject("BREAK", PKT_COLOR_BREAK_TITLE, "", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
 					}
 					else
 					{
 						dec_item_add_pre_text("INVALID BREAK");
 						dec_item_add_pre_text("BAD BR");
 						dec_item_add_comment("INVALID BREAK");
-						pkt_add_item(-1, -1, "INVALID BREAK", "", PKT_COLOR_INVALID, PKT_COLOR_DATA, true);
+
+						pktObjects.push(new PktObject("INVALID BREAK", PKT_COLOR_INVALID, "", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
+						pktOk = false;
 					}
 			break;
 
 			case LINOBJECT_TYPE.WAKE:
-			
+
 					dec_item_add_pre_text("WAKE UP");
 					dec_item_add_pre_text("WAKE");
 					dec_item_add_pre_text("W");
 					dec_item_add_comment("WAKE UP");
 
-					pkt_start("LIN");
-					pkt_add_item(-1, -1, "WAKE UP", "", PKT_COLOR_WAKE_TITLE, PKT_COLOR_DATA, true);
-					pkt_end();
+					pktObjects.push(new PktObject("WAKE UP", PKT_COLOR_WAKE_TITLE, "", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
+					pkt_add_packet(true);
+					pktOk = true;
 			break;
 
 			case LINOBJECT_TYPE.SYNC:
@@ -269,32 +288,25 @@ function decode()
 						dec_item_add_pre_text("SYNC");
 						dec_item_add_pre_text("SY");
 						dec_item_add_comment("SYNC");
-						pkt_add_item(-1, -1, "SYNC", baudrateStr, PKT_COLOR_SYNC_TITLE, PKT_COLOR_DATA, true);
+
+						pktObjects.push(new PktObject("SYNC", PKT_COLOR_SYNC_TITLE, baudrateStr, 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
 					}
 					else
 					{
 						dec_item_add_pre_text("INVALID SYNC");
 						dec_item_add_pre_text("INVALID SYNC");
 						dec_item_add_comment("INVALID SYNC");
-						pkt_add_item(-1, -1, "INVALID SYNC", "", PKT_COLOR_INVALID, PKT_COLOR_DATA, true);
+
+						pktObjects.push(new PktObject("INVALID SYNC", PKT_COLOR_INVALID, "", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
+						pktOk = false;
 					}
-			break;
-
-			case LINOBJECT_TYPE.START:
-
-					dec_item_add_pre_text("START BIT");
-					dec_item_add_pre_text("START");
-					dec_item_add_pre_text("ST");
-					dec_item_add_comment("START BIT");
-					
 			break;
 
 			case LINOBJECT_TYPE.BYTE:
 
 					var dataArr = new Array();
-					var iters = 0;
 
-					while ((linObject.type == LINOBJECT_TYPE.BYTE) || (linObject.type == LINOBJECT_TYPE.START) && (linObjectsArr.length > 0))
+					while ((linObject.type == LINOBJECT_TYPE.BYTE) && (linObjectsArr.length > 0))
 					{
 						if (linObject.type == LINOBJECT_TYPE.BYTE)
 						{
@@ -306,18 +318,21 @@ function decode()
 						}
 
 						linObject = linObjectsArr.shift();
-
-						iters++;
-
-						if (iters > 20)		// 8 bytes max + 8 starts max
-						{
-							break;     		// no more data, only starts
-						}
 					}
 
 					if (linObjectsArr.length > 0)
 					{
 						linObjectsArr.unshift(linObject);
+					}
+
+					if (dataArr.length < 1)
+					{
+						if (pktObjects.length > 0)
+						{
+							pkt_add_packet(false);
+						}
+
+						return;
 					}
 
 					// Display ID
@@ -339,18 +354,18 @@ function decode()
 					{
 						parStr = "ERR";
 						idCompleteStr += "ERR";
+						pktOk = false;
 					}
 
 					dec_item_add_data(idField.value);
 					dec_item_add_post_text(" (" + idCompleteStr + ")");
 					dec_item_add_comment(idCompleteStr);
 
-					pkt_add_item(-1, -1, "PID", int_to_str_hex(idField.value), PKT_COLOR_ID_TITLE, PKT_COLOR_DATA, true);
+					var pidStart = dataArr[0].start;
+					var pidEnd = dataArr[0].end;
+					var pidStr = "ID:" + int_to_str_hex(id) + " PARITY:" + parStr;
 
-					pkt_start("PID");
-					pkt_add_item(-1, -1, "FRAME ID", int_to_str_hex(id), PKT_COLOR_ID_TITLE, PKT_COLOR_DATA, true);
-					pkt_add_item(-1, -1, "PARITY", parStr, PKT_COLOR_ID_TITLE, PKT_COLOR_DATA, true);
-					pkt_end();
+					pktObjects.push(new PktObject("PID", PKT_COLOR_ID_TITLE, pidStr, 0, int_to_str_hex(id), PKT_COLOR_DATA, pidStart, pidEnd));
 
 					if (hexView != HEXVIEW_OPT.DATA)
 					{
@@ -379,15 +394,18 @@ function decode()
 						pktDataEnd = dataArr[i].end;
 						pktDataCnt++;
 					}
-					
+
 					if (dataArr.length > 1)
 					{
-						add_pkt_data (pktDataStart, pktDataEnd, pktDataStr, pktDataCnt);
+						var dataPktArr = dataArr;
+						pktObjects.push(new PktObject("DATA", PKT_COLOR_DATA_TITLE, pktDataStr.trim(), (dataPktArr.length - 2), dataPktArr, PKT_COLOR_DATA, dataArr[1].start, dataPktArr[dataPktArr.length - 2].end));
 
 						// Check and display Checksum
 						var checksum = dataArr[dataArr.length - 1];		// Last byte in the frame is always checksum
 						var checkResultStr = int_to_str_hex(checksum.value);
 						var checkResult = "";
+						var checkStart = dataArr[dataArr.length - 1].start;
+						var checkEnd = dataArr[dataArr.length - 1].end;
 						var checkOk = true;
 
 						if (compute_checksum(dataArr))
@@ -400,6 +418,7 @@ function decode()
 							checkResultStr += "(WRONG)";
 							checkResult += "WRONG";
 							checkOk = false;
+							pktOk = false;
 						}
 
 						dec_item_new(chLin, checksum.start, checksum.end);
@@ -411,25 +430,30 @@ function decode()
 
 						if (checkOk)
 						{
-							pkt_add_item(-1, -1, "CHECKSUM", checkResultStr, PKT_COLOR_CHECK_TITLE, PKT_COLOR_DATA, true);
+							pktObjects.push(new PktObject("CHECKSUM", PKT_COLOR_CHECK_TITLE, checkResultStr, 0, 0, PKT_COLOR_DATA, checkStart, checkEnd));
 						}
 						else
 						{
-							pkt_add_item(-1, -1, "CHECKSUM", checkResultStr, PKT_COLOR_INVALID, PKT_COLOR_DATA, true);
+							pktObjects.push(new PktObject("CHECKSUM", PKT_COLOR_INVALID, checkResultStr, 0, 0, PKT_COLOR_DATA, checkStart, checkEnd));
 						}
+						
+						pkt_add_packet(pktOk);
+						pktOk = true
 
 						if (hexView == HEXVIEW_OPT.ALL)
 						{
 							hex_add_byte(chLin, -1, -1, checksum.value);
 						}
-						
+
 						dataArr.length = 0;
 					}
-
-					pkt_end();
-
 			break;
 		}
+	}
+
+	if (pktObjects.length > 0)
+	{
+		pkt_add_packet(false);
 	}
 }
 
@@ -438,7 +462,8 @@ function decode()
 */
 function decode_signal()
 {
-	linObjectsArr = new Array();
+	linObjectsArr = [];
+
 	var trLin = get_first_break_start();
 
 	while (trs_is_not_last(chLin) != false)				// For all transitons on this channel
@@ -455,17 +480,19 @@ function decode_signal()
 
 		while (breakFound != true)
 		{
-			trLin = get_next_falling_edge(chLin, trLin);	// Find start of BREAK field		
+			trLin = get_next_falling_edge(chLin, trLin);	// Find start of BREAK field
+
 			var trLinPrev = trLin;
 			var tBreakSt = trLinPrev.sample;
+
 			trLin = get_next_rising_edge(chLin, trLin);     // Find end of BREAK field
 			var tBreakEnd = trLin.sample;
 
-			if (trLin == false)								// No more transitions
+			if (trs_is_not_last(chLin) != true)
 			{
 				return;
 			}
-	
+
 			trLin = get_next_edge(chLin, trLin);
 			stBitStart = trLin.sample;
 
@@ -488,18 +515,19 @@ function decode_signal()
 			}
 		}
 
-		var sof = tBreakSt, eof = 0;					// start of frame & end of frame
+		var sof = tBreakSt, eof = 0;			// start of frame & end of frame
 		var t1, t0 = trLin.sample;
 		stBitStart = t0;
 		var stBitEnd = false;
 		var breakOk = true;
-		var syncBitArr = new Array();					// Array of all sync bits duration
+		var syncBitDeltaArr = [];				// Array of all sync bits duration
 		var syncDurationOk = true;
-		var syncVal = 0;								// Sync field value
+		var syncVal = 0;						// Sync field value
 
-		for (var i = 0; i < 9; i++) 					// Search for all 9 edges of SYNC field, (8 bits + start and stop bits)
+		for (var i = 0; i < 9; i++) 			// Search for all 9 edges of SYNC field, (8 bits + start and stop bits)
 		{
 			var tTemp = trLin.sample;
+
 			trLin = get_next_edge(chLin, trLin);
 			t1 = trLin.sample;
 
@@ -510,21 +538,21 @@ function decode_signal()
 					syncVal |= (1 << i);
 				}
 
-				syncBitArr[i] = t1 - tTemp;
+				syncBitDeltaArr[i] = t1 - tTemp;
 			}
 
 			if (stBitEnd == false)
 			{
-				stBitEnd = trLin.sample;
+				stBitEnd = trLin.sample;	
 			}
 		}
 
-		tBit = ((t1 - t0) / 9);							// Calc average bit duration
-		update_t_variales();							// Update all others time variables with this new tBit value
+		tBit = ((t1 - t0) / 9);		// Calc average bit duration
+		update_t_variales();		// Update all others time variables with this new tBit value
 
 		for (var i = 0; i < 8; i++)
 		{
-			if (syncBitArr[i] > (2 * tBit))
+			if (syncBitDeltaArr[i] > (2 * tBit))
 			{
 				syncDurationOk = false;
 			}
@@ -538,10 +566,8 @@ function decode_signal()
 		}
 
 		linObjectsArr.push(new LinObject(LINOBJECT_TYPE.BREAK, breakOk, tBreakSt, tBreakEnd));
-	
-		trLin = get_next_edge(chLin, trLin);	// Get the last edge of stop bit
 
-		// linObjectsArr.push(new LinObject(LINOBJECT_TYPE.START, false, stBitStart, stBitEnd));		// OPTIMISATION ISSUE
+		trLin = get_next_edge(chLin, trLin);	// Get the last edge of stop bit
 
 		if (stBitEnd != t1)
 		{
@@ -562,7 +588,7 @@ function decode_signal()
 
 		var i = 0;
 
-		do										// 3-10 bytes to receive: 1 id field, 1-8 data bytes and 1 checksum byte
+		do				// 3-10 bytes to receive: 1 id field, 1-8 data bytes and 1 checksum byte
 		{
 			var byteEnd = false;
 			var byteValue = 0;
@@ -590,8 +616,7 @@ function decode_signal()
 				tSample += tBit;
 			}
 
-			// linObjectsArr.push(new LinObject(LINOBJECT_TYPE.START, false, stBitStart, stBitEnd));		// OPTIMISATION ISSUE
-			linObjectsArr.push(new LinObject(LINOBJECT_TYPE.BYTE, byteValue, stBitEnd, byteEnd - tBs));
+			linObjectsArr.push(new LinObject(LINOBJECT_TYPE.BYTE, byteValue, stBitEnd, (byteEnd - tBs)));
 
 			trLinPrev = trLin;
 			trLin = trs_go_after(chLin, byteEnd);		// Get the last edge (falling edge of the next start bit)
@@ -604,7 +629,7 @@ function decode_signal()
 
 			i++;
 
-		} while ((i < 10) && (trLin.sample - trLinPrev.sample) <= tBit * T_MAX_BETWEEN_BYTES);
+		} while ((i < 10) && ((trLin.sample - trLinPrev.sample) <= (tBit * T_MAX_BETWEEN_BYTES)));
 	}
 
 	return true;
@@ -616,7 +641,8 @@ function decode_signal()
 function get_first_break_start()
 {
 	var trLin = trs_get_first(chLin);
-	var trBeforeBreak;
+	var trFirst = trLin;
+	var firstRun = true;
 
 	while (trs_is_not_last(chLin) != false)					// For all transitons on this channel
 	{
@@ -627,10 +653,23 @@ function get_first_break_start()
 
 		var breakFound = false;
 
-		while (breakFound != true)
+		while ((breakFound != true))
 		{
-			trBeforeBreak = trLin;
-			trLin = trs_get_next(chLin);
+			trFirst = trLin;
+
+			if (firstRun)
+			{
+				firstRun = false;
+
+				if (trFirst.val != FALLING)
+				{
+					trLin = trs_get_next(chLin);
+				}
+			}
+			else
+			{
+				trLin = trs_get_next(chLin);
+			}
 
 			if (trLin.val == FALLING)						// Get BREAK start
 			{
@@ -644,6 +683,11 @@ function get_first_break_start()
 				{
 					breakFound = true;
 				}
+			}
+
+			if (trs_is_not_last(chLin) != true)
+			{
+				return;
 			}
 		}
 
@@ -672,8 +716,8 @@ function get_first_break_start()
 		{
 			if (syncVal == SYNC_FIELD_VALUE)
 			{
-				trLin = trs_go_before(chLin, trBeforeBreak.sample);
-				return trBeforeBreak;
+				trLin = trs_go_before(chLin, trFirst.sample);
+				return trFirst;
 			}
 		}
 	}
@@ -721,7 +765,7 @@ function test_signal()
 		}
 
 		tBit = ((t1 - t0) / 9);							// Find average bit duration
-		
+
 		var tBreak = tBreakEnd - tBreakSt;
 
 		if (tBreak >= (T_MIN_BREAK_BITS * tBit))		// A break field must be at least 13 nominal bit times
@@ -1110,6 +1154,116 @@ function get_parity (id)
 
 /*
 */
+function pkt_add_packet (ok)
+{
+	var obj;
+	var desc = "";
+	var objCnt = 0;
+	var pktDataPerLine = 100;
+
+	if (pktObjects.length < 1)
+	{
+		return;
+	}
+
+	for (var i = 0; i < pktObjects.length; i++)
+	{
+		obj = pktObjects[i];
+		
+		if (obj.title.localeCompare("WAKE UP") == 0)
+		{
+			desc += "WAKE ";
+		}
+
+		if (obj.title.localeCompare("PID") == 0)
+		{
+			desc += "ID:" + obj.dataObjArr + " ";
+		}
+
+		if (obj.title.localeCompare("DATA") == 0)
+		{
+			desc += "DATA[" + obj.dataLen + "]";
+		}
+	}
+
+	var pktStart = pktObjects[0].start;
+	var pktEnd = pktObjects[pktObjects.length - 1].end;
+
+	pkt_start("LIN");
+
+	if (ok)
+	{
+		pkt_add_item(pktStart, pktEnd, "LIN FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+	}
+	else
+	{
+		pkt_add_item(pktStart, pktEnd, "LIN FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA);
+	}
+
+	pkt_start("NEW FRAME");
+
+	while (pktObjects.length > objCnt)
+	{
+		obj = pktObjects[objCnt];
+		objCnt++;
+
+		if (obj.title.localeCompare("DATA") == 0)
+		{
+			if (obj.dataLen > pktDataPerLine)
+			{
+				var dataLine = "";
+				var lineStart = false, lineEnd;
+				var dataCnt = 0, lineCnt = 0;
+
+				while (obj.dataObjArr.length > dataCnt)
+				{
+					if (lineCnt <= pktDataPerLine)
+					{
+						if (!lineStart)
+						{
+							lineStart = obj.dataObjArr[dataCnt].start;
+						}
+
+						lineEnd = obj.dataObjArr[dataCnt].end;
+						dataLine = dataLine + obj.dataObjArr[dataCnt].value + " ";
+						lineCnt++;
+						dataCnt++;
+					}
+					else
+					{
+						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+						lineStart = false;
+						dataLine = "";
+						lineCnt = 0;
+					}
+				}
+
+				if (lineCnt > 0)
+				{
+					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+				}
+			}
+			else
+			{
+				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			}
+		}
+		else
+		{
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+		}
+	}
+
+	pkt_end();
+	pkt_end();
+
+	pktObjects.length = 0;
+	pktObjects = [];
+}
+
+
+/*
+*/
 function int_to_str_hex (num) 
 {
 	var temp = "0x";
@@ -1136,43 +1290,6 @@ function get_ch_light_color (k)
 	chColor.b = (chColor.b * 1 + 255 * 3) / 4;
 
 	return chColor;
-}
-
-
-/*
-*/
-function add_pkt_data (start, end, str, strLen)
-{
-	var pktDataPerLine = 10;
-
-	if (strLen > pktDataPerLine)
-	{
-		var strArr = str.split(" ", pktDataPerLine);
-		var strTemp = strArr.toString();
-		strTemp = strTemp.replace(/,/g, " ");
-		strTemp += " ...";
-
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-
-		strArr = str.split(" ");
-
-		for (var i = pktDataPerLine - 1; i < strArr.length; i += pktDataPerLine)
-		{
-			strArr[i] += "\n";
-		}
-
-		strTemp = strArr.toString();
-		strTemp = strTemp.replace(/,/g, " ");
-
-		pkt_start("DATA");
-		pkt_add_item(start, end, "DATA", strTemp.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-		pkt_end();
-
-	}
-	else
-	{
-		pkt_add_item(start, end, "DATA", str.trim(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-	}
 }
 
 
@@ -1212,7 +1329,7 @@ function update_t_variales()
 function check_noise (tr1, tr2)
 {
 	var diff = tr2.sample - tr1.sample;
-	var t = diff * (1 / get_sample_rate());
+	var t = diff * (1 / get_srate());
 
 	if (t <= LIN_MIN_T)
 	{
@@ -1303,11 +1420,26 @@ function get_next_rising_edge (ch, trSt)
 }
 
 
+/* ScanaStudio 2.3 compatibility function
+*/
+function get_srate()
+{
+	if (typeof get_sample_rate === "function")
+	{
+		return get_sample_rate();
+	}
+	else
+	{
+		return sample_rate;
+	}
+}
+
+
 /* Get time difference in microseconds between two transitions
 */
 function get_trsdiff_us (tr1, tr2)
 {
-	return (((tr2.sample - tr1.sample) * 1000000) / get_sample_rate());
+	return (((tr2.sample - tr1.sample) * 1000000) / get_srate());
 }
 
 
@@ -1315,7 +1447,7 @@ function get_trsdiff_us (tr1, tr2)
 */
 function get_sample_diff_us (sp1, sp2)
 {
-	return (((sp2 - sp1) * 1000000) / get_sample_rate());
+	return (((sp2 - sp1) * 1000000) / get_srate());
 }
 
 
@@ -1331,20 +1463,5 @@ function get_trsdiff_samples (tr1, tr2)
 */
 function get_num_samples_for_us (us)
 {
-	return ((us * get_sample_rate()) / 1000000);
-}
-
-
-/*
-*/
-function check_scanastudio_support()
-{
-    if (typeof(pkt_start) !== "undefined")
-    { 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+	return ((us * get_srate()) / 1000000);
 }
