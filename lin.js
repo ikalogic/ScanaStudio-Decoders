@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.32: Performance optimizations. Corrected a bug in the way decoded data is displayed.
 	V1.31: Fixed bug with first BREAK field detection.
 	       Added ScanaStudio 2.3xx compatibility.
 		   New Packet View layout.
@@ -55,7 +56,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.31";
+	return "1.32";
 }
 
 
@@ -213,6 +214,7 @@ function decode()
 
 	pktObjects = [];
 
+	var objCnt = 0;
 	var pktOk = true;
 	var errSig = test_signal();
 
@@ -228,14 +230,21 @@ function decode()
 
 	decode_signal();
 
-	while (linObjectsArr.length > 0)
+	while (linObjectsArr.length > objCnt)
 	{
 		if (abort_requested())
 		{
 			return false;
 		}
 
-		linObject = linObjectsArr.shift();
+		linObject = linObjectsArr[objCnt];
+		objCnt++;
+
+		if (linObjectsArr.length < objCnt)
+		{
+			return;
+		}
+
 		dec_item_new(chLin, linObject.start, linObject.end);
 
 		switch (linObject.type)
@@ -304,25 +313,28 @@ function decode()
 
 			case LINOBJECT_TYPE.BYTE:
 
-					var dataArr = new Array();
+					var dataArr = [];
+					var done = false;
 
-					while ((linObject.type == LINOBJECT_TYPE.BYTE) && (linObjectsArr.length > 0))
+					while (done != true)
 					{
 						if (linObject.type == LINOBJECT_TYPE.BYTE)
 						{
 							dataArr.push(linObject);		// Store all data for the next cheksum verification
+
+							linObject = linObjectsArr[objCnt];
+							objCnt++;
+
+							if (linObjectsArr.length < objCnt)
+							{
+								done = true;
+							}
 						}
 						else
 						{
-							linObjectsArr.push(linObject);
+							objCnt--;
+							done = true;
 						}
-
-						linObject = linObjectsArr.shift();
-					}
-
-					if (linObjectsArr.length > 0)
-					{
-						linObjectsArr.unshift(linObject);
 					}
 
 					if (dataArr.length < 1)
@@ -436,7 +448,7 @@ function decode()
 						{
 							pktObjects.push(new PktObject("CHECKSUM", PKT_COLOR_INVALID, checkResultStr, 0, 0, PKT_COLOR_DATA, checkStart, checkEnd));
 						}
-						
+
 						pkt_add_packet(pktOk);
 						pktOk = true
 
@@ -588,7 +600,9 @@ function decode_signal()
 
 		var i = 0;
 
-		do				// 3-10 bytes to receive: 1 id field, 1-8 data bytes and 1 checksum byte
+		debug("= SOF = ");
+
+		do			// 3-10 bytes to receive: 1 id field, 1-8 data bytes and 1 checksum byte
 		{
 			var byteEnd = false;
 			var byteValue = 0;
@@ -616,20 +630,24 @@ function decode_signal()
 				tSample += tBit;
 			}
 
+			debug("BYTE = " + byteValue.toString(16));
+
 			linObjectsArr.push(new LinObject(LINOBJECT_TYPE.BYTE, byteValue, stBitEnd, (byteEnd - tBs)));
+
+			if (trs_is_not_last(chLin) == false)
+			{
+				return true;
+			}
 
 			trLinPrev = trLin;
 			trLin = trs_go_after(chLin, byteEnd);		// Get the last edge (falling edge of the next start bit)
 			eof = trLin.sample;
 
-			if (trs_is_not_last(chLin) == false)
-			{
-				return;
-			}
-
 			i++;
 
 		} while ((i < 10) && ((trLin.sample - trLinPrev.sample) <= (tBit * T_MAX_BETWEEN_BYTES)));
+
+		debug("= EOF = ");
 	}
 
 	return true;
