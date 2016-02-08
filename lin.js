@@ -600,8 +600,6 @@ function decode_signal()
 
 		var i = 0;
 
-		debug("= SOF = ");
-
 		do			// 3-10 bytes to receive: 1 id field, 1-8 data bytes and 1 checksum byte
 		{
 			var byteEnd = false;
@@ -630,8 +628,6 @@ function decode_signal()
 				tSample += tBit;
 			}
 
-			debug("BYTE = " + byteValue.toString(16));
-
 			linObjectsArr.push(new LinObject(LINOBJECT_TYPE.BYTE, byteValue, stBitEnd, (byteEnd - tBs)));
 
 			if (trs_is_not_last(chLin) == false)
@@ -646,8 +642,6 @@ function decode_signal()
 			i++;
 
 		} while ((i < 10) && ((trLin.sample - trLinPrev.sample) <= (tBit * T_MAX_BETWEEN_BYTES)));
-
-		debug("= EOF = ");
 	}
 
 	return true;
