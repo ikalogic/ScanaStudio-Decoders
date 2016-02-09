@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.33: Added protocol version choice.
 	V1.32: Performance optimizations. Corrected a bug in the way decoded data is displayed.
 	V1.31: Fixed bug with first BREAK field detection.
 	       Added ScanaStudio 2.3xx compatibility.
@@ -56,7 +57,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.32";
+	return "1.33";
 }
 
 
@@ -183,6 +184,10 @@ function gui()
 {
 	ui_clear();		// clean up the User interface before drawing a new one.
 	ui_add_ch_selector("chLin", "LIN", "LIN");
+
+	ui_add_txt_combo("linSpec", "LIN Specification");
+		ui_add_item_to_txt_combo("LIN 1.x");
+		ui_add_item_to_txt_combo("LIN 2.x", true);
 
 	ui_add_info_label("<br>");
 	ui_add_separator();
@@ -351,7 +356,7 @@ function decode()
 					var idField = dataArr[0];
 					var id = (idField.value & ~ID_FIELD_MASK.PARITY);
 
-					var idCompleteStr = "ID: " + "0x"  + id.toString(16).toUpperCase() + " PARITY: ";
+					var idCompleteStr = "ID: " + "0x"  + id.toString(16).toUpperCase() + " PARITY ";
 					var parStr;
 
 					// Check and display parity
@@ -375,7 +380,7 @@ function decode()
 
 					var pidStart = dataArr[0].start;
 					var pidEnd = dataArr[0].end;
-					var pidStr = "ID:" + int_to_str_hex(id) + " PARITY:" + parStr;
+					var pidStr = "ID: " + int_to_str_hex(id) + " PARITY " + parStr;
 
 					pktObjects.push(new PktObject("PID", PKT_COLOR_ID_TITLE, pidStr, 0, int_to_str_hex(id), PKT_COLOR_DATA, pidStart, pidEnd));
 
@@ -420,24 +425,26 @@ function decode()
 						var checkEnd = dataArr[dataArr.length - 1].end;
 						var checkOk = true;
 
-						if (compute_checksum(dataArr))
+						var calcChecksum = compute_checksum(dataArr);
+
+						if (calcChecksum > 0)
 						{
-							checkResultStr += "(OK)";
-							checkResult += "OK";
-						}
-						else
-						{
-							checkResultStr += "(WRONG)";
+							checkResultStr += " WRONG (0x" +  calcChecksum.toString(16).toLocaleUpperCase() + " EXPECTED)";
 							checkResult += "WRONG";
 							checkOk = false;
 							pktOk = false;
+						}
+						else
+						{
+							checkResultStr += " OK";
+							checkResult += " OK";
 						}
 
 						dec_item_new(chLin, checksum.start, checksum.end);
 						dec_item_add_pre_text("CHECKSUM ");
 						dec_item_add_pre_text("CHK ");
 						dec_item_add_data(checksum.value);
-						dec_item_add_post_text(" (" + checkResult + ")");
+						dec_item_add_post_text(" " + checkResult);
 						dec_item_add_comment("CHECKSUM: " + checkResultStr);
 
 						if (checkOk)
@@ -1073,11 +1080,11 @@ function trig_build_step (step_desc)
 function compute_checksum (dataArr)
 {
 	var idField = dataArr.shift().value;
-	var id = (idField.value & ~ID_FIELD_MASK.PARITY);
+	var id = (idField & ID_FIELD_MASK.ID);
 	var checksumV1xCalc = 0;
 	var checksumV2xCalc = 0;
 
-	if((id != FRAME_ID.CONFIG_0) && (id != FRAME_ID.CONFIG_1))	// Config frame identifiers shall always use classic checksum w/o id field
+	if ((id != FRAME_ID.CONFIG_0) && (id != FRAME_ID.CONFIG_1))		// Config frame identifiers shall always use classic checksum w/o id field
 	{
 		checksumV2xCalc = idField;
 	}
@@ -1092,9 +1099,9 @@ function compute_checksum (dataArr)
 		{
 			checksumV1xCalc -= 0xFF;
 		}
-		
+
 		checksumV2xCalc += nextByte;
-		
+
 		if (checksumV2xCalc > 0xFF)
 		{
 			checksumV2xCalc -= 0xFF;
@@ -1103,17 +1110,28 @@ function compute_checksum (dataArr)
 
 	var checksum = dataArr.shift().value; 	// Get checksum transmitted by a slave
 
-	if (checksumV1xCalc + checksum == 0xFF)
+	if (linSpec == LIN_SPEC.LIN_2X)
 	{
-		return true;
+		if (checksumV2xCalc + checksum == 0xFF)
+		{
+			return -1;
+		}
+		else
+		{
+			return (0xFF - checksumV2xCalc);
+		}
 	}
-
-	if (checksumV2xCalc + checksum == 0xFF)
+	else
 	{
-		return true;
+		if (checksumV1xCalc + checksum == 0xFF)
+		{
+			return -1;
+		}
+		else
+		{
+			return (0xFF - checksumV1xCalc);
+		}
 	}
-
-	return false;
 }
 
 
