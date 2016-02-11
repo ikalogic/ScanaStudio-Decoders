@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.28: Improved error handling.
 	V1.27: Added ScanaStudio 2.3xx compatibility.
 	V1.26: New Packet View layout.
 	V1.25: Correct a bug that caused decoding to be aborted.
@@ -60,7 +61,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.27";
+	return "1.28";
 }
 
 
@@ -315,10 +316,11 @@ function gui()
 */
 function decode()
 {
+	var owObject;
 	var stop = false;
 	var state = STATE.INIT;
-	var owObject;
 	var pktOk = true;
+	var firstRun = true;
 
 	PKT_COLOR_DATA          = get_ch_light_color(uiCh);
 	PKT_COLOR_DATA_TITLE    = dark_colors.gray;
@@ -336,6 +338,20 @@ function decode()
 	var tr = trs_get_first(uiCh);	// Position the navigator for 'ch' channel at the first transition
 	clear_dec_items();			 	// Clears all the the decoder items and its content
 
+	var measuredSpeed = speed_test(uiCh);
+
+	if (measuredSpeed != uiSpeed)
+	{
+		if (measuredSpeed == SPEED.REGULAR)
+		{
+			uiSpeed = SPEED.REGULAR;
+		}
+		else if (measuredSpeed == SPEED.OVERDRIVE)
+		{
+			uiSpeed = SPEED.OVERDRIVE;
+		}
+	}
+
 	if (uiSpeed == SPEED.REGULAR)
 	{
 		oWDelays = REGULAR_DELAYS;
@@ -347,7 +363,12 @@ function decode()
 
 	decode_signal(uiCh);
 
-	var firstRun = true;
+	/*
+	for (var i = 0; i < owObjects.length; i++)
+	{
+		debug("TYPE: " + owObjects[i].type, owObjects[i].start);
+	}
+	*/
 
 	/* Do for all transitions
 	*/
@@ -358,336 +379,94 @@ function decode()
 			return false;
 		}
 
-		/* Start of state machine 
-		*/
 		switch (state)
 		{
 			case STATE.INIT:
 
-					var measuredSpeed = speed_test(uiCh);
-
-					if (measuredSpeed != uiSpeed)
+				/* Display all unknown (transitions and pulses with wrong timing) fields
+				*/
+				for (var i = 0; i < owObjects.length; i++)
+				{
+					if (owObjects[i].type == OWOBJECT_TYPE.UNKNOWN)
 					{
-						if (measuredSpeed == SPEED.REGULAR)
-						{
-							add_to_err_log("Warning! You have selected 'Overdrive Speed' but the 1-Wire bus probably uses 'Regular Speed'");
-						}
-						else if (measuredSpeed == SPEED.OVERDRIVE)
-						{
-							add_to_err_log("Warning! You have selected 'Regular Speed' but the 1-Wire bus probably uses 'Overdrive Speed'");
-						}
-						else
-						{
-							add_to_err_log("Error. Selected channel doesn't have any valid 1-Wire signal");
-						}
+						dec_item_new(uiCh, owObjects[i].start, owObjects[i].end);
+						dec_item_add_pre_text("UNKNOWN PULSE");
+						dec_item_add_pre_text("UNKNOWN");
+						dec_item_add_pre_text("UN");
+						dec_item_add_post_text(" (" + owObjects[i].duration + " us)");
+					}
+				}
 
-						state = STATE.END;
-					}
-					else
-					{
-						state = STATE.RESET;
-					}
+				state = STATE.RESET;
 
-					/* Display all unknown (transitions and pulses with wrong timing) fields
-					*/
-					for (var i = 0; i < owObjects.length; i++)
-					{
-						if(owObjects[i].type == OWOBJECT_TYPE.UNKNOWN)
-						{
-							dec_item_new(uiCh, owObjects[i].start, owObjects[i].end);
-							dec_item_add_pre_text("UNKNOWN PULSE");
-							dec_item_add_pre_text("UNKNOWN");
-							dec_item_add_pre_text("UN");
-							dec_item_add_post_text(" (" + owObjects[i].duration + " us)");
-						}
-					}
 			break;
 
 			case STATE.RESET:
 
-					owObject = owObjects.shift();
+				owObject = owObjects.shift();
 
-					if (owObject.type == OWOBJECT_TYPE.RESET)
+				if (owObject.type == OWOBJECT_TYPE.RESET)
+				{
+					var resetStatus = "";
+
+					if (uiSpeed == SPEED.REGULAR)
 					{
-						var resetStatus = "";
-
-						if (uiSpeed == SPEED.REGULAR)
+						if (+owObject.duration < oWDelays.RSTL_STD)
 						{
-							if (+owObject.duration < oWDelays.RSTL_STD)
-							{
-								resetStatus += "WARN. TOO SHORT: ";
-							}
+							resetStatus += "WARN. TOO SHORT: ";
 						}
-
-						dec_item_new(uiCh, owObject.start, owObject.end);
-						dec_item_add_pre_text("MASTER RESET PULSE");
-						dec_item_add_pre_text("RESET PULSE");
-						dec_item_add_pre_text("RESET");
-						dec_item_add_pre_text("R");
-						dec_item_add_post_text(" (" + resetStatus + (Math.round(owObject.duration * 100) / 100) + " us)");
-
-						if (!firstRun)
-						{
-							pkt_add_packet(pktOk);
-						}
-
-						pktOk = true;
-						firstRun = false;
-
-						pktObjects.push(new PktObject("RESET", PKT_COLOR_RESET_TITLE, (resetStatus + owObject.duration + "us"), 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
-
-						state = STATE.PRESENCE;
 					}
+
+					dec_item_new(uiCh, owObject.start, owObject.end);
+					dec_item_add_pre_text("MASTER RESET PULSE");
+					dec_item_add_pre_text("RESET PULSE");
+					dec_item_add_pre_text("RESET");
+					dec_item_add_pre_text("R");
+					dec_item_add_post_text(" (" + resetStatus + (Math.round(owObject.duration * 100) / 100) + " us)");
+
+					if (!firstRun)
+					{
+						pkt_add_packet(pktOk);
+					}
+
+					pktOk = true;
+					firstRun = false;
+
+					pktObjects.push(new PktObject("RESET", PKT_COLOR_RESET_TITLE, (resetStatus + (Math.round(owObject.duration * 100) / 100) + " us"), 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
+
+					state = STATE.PRESENCE;
+				}
+
 			break;
 
 			case STATE.PRESENCE:
 
-					owObject = owObjects.shift();
+				owObject = owObjects.shift();
 
-					if (owObject.type == OWOBJECT_TYPE.PRESENCE)
+				if (owObject.type == OWOBJECT_TYPE.PRESENCE)
+				{
+					if (owObject.value == true)
 					{
-						if (owObject.value == true)
-						{
-							dec_item_new(uiCh, owObject.start, owObject.end);
-							dec_item_add_pre_text("SLAVE PRESENCE");
-							dec_item_add_pre_text("PRESENCE");
-							dec_item_add_pre_text("PRES");
-							dec_item_add_pre_text("P");
-							dec_item_add_post_text(" (" + (Math.round(owObject.duration * 100) / 100) + " us)");
+						dec_item_new(uiCh, owObject.start, owObject.end);
+						dec_item_add_pre_text("SLAVE PRESENCE");
+						dec_item_add_pre_text("PRESENCE");
+						dec_item_add_pre_text("PRES");
+						dec_item_add_pre_text("P");
+						dec_item_add_post_text(" (" + (Math.round(owObject.duration * 100) / 100) + " us)");
 
-							pktObjects.push(new PktObject("PRESENCE", PKT_COLOR_PRES_TITLE, ((Math.round(owObject.duration * 100) / 100) + "us"), 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
-
-							owObject = owObjects.shift();
-							owObjects.unshift(owObject);
-							
-							if (owObject.type == OWOBJECT_TYPE.RESET)
-							{
-								state = STATE.RESET;
-							}
-							else
-							{
-								state = STATE.ROM_COMMAND;
-							}
-						}
-						else
-						{
-							dec_item_new(uiCh, owObject.start, owObject.end);
-							dec_item_add_pre_text("SLAVE PRESENCE MISSING");
-							dec_item_add_pre_text("PRESENCE MISSING");
-							dec_item_add_pre_text("MISSING");
-							dec_item_add_pre_text("M");
-
-							pktObjects.push(new PktObject("PRESENCE", PKT_COLOR_PRES_TITLE, "PRESENCE MISSING", 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
-
-							state = STATE.RESET;
-						}
+						pktObjects.push(new PktObject("PRESENCE", PKT_COLOR_PRES_TITLE, ((Math.round(owObject.duration * 100) / 100) + " us"), 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
 					}
 					else
 					{
-						state = STATE.RESET;
+						dec_item_new(uiCh, owObject.start, owObject.end);
+						dec_item_add_pre_text("SLAVE PRESENCE MISSING");
+						dec_item_add_pre_text("PRESENCE MISSING");
+						dec_item_add_pre_text("MISSING");
+						dec_item_add_pre_text("M");
+
+						pktObjects.push(new PktObject("PRESENCE", PKT_COLOR_INVALID, "PRESENCE MISSING", 0, 0, PKT_COLOR_DATA, owObject.start, owObject.end));
+						pktOk = false;
 					}
-			break;
-
-			case STATE.ROM_COMMAND:
-
-					var romCmd = false;
-					var romCmdStr;
-					var owByte = get_ow_byte(uiCh);
-
-					if (owByte.isLast == true)
-					{
-						state = STATE.END;
-						break;
-					}
-
-					dec_item_new(uiCh, owByte.start, owByte.end);
-
-					if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ADR))
-					{
-						hex_add_byte(uiCh, -1, -1, owByte.value);
-					}
-
-					for (var k in ROM_CMD)
-					{
-						var cmd = ROM_CMD[k];
-
-						if (owByte.value == cmd.code)
-						{
-							dec_item_add_pre_text(cmd.str);
-							dec_item_add_data(owByte.value);
-
-							pktObjects.push(new PktObject("ROM COMMAND", PKT_COLOR_ROMCMD_TITLE, cmd.str, 0, 0, PKT_COLOR_DATA, owByte.start, owByte.end));
-							
-							switch (cmd)
-							{
-								case ROM_CMD.READ_ROM:
-								case ROM_CMD.MATCH_ROM: state = STATE.SHOW_ROM;
-								break;
-
-								case ROM_CMD.SEARCH_ROM: state = STATE.SEARCH_ROM;
-								break;
-
-								default: state = STATE.DATA;
-								break;
-							}
-						}
-					}
-			break;
-
-			case STATE.SHOW_ROM:
-
-					/* 64-bit ROM code:
-					   [LSB] 8-bit Family Code | 48-bit Serial Number | 8-bit CRC | [MSB]
-					*/
-					var owByte;
-					var romCode = [];
-					var pktFamilyCode = "", pktSerialStr = "", pktCrcStr = "";
-
-					do
-					{
-						owByte = get_ow_byte(uiCh);
-						romCode.push(owByte);
-					}
-					while ((owByte.isLast != true) && (romCode.length < 8))
-
-					if (romCode.length == 8)
-					{
-						// Calc CRC
-						var calcCrc = get_crc8(romCode);
-
-						// Show Family Code
-						var familyCode = romCode.shift();
-						dec_item_new(uiCh, familyCode.start, familyCode.end);
-
-						if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ROM))
-						{
-							hex_add_byte(uiCh, -1, -1, familyCode.value);
-						}
-
-						for (var k in DEVICE_FAMILY)
-						{
-							var device = DEVICE_FAMILY[k];
-
-							if (familyCode.value == device.code)
-							{
-								pktFamilyCode = device.str;
-								dec_item_add_pre_text(device.str + "(");
-								dec_item_add_post_text(")");
-							}
-						}
-
-						dec_item_add_data(familyCode.value);
-
-						var pktFamilyCodeStr;
-
-						if (pktFamilyCode != "")
-						{
-							pktFamilyCodeStr = pktFamilyCode + "(" + int_to_str_hex(familyCode.value) + ")";
-						}
-						else
-						{
-							pktFamilyCodeStr = int_to_str_hex(familyCode.value);
-						}
-
-						// Show Serial Number
-						for (var i = 0; i < romCode.length - 1; i++)
-						{
-							var data = romCode[i];
-							dec_item_new(uiCh, data.start, data.end);
-							dec_item_add_data(data.value);
-
-							pktSerialStr += int_to_str_hex(data.value) + " ";
-
-							if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ROM))
-							{
-								hex_add_byte(uiCh, -1, -1, data.value);
-							}
-						}
-
-						// Verify and show CRC
-						var crcOk = true;
-						
-						deviceCrc = romCode[romCode.length - 1];
-
-						dec_item_new(uiCh, deviceCrc.start, deviceCrc.end);
-						dec_item_add_pre_text("CRC: ");
-						dec_item_add_data(deviceCrc.value);
-
-						pktCrcStr = int_to_str_hex(deviceCrc.value); 
-
-						if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ROM))
-						{
-							hex_add_byte(uiCh, -1, -1, deviceCrc.value);
-						}
-
-						if (deviceCrc.value == calcCrc)
-						{
-							pktCrcStr += " (OK)";
-							dec_item_add_post_text(" (OK)");
-						}
-						else
-						{
-							pktCrcStr += " (WRONG)";
-							dec_item_add_post_text(" (WRONG)");
-							crcOk = false;
-							pktOk = false;
-						}
-
-						pktObjects.push(new PktObject("FAMILY CODE", PKT_COLOR_ROMCODE_TITLE, pktFamilyCodeStr, 0, 0, PKT_COLOR_DATA, familyCode.start, familyCode.end));
-						pktObjects.push(new PktObject("SERIAL CODE", PKT_COLOR_ROMCODE_TITLE, pktSerialStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 2].end));
-
-						if (crcOk)
-						{
-							pktObjects.push(new PktObject("CRC", PKT_COLOR_ROMCODE_TITLE, pktCrcStr, 0, 0, PKT_COLOR_DATA, deviceCrc.start, deviceCrc.end));
-						}
-						else
-						{
-							pktObjects.push(new PktObject("CRC", PKT_COLOR_ROMCODE_TITLE, pktCrcStr, 0, 0, PKT_COLOR_INVALID, deviceCrc.start, deviceCrc.end));
-						}
-					}
-					else if (romCode.length < 8)
-					{
-						var errStr = "ROM CODE INCOMPLETE. ONLY " + romCode.length + " BYTES OF 8";
-
-						dec_item_new(uiCh, romCode[0].start, romCode[romCode.length - 1].end);
-						dec_item_add_pre_text(errStr);
-
-						pktObjects.push(new PktObject("ROM CODE", PKT_COLOR_ROMCODE_TITLE, errStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 1].end));
-					}
-
-					state = STATE.DATA;
-			break;
-
-			case STATE.SEARCH_ROM:
-
- 					var owByte;
- 					var owByteCnt = 0;
- 					var firstByte = get_ow_byte(uiCh);
- 					var lastByte;
-
- 					do
-					{
-						owByte = get_ow_byte(uiCh);
-						owByteCnt++;
-						
-						if (owByte.isLast != true)
-						{
-							lastByte = owByte;
-						}
-		
-					} while (owByte.isLast != true);
-
-					dec_item_new(uiCh, firstByte.start, lastByte.end);
-					dec_item_add_pre_text("SEARCH ROM SEQUENCE");
-
-					pktObjects.push(new PktObject("SEARCH ROM SEQUENCE", PKT_COLOR_OTHER_TITLE, ((owByteCnt * 8) + " bits"), 0, 0, PKT_COLOR_DATA, firstByte.start, lastByte.end));
-
-					state = STATE.RESET;
-			break;
-
-			case STATE.DATA:
-
-					/* Get and show all data */
 
 					owObject = owObjects.shift();
 					owObjects.unshift(owObject);
@@ -695,81 +474,305 @@ function decode()
 					if (owObject.type == OWOBJECT_TYPE.RESET)
 					{
 						state = STATE.RESET;
-						break;
 					}
-
-					var owByte;
-					var pktObj = new PktObject();
-
-					pktObj.title = "DATA";
-					pktObj.data = "";
-					pktObj.titleColor = PKT_COLOR_DATA_TITLE;
-					pktObj.dataColor = PKT_COLOR_DATA;
-					pktObj.dataObjArr = [];
-					pktObj.start = false;
-					pktObj.dataLen = 0;
-
- 					do
+					else
 					{
-						owByte = get_ow_byte(uiCh);
-
-						if (owByte.isLast != true)
-						{
-							dec_item_new(uiCh, owByte.start, owByte.end);
-							dec_item_add_data(owByte.value);
-
-							if ((uiHexView != HEXVIEW_OPT.ROM) && (uiHexView != HEXVIEW_OPT.ADR))
-							{
-								hex_add_byte(uiCh, -1, -1, owByte.value);
-							}
-
-							var dataStr = int_to_str_hex(owByte.value);
-							pktObj.data +=  dataStr + " ";
-							owByte.value = dataStr;
-							pktObj.dataObjArr.push(owByte);
-							pktObj.dataLen++;
-
-							if (!pktObj.start)
-							{
-								pktObj.start = owByte.start;
-							}
-
-							pktObj.end = owByte.end;
-						}
-
-						if (owByte.duration == true)
-						{
-							dec_item_new(uiCh, owByte.start, owByte.end);
-							dec_item_add_pre_text("INVALID BYTE");
-
-							pktObj.data += "XXXX ";
-							owByte.value = "XXXX";
-							pktObj.dataObjArr.push(owByte);
-							pktObj.dataLen++;
-
-							pktObj.dataColor = PKT_COLOR_INVALID;
-							pktOk = false;
-						}
-
-					} while (owByte.isLast != true);
-
-					if (pktObj.dataLen > 0)
-					{
-						pktObjects.push(pktObj);
+						state = STATE.ROM_COMMAND;
 					}
-
+				}
+				else
+				{
 					state = STATE.RESET;
+				}
+
+			break;
+
+			case STATE.ROM_COMMAND:
+
+				var romCmd = false;
+				var romCmdStr;
+				var owByte = get_ow_byte(uiCh);
+
+				if (owByte.isLast == true)
+				{
+					state = STATE.END;
+					break;
+				}
+
+				dec_item_new(uiCh, owByte.start, owByte.end);
+
+				if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ADR))
+				{
+					hex_add_byte(uiCh, -1, -1, owByte.value);
+				}
+
+				for (var k in ROM_CMD)
+				{
+					var cmd = ROM_CMD[k];
+
+					if (owByte.value == cmd.code)
+					{
+						dec_item_add_pre_text(cmd.str);
+						dec_item_add_data(owByte.value);
+
+						pktObjects.push(new PktObject("ROM COMMAND", PKT_COLOR_ROMCMD_TITLE, cmd.str, 0, 0, PKT_COLOR_DATA, owByte.start, owByte.end));
+						
+						switch (cmd)
+						{
+							case ROM_CMD.READ_ROM:
+							case ROM_CMD.MATCH_ROM: state = STATE.SHOW_ROM;
+							break;
+
+							case ROM_CMD.SEARCH_ROM: state = STATE.SEARCH_ROM;
+							break;
+
+							default: state = STATE.DATA;
+							break;
+						}
+					}
+				}
+
+			break;
+
+			case STATE.SHOW_ROM:
+
+				/* 64-bit ROM code:
+				   [LSB] 8-bit Family Code | 48-bit Serial Number | 8-bit CRC | [MSB]
+				*/
+				var owByte;
+				var romCode = [];
+				var pktFamilyCode = "", pktSerialStr = "", pktCrcStr = "";
+
+				do
+				{
+					owByte = get_ow_byte(uiCh);
+					romCode.push(owByte);
+				}
+				while ((owByte.isLast != true) && (romCode.length < 8))
+
+				if (romCode.length == 8)
+				{
+					// Calc CRC
+					var calcCrc = get_crc8(romCode);
+
+					// Show Family Code
+					var familyCode = romCode.shift();
+					dec_item_new(uiCh, familyCode.start, familyCode.end);
+
+					if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ROM))
+					{
+						hex_add_byte(uiCh, -1, -1, familyCode.value);
+					}
+
+					for (var k in DEVICE_FAMILY)
+					{
+						var device = DEVICE_FAMILY[k];
+
+						if (familyCode.value == device.code)
+						{
+							pktFamilyCode = device.str;
+							dec_item_add_pre_text(device.str + "(");
+							dec_item_add_post_text(")");
+						}
+					}
+
+					dec_item_add_data(familyCode.value);
+
+					var pktFamilyCodeStr;
+
+					if (pktFamilyCode != "")
+					{
+						pktFamilyCodeStr = pktFamilyCode + "(" + int_to_str_hex(familyCode.value) + ")";
+					}
+					else
+					{
+						pktFamilyCodeStr = int_to_str_hex(familyCode.value);
+					}
+
+					// Show Serial Number
+					for (var i = 0; i < romCode.length - 1; i++)
+					{
+						var data = romCode[i];
+						dec_item_new(uiCh, data.start, data.end);
+						dec_item_add_data(data.value);
+
+						pktSerialStr += int_to_str_hex(data.value) + " ";
+
+						if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ROM))
+						{
+							hex_add_byte(uiCh, -1, -1, data.value);
+						}
+					}
+
+					// Verify and show CRC
+					var crcOk = true;
+					
+					deviceCrc = romCode[romCode.length - 1];
+
+					dec_item_new(uiCh, deviceCrc.start, deviceCrc.end);
+					dec_item_add_pre_text("CRC: ");
+					dec_item_add_data(deviceCrc.value);
+
+					pktCrcStr = int_to_str_hex(deviceCrc.value); 
+
+					if ((uiHexView != HEXVIEW_OPT.DATA) && (uiHexView != HEXVIEW_OPT.ROM))
+					{
+						hex_add_byte(uiCh, -1, -1, deviceCrc.value);
+					}
+
+					if (deviceCrc.value == calcCrc)
+					{
+						pktCrcStr += " OK";
+						dec_item_add_post_text(" OK");
+					}
+					else
+					{
+						pktCrcStr += " WRONG";
+						dec_item_add_post_text(" WRONG");
+						crcOk = false;
+						pktOk = false;
+					}
+
+					pktObjects.push(new PktObject("FAMILY CODE", PKT_COLOR_ROMCODE_TITLE, pktFamilyCodeStr, 0, 0, PKT_COLOR_DATA, familyCode.start, familyCode.end));
+					pktObjects.push(new PktObject("SERIAL CODE", PKT_COLOR_ROMCODE_TITLE, pktSerialStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 2].end));
+
+					if (crcOk)
+					{
+						pktObjects.push(new PktObject("CRC", PKT_COLOR_ROMCODE_TITLE, pktCrcStr, 0, 0, PKT_COLOR_DATA, deviceCrc.start, deviceCrc.end));
+					}
+					else
+					{
+						pktObjects.push(new PktObject("CRC", PKT_COLOR_ROMCODE_TITLE, pktCrcStr, 0, 0, PKT_COLOR_INVALID, deviceCrc.start, deviceCrc.end));
+					}
+				}
+				else if (romCode.length < 8)
+				{
+					var errStr = "ROM CODE INCOMPLETE. ONLY " + romCode.length + " BYTES OF 8";
+
+					dec_item_new(uiCh, romCode[0].start, romCode[romCode.length - 1].end);
+					dec_item_add_pre_text(errStr);
+
+					pktObjects.push(new PktObject("ROM CODE", PKT_COLOR_ROMCODE_TITLE, errStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 1].end));
+				}
+
+				state = STATE.DATA;
+
+			break;
+
+			case STATE.SEARCH_ROM:
+
+				var owByte;
+				var owByteCnt = 0;
+				var firstByte = get_ow_byte(uiCh);
+				var lastByte;
+
+				do
+				{
+					owByte = get_ow_byte(uiCh);
+					owByteCnt++;
+					
+					if (owByte.isLast != true)
+					{
+						lastByte = owByte;
+					}
+	
+				} while (owByte.isLast != true);
+
+				dec_item_new(uiCh, firstByte.start, lastByte.end);
+				dec_item_add_pre_text("SEARCH ROM SEQUENCE");
+
+				pktObjects.push(new PktObject("SEARCH ROM SEQUENCE", PKT_COLOR_OTHER_TITLE, ((owByteCnt * 8) + " bits"), 0, 0, PKT_COLOR_DATA, firstByte.start, lastByte.end));
+
+				state = STATE.RESET;
+
+			break;
+
+			case STATE.DATA:
+
+				/* Get and show all data */
+
+				owObject = owObjects.shift();
+				owObjects.unshift(owObject);
+
+				if (owObject.type == OWOBJECT_TYPE.RESET)
+				{
+					state = STATE.RESET;
+					break;
+				}
+
+				var owByte;
+				var pktObj = new PktObject();
+
+				pktObj.title = "DATA";
+				pktObj.data = "";
+				pktObj.titleColor = PKT_COLOR_DATA_TITLE;
+				pktObj.dataColor = PKT_COLOR_DATA;
+				pktObj.dataObjArr = [];
+				pktObj.start = false;
+				pktObj.dataLen = 0;
+
+				do
+				{
+					owByte = get_ow_byte(uiCh);
+
+					if (owByte.isLast != true)
+					{
+						dec_item_new(uiCh, owByte.start, owByte.end);
+						dec_item_add_data(owByte.value);
+
+						if ((uiHexView != HEXVIEW_OPT.ROM) && (uiHexView != HEXVIEW_OPT.ADR))
+						{
+							hex_add_byte(uiCh, -1, -1, owByte.value);
+						}
+
+						var dataStr = int_to_str_hex(owByte.value);
+						pktObj.data +=  dataStr + " ";
+						owByte.value = dataStr;
+						pktObj.dataObjArr.push(owByte);
+						pktObj.dataLen++;
+
+						if (!pktObj.start)
+						{
+							pktObj.start = owByte.start;
+						}
+
+						pktObj.end = owByte.end;
+					}
+
+					if (owByte.duration == true)
+					{
+						dec_item_new(uiCh, owByte.start, owByte.end);
+						dec_item_add_pre_text("INVALID BYTE");
+
+						pktObj.data += "XXXX ";
+						owByte.value = "XXXX";
+						pktObj.dataObjArr.push(owByte);
+						pktObj.dataLen++;
+
+						pktObj.dataColor = PKT_COLOR_INVALID;
+						pktOk = false;
+					}
+
+				} while (owByte.isLast != true);
+
+				if (pktObj.dataLen > 0)
+				{
+					pktObjects.push(pktObj);
+				}
+
+				state = STATE.RESET;
+
 			break;
 
 			case STATE.END:
 
-					state = STATE.RESET;
-					pkt_end();
+				state = STATE.RESET;
+
 			break;
 		}
 	}
 
-	pkt_end();
+	pkt_add_packet(pktOk);
 	return true;
 }
 
@@ -1117,7 +1120,7 @@ function generator_template()
 
 	gen_add_delay(samples_per_us * 100);
 	gen_reset();
-	gen_presence(false);
+	gen_presence(true);
 
 	gen_byte(ROM_CMD_READ_ROM);
 
