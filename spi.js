@@ -731,8 +731,8 @@ function ini_spi_generator()
 
 	if (cpol == 0)
 	{
-		c_idle = 0;
-		c_active = 1;
+		c_idle = 1;
+		c_active = 0;
 	}
 	else
 	{
@@ -1097,3 +1097,4 @@ function get_bit_margin()
 	var k = 1;
 	return ((k * get_srate()) / 10000000);
 }
+
