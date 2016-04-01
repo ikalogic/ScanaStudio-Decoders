@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.58: Fixed bug in SPI generator, thanks to user Camille
 	V1.57: Added ScanaStudio 2.3xx compatibility.
 	V1.56: Added generator capability
 	V1.55: New options for trigger part
@@ -67,7 +68,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.57";
+	return "1.58";
 }
 
 
