@@ -15,8 +15,9 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.66: Fixed (N)ACK display error.
 	V1.65: Added ScanaStudio 2.3xx compatibility.
-	V1.64: Fix for slow decoding speed, progress report 
+	V1.64: Fix for slow decoding speed, progress report
 	       and demo generator overflow.
 	V1.63: Added generator capability.
 	V1.62: Fixed (N)ACK display error.
@@ -70,7 +71,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.65";
+	return "1.66";
 }
 
 
@@ -1413,8 +1414,12 @@ function get_avg_thigh (trSt)
 	{
 		trPrev = tr;
 		tr = trs_get_next(chScl);
-		tHighArr.push((tr.sample - trPrev.sample));
-	
+
+		if (check_noise(trPrev, tr) != true)
+		{
+			tHighArr.push((tr.sample - trPrev.sample));
+		}
+
 		if (tHighArr.length > 100)
 		{
 			break;
