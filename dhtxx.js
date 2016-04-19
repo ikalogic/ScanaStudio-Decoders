@@ -53,7 +53,7 @@ function get_dec_ver()
 */
 function get_dec_auth()
 {
-    return "IJM, RZI";
+    return "IJM, RZI, IKALOGIC";
 }
 
 
@@ -166,7 +166,7 @@ function decode()
     var i = 0;                      // count the data bits in main while loop
 
     while (trs_is_not_last(ch))
-    {
+    {	
 	    if (abort_requested() == true)	// Allow the user to abort this script
 		{
 			return false;

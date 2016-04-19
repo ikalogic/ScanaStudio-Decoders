@@ -363,13 +363,6 @@ function decode()
 
 	decode_signal(uiCh);
 
-	/*
-	for (var i = 0; i < owObjects.length; i++)
-	{
-		debug("TYPE: " + owObjects[i].type, owObjects[i].start);
-	}
-	*/
-
 	/* Do for all transitions
 	*/
 	while ((stop != true) && (owObjects.length > 1))
