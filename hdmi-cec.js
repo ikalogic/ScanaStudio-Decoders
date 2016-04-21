@@ -103,7 +103,7 @@ function decode()
 	t = trs_get_first(ch);
 	
 	spb = sample_rate / baud; 		// calculate the number of Samples Per Bit.
-	m = spb / 10; 					// margin = 1 tenth of a bit time (expresed in number of samples)
+	m = spb / 10; 					// margin = 1 tenth of a bit time (expressed in number of samples)
 	
 	while (trs_is_not_last(ch))		//run through all the samples and decode
 	{
@@ -207,7 +207,9 @@ function decode()
 								EOM=false;
 								dec_item_new(ch, t_sample,t_next_sample); 		
 								dec_item_add_pre_text("Not End Of Message");	
+								dec_item_add_pre_text("EOM = 0");
 								dec_item_add_pre_text("!EOM");
+								dec_item_add_pre_text("!E");
 								dec_item_add_comment("!E");
 								pkt_add_item(-1, -1, "EOM", "no EOM", PKT_COLOR_EOM_TITLE, PKT_COLOR_DATA, true);
 							}
@@ -235,7 +237,9 @@ function decode()
 								EOM=true;
 								dec_item_new(ch, t_sample,t_next_sample); 		
 								dec_item_add_pre_text("End Of Message");	
+								dec_item_add_pre_text("EOM = 1");
 								dec_item_add_pre_text("EOM");
+								dec_item_add_pre_text("E");
 								dec_item_add_comment("E");
 								pkt_add_item(-1, -1, "EOM", "End of Message", PKT_COLOR_EOM_TITLE, PKT_COLOR_DATA, true);
 							}
@@ -250,6 +254,7 @@ function decode()
 			
 			if(i==7) //	all data are completely sent, show packet decoder on the screen
 			{
+				hex_add_byte(ch, -1, -1, data_b);
 				if(first_byte)	//data_b is @init and @folo
 				{
 					dec_item_new(ch, data_start_sample,(data_start_sample+t_next_sample)/2); 		
