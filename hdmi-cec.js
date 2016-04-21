@@ -58,7 +58,7 @@ function get_dec_auth()
 							    GLOBAL VARIABLES
 *************************************************************************************
 */
-var inter_transaction_silence_us;
+var inter_transaction_silence;
 var spb;
 /*
 *************************************************************************************
@@ -80,15 +80,15 @@ function gui()
 function decode()
 {
 	var m; 					// margin between blocks
-	var t;
-	var t_sample;
-	var t_next_sample;
-	var test_start=false;
-	var EOM=false;
-	var data_b;
-	var data_start_sample;
-	var i=0;
-	var first_byte=false;
+	var t;					// navigator througt trnasition
+	var t_sample;			// actual sample of the transition
+	var t_next_sample;		// next transition sample
+	var test_start=false;	// =true if start bit is detected, if frame isn't completed, =false
+	var EOM=false;			// =true if all the message is completed
+	var data_b;				// contain the data of a byte
+	var data_start_sample;	// first sample of the data_b
+	var i=0;				
+	var first_byte=false;	// use to detect the initiator and follower addresses
 						
 	get_ui_vals();                // Update the content of user interface variables
 
@@ -154,7 +154,7 @@ function decode()
 					pkt_add_item(-1, -1, "START", " ", PKT_COLOR_START_TITLE, PKT_COLOR_DATA, true);
 				}
 			}
-		}
+		}		//if no start bit found, reloop
 		
 		//debug("sortie de boucle",t_sample);
 					
@@ -166,7 +166,7 @@ function decode()
 		data_b=0;
 		EOM=false;
 		i=0;
-		while(i<10)
+		while(i<10)		// if start bit found, try to found data bits, EOM bit and ACK bit
 		{
 			if (t.val!=FALLING)
 			{
@@ -188,7 +188,7 @@ function decode()
 			t = get_next_rising_edge(ch, t);
 			t_next_sample = t.sample;
 			
-			if(i<9)
+			if(i<9)		//searching for a data or EOM bit
 			{
 				if (t_next_sample - t_sample > spb/2)
 				{
@@ -196,13 +196,13 @@ function decode()
 					{
 						t = get_next_falling_edge(ch, t);
 						t_next_sample = t.sample;
-						if ( ( (t_next_sample - t_sample) < spb*27.5/24 ) && ( (t_next_sample - t_sample) > spb*20.5/24 ) )
+						if ( ( (t_next_sample - t_sample) < spb*27.5/24 ) && ( (t_next_sample - t_sample) > spb*20.5/24 ) ) //bit = 1
 						{
-							if(i<8)
+							if(i<8)	//	is it a data bit ?
 							{
 								data_b=data_b*2;
 							}
-							if(i==8)
+							if(i==8) // is it EOM bit ?
 							{
 								EOM=false;
 								dec_item_new(ch, t_sample,t_next_sample); 		
@@ -224,13 +224,13 @@ function decode()
 					{
 						t = get_next_falling_edge(ch, t);
 						t_next_sample = t.sample;
-						if ( ( (t_next_sample - t_sample) < spb*27.5/24 ) && ( (t_next_sample - t_sample) > spb*20.5/24 ) )
+						if ( ( (t_next_sample - t_sample) < spb*27.5/24 ) && ( (t_next_sample - t_sample) > spb*20.5/24 ) ) //bit = 1
 						{
-							if(i<8)
+							if(i<8) // is it data bit ?
 							{
 								data_b=data_b*2 +1;
 							}
-							if(i==8)
+							if(i==8) // is it EOM bit ?
 							{
 								EOM=true;
 								dec_item_new(ch, t_sample,t_next_sample); 		
@@ -248,9 +248,9 @@ function decode()
 				}
 			}
 			
-			if(i==7)
+			if(i==7) //	all data are completely sent, show packet decoder on the screen
 			{
-				if(first_byte)
+				if(first_byte)	//data_b is @init and @folo
 				{
 					dec_item_new(ch, data_start_sample,(data_start_sample+t_next_sample)/2); 		
 					dec_item_add_pre_text("Address Initiator 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());			
@@ -268,7 +268,7 @@ function decode()
 						dec_item_add_pre_text("@Fol 0x" + (data_b&0x0F).toString(16).toUpperCase())
 						dec_item_add_pre_text("@0x" + (data_b&0x0F).toString(16).toUpperCase());
 						dec_item_add_pre_text((data_b&0x0F).toString(16).toUpperCase())
-						pkt_add_item(-1, -1, "FOLLOWWER", "0x" + (data_b&0x0F).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+						pkt_add_item(-1, -1, "FOLLOWER", "0x" + (data_b&0x0F).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 					}
 					else
 					{
@@ -277,11 +277,11 @@ function decode()
 						dec_item_add_pre_text("Broad");		
 						dec_item_add_pre_text("@All");
 						dec_item_add_pre_text((data_b&0x0F).toString(16).toUpperCase())
-						pkt_add_item(-1, -1, "FOLLOWWER", "Broadcast " + (data_b&0x0F).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+						pkt_add_item(-1, -1, "FOLLOWER", "Broadcast " + (data_b&0x0F).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 					}
 					first_byte=false;
 				}
-				else
+				else	//data_b is data
 				{
 					dec_item_new(ch, data_start_sample,t_next_sample); 		
 					dec_item_add_pre_text("Data " + int_to_str_hex(data_b) + " = '" + String.fromCharCode(data_b) + "'");	
@@ -292,7 +292,7 @@ function decode()
 					pkt_add_item(-1, -1, "DATA", int_to_str_hex(data_b) + " '" + String.fromCharCode(data_b) + "'", PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 				}
 			}
-			if(i==9)
+			if(i==9)	//find ACK bit ?
 			{
 				if ( ( (t_next_sample - t_sample) < spb*8/24 ) && ( (t_next_sample - t_sample) > spb*4/24 ) )
 				{
@@ -315,13 +315,13 @@ function decode()
 			}
 			
 			i++;
-			if(i==10 && !EOM)
+			if(i==10 && !EOM) // if no EOM, reloop
 			{
 				i=0;
 				data_b=0;
 			}
 		}
-		pkt_end();
+		pkt_end();//end of frame, reloop to find other message beginning with a start bit
 	}
 }
 
@@ -345,7 +345,7 @@ function generator_template()
 	var follower =	0xA;	//	@ of the receiver (4bits) (0xF to broadcast)
 	var data_str =	"Hey";		//	data transmitted
 	
-	inter_transaction_silence_us = 500;	//time in ?s spend between two packet of the frame
+	inter_transaction_silence = 0.5;	//time in ?s spend between two packet of the frame
 	
 	/*#################### DO NOT CHANGE CODE UNDER THIS LINE ####################*/
 	spb=get_sample_rate()/baud;
@@ -354,8 +354,7 @@ function generator_template()
 	var header=initiator*16+follower;
 	data_str = String.fromCharCode(header) + data_str;
 	write_str(data_str);
-	standby_us(5000);
-
+	standby(3);
 }
 
 
@@ -376,7 +375,7 @@ function build_demo_signals()
 	var follower =	0xA;	//	@ of the receiver (4bits) (0xF to broadcast)
 	var data_str =	"Hey";		//	data transmitted
 	
-	inter_transaction_silence_us = 500;	//time in ?s spend between two packet of the frame
+	inter_transaction_silence = 0.5;	//time in bit spend between two packet of the frame
 	
 	spb=get_sample_rate()/baud;
 	
@@ -384,7 +383,7 @@ function build_demo_signals()
 	var header=initiator*16+follower;
 	data_str = String.fromCharCode(header) + data_str;
 	write_str(data_str);
-	standby_us(5000);
+	standby_us(3);
 } 
 
 
@@ -394,14 +393,14 @@ function build_demo_signals()
 *************************************************************************************
 */
 
-function standby_us(t_us)
+function standby(b)
 {
-	add_samples(ch,1,t_us*get_sample_rate()/1000000);
+	add_samples(ch,1,b*spb);
 }
 
 function start_bit()
 {
-	standby_us(inter_transaction_silence_us);
+	standby(inter_transaction_silence);
 	add_samples(ch,0,spb*37/24);
 	add_samples(ch,1,spb*8/24);
 }
@@ -450,7 +449,7 @@ function write_str(str)
 			data_high();	//EOM
 		data_high();		//ACK
 		
-		standby_us(inter_transaction_silence_us);
+		standby(inter_transaction_silence);
 	}
 }
 
