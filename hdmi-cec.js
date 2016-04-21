@@ -95,8 +95,8 @@ function decode()
 	var PKT_COLOR_DATA         = get_ch_light_color(ch);
 	var PKT_COLOR_DATA_TITLE   = dark_colors.gray;
 	var PKT_COLOR_START_TITLE  = dark_colors.blue;
-	var PKT_COLOR_PARITY_TITLE = dark_colors.orange;
-	var PKT_COLOR_STOP_TITLE   = dark_colors.green;
+	var PKT_COLOR_EOM_TITLE = dark_colors.orange;
+	var PKT_COLOR_ACK_TITLE   = dark_colors.green;
 	
 	clear_dec_items();            // Clears all the the decoder items and its content
 	
@@ -150,6 +150,7 @@ function decode()
 					dec_item_add_pre_text("S");
 					dec_item_add_comment("Start");
 					
+					
 					pkt_add_item(-1, -1, "START", " ", PKT_COLOR_START_TITLE, PKT_COLOR_DATA, true);
 				}
 			}
@@ -176,7 +177,7 @@ function decode()
 			if(i==0)
 			{
 				data_start_sample=t_sample;
-				//debug("rentr�e dans la boucle",t_sample);
+				//debug("rentr?e dans la boucle",t_sample);
 			}
 			
 			if (trs_is_not_last(ch) == false)
@@ -208,6 +209,7 @@ function decode()
 								dec_item_add_pre_text("Not End Of Message");	
 								dec_item_add_pre_text("!EOM");
 								dec_item_add_comment("!E");
+								pkt_add_item(-1, -1, "EOM", "no EOM", PKT_COLOR_EOM_TITLE, PKT_COLOR_DATA, true);
 							}
 						}
 						else
@@ -235,6 +237,7 @@ function decode()
 								dec_item_add_pre_text("End Of Message");	
 								dec_item_add_pre_text("EOM");
 								dec_item_add_comment("E");
+								pkt_add_item(-1, -1, "EOM", "End of Message", PKT_COLOR_EOM_TITLE, PKT_COLOR_DATA, true);
 							}
 						}
 						else
@@ -255,6 +258,7 @@ function decode()
 					dec_item_add_pre_text("@Init 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase())
 					dec_item_add_pre_text("@0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());
 					dec_item_add_pre_text(( (data_b&0xF0) >>4).toString(16).toUpperCase());
+					pkt_add_item(-1, -1, "INITIATOR", "0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 				
 					if((data_b&0x0F)!=0x0F)
 					{
@@ -264,6 +268,7 @@ function decode()
 						dec_item_add_pre_text("@Fol 0x" + (data_b&0x0F).toString(16).toUpperCase())
 						dec_item_add_pre_text("@0x" + (data_b&0x0F).toString(16).toUpperCase());
 						dec_item_add_pre_text((data_b&0x0F).toString(16).toUpperCase())
+						pkt_add_item(-1, -1, "FOLLOWWER", "0x" + (data_b&0x0F).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 					}
 					else
 					{
@@ -272,6 +277,7 @@ function decode()
 						dec_item_add_pre_text("Broad");		
 						dec_item_add_pre_text("@All");
 						dec_item_add_pre_text((data_b&0x0F).toString(16).toUpperCase())
+						pkt_add_item(-1, -1, "FOLLOWWER", "Broadcast " + (data_b&0x0F).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 					}
 					first_byte=false;
 				}
@@ -283,6 +289,7 @@ function decode()
 					dec_item_add_pre_text(int_to_str_hex(data_b) + " '" + String.fromCharCode(data_b) + "'");	
 					dec_item_add_pre_text(int_to_str_hex(data_b));
 					dec_item_add_pre_text("'" + String.fromCharCode(data_b) + "'");
+					pkt_add_item(-1, -1, "DATA", int_to_str_hex(data_b) + " '" + String.fromCharCode(data_b) + "'", PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 				}
 			}
 			if(i==9)
@@ -295,6 +302,7 @@ function decode()
 					dec_item_add_pre_text("NACK");	
 					dec_item_add_pre_text("!ACK");
 					dec_item_add_pre_text("!");	
+					pkt_add_item(-1, -1, "ACK", "NoAck", PKT_COLOR_ACK_TITLE, PKT_COLOR_DATA, true);
 				}
 				else
 				{
@@ -302,6 +310,7 @@ function decode()
 					dec_item_add_pre_text("Acknowledge");	
 					dec_item_add_pre_text("ACK");	
 					dec_item_add_pre_text("A");
+					pkt_add_item(-1, -1, "ACK", "Ack", PKT_COLOR_ACK_TITLE, PKT_COLOR_DATA, true);
 				}
 			}
 			
@@ -312,6 +321,7 @@ function decode()
 				data_b=0;
 			}
 		}
+		pkt_end();
 	}
 }
 
