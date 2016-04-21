@@ -102,6 +102,8 @@ function decode()
 	
 	t = trs_get_first(ch);
 	
+	baud=baud*0.6/2.4;
+	
 	spb = sample_rate / baud; 		// calculate the number of Samples Per Bit.
 	m = spb / 10; 					// margin = 1 tenth of a bit time (expressed in number of samples)
 	
