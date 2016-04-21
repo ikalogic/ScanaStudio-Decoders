@@ -88,6 +88,7 @@ function decode()
 	var data_b;
 	var data_start_sample;
 	var i=0;
+	var first_byte=false;
 						
 	get_ui_vals();                // Update the content of user interface variables
 
@@ -141,6 +142,7 @@ function decode()
 				if ( ( (t_next_sample - t_sample) < spb*45.2/24 ) && ( (t_next_sample - t_sample) > spb*44.8/24 ) )
 				{
 					test_start=true;
+					first_byte=true;
 					//debug("test true");
 					pkt_start("HDMI-CEC (CH " + (ch+1) + ")");
 					dec_item_new(ch, t_sample,t.sample); 		// add the start bit item
@@ -174,7 +176,7 @@ function decode()
 			if(i==0)
 			{
 				data_start_sample=t_sample;
-				//debug("rentrée dans la boucle",t_sample);
+				//debug("rentr�e dans la boucle",t_sample);
 			}
 			
 			if (trs_is_not_last(ch) == false)
@@ -202,7 +204,7 @@ function decode()
 							if(i==8)
 							{
 								EOM=false;
-								dec_item_new(ch, t_sample,t_next_sample); 		// add the start bit item
+								dec_item_new(ch, t_sample,t_next_sample); 		
 								dec_item_add_pre_text("Not End Of Message");	
 								dec_item_add_pre_text("!EOM");
 								dec_item_add_comment("!E");
@@ -229,7 +231,7 @@ function decode()
 							if(i==8)
 							{
 								EOM=true;
-								dec_item_new(ch, t_sample,t_next_sample); 		// add the start bit item
+								dec_item_new(ch, t_sample,t_next_sample); 		
 								dec_item_add_pre_text("End Of Message");	
 								dec_item_add_pre_text("EOM");
 								dec_item_add_comment("E");
@@ -245,15 +247,65 @@ function decode()
 			
 			if(i==7)
 			{
-				dec_item_new(ch, data_start_sample,t_next_sample); 		// add the start bit item
-				dec_item_add_pre_text("Data " + int_to_str_hex(data_b) + " = '" + String.fromCharCode(data_b) + "'");	
-				dec_item_add_pre_text(int_to_str_hex(data_b) + " = '" + String.fromCharCode(data_b) + "'");	
-				dec_item_add_pre_text(int_to_str_hex(data_b) + " '" + String.fromCharCode(data_b) + "'");	
-				dec_item_add_pre_text(int_to_str_hex(data_b));
-				dec_item_add_pre_text("'" + String.fromCharCode(data_b) + "'");	
+				if(first_byte)
+				{
+					dec_item_new(ch, data_start_sample,(data_start_sample+t_next_sample)/2); 		
+					dec_item_add_pre_text("Address Initiator 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());			
+					dec_item_add_pre_text("@ Initiator 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());		
+					dec_item_add_pre_text("@Init 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase())
+					dec_item_add_pre_text("@0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());
+					dec_item_add_pre_text(( (data_b&0xF0) >>4).toString(16).toUpperCase());
+				
+					if((data_b&0x0F)!=0x0F)
+					{
+						dec_item_new(ch, (data_start_sample+t_next_sample)/2, t_next_sample); 		
+						dec_item_add_pre_text("Address Follower 0x" + (data_b&0x0F).toString(16).toUpperCase());			
+						dec_item_add_pre_text("@ Follower 0x" + (data_b&0x0F).toString(16).toUpperCase());		
+						dec_item_add_pre_text("@Fol 0x" + (data_b&0x0F).toString(16).toUpperCase())
+						dec_item_add_pre_text("@0x" + (data_b&0x0F).toString(16).toUpperCase());
+						dec_item_add_pre_text((data_b&0x0F).toString(16).toUpperCase())
+					}
+					else
+					{
+						dec_item_new(ch, (data_start_sample+t_next_sample)/2, t_next_sample); 		
+						dec_item_add_pre_text("Broadcast");			
+						dec_item_add_pre_text("Broad");		
+						dec_item_add_pre_text("@All");
+						dec_item_add_pre_text((data_b&0x0F).toString(16).toUpperCase())
+					}
+					first_byte=false;
+				}
+				else
+				{
+					dec_item_new(ch, data_start_sample,t_next_sample); 		
+					dec_item_add_pre_text("Data " + int_to_str_hex(data_b) + " = '" + String.fromCharCode(data_b) + "'");	
+					dec_item_add_pre_text(int_to_str_hex(data_b) + " = '" + String.fromCharCode(data_b) + "'");	
+					dec_item_add_pre_text(int_to_str_hex(data_b) + " '" + String.fromCharCode(data_b) + "'");	
+					dec_item_add_pre_text(int_to_str_hex(data_b));
+					dec_item_add_pre_text("'" + String.fromCharCode(data_b) + "'");
+				}
 			}
-			i++;
+			if(i==9)
+			{
+				if ( ( (t_next_sample - t_sample) < spb*8/24 ) && ( (t_next_sample - t_sample) > spb*4/24 ) )
+				{
+					dec_item_new(ch, t_sample,t_sample+spb-m); 		
+					dec_item_add_pre_text("No Acknowledge");	
+					dec_item_add_pre_text("No ACK");	
+					dec_item_add_pre_text("NACK");	
+					dec_item_add_pre_text("!ACK");
+					dec_item_add_pre_text("!");	
+				}
+				else
+				{
+					dec_item_new(ch, t_sample,t_sample+spb-m); 		
+					dec_item_add_pre_text("Acknowledge");	
+					dec_item_add_pre_text("ACK");	
+					dec_item_add_pre_text("A");
+				}
+			}
 			
+			i++;
 			if(i==10 && !EOM)
 			{
 				i=0;
