@@ -8,7 +8,7 @@ The following commented block allows some related informations to be displayed o
 <DESCRIPTION>
 
 	CAN Protocol Decoder.
-	This a standard can bus decoder that will interpret and display normal and extended 
+	This a standard can bus decoder that will interpret and display normal and extended
 	CAN frames. It will also display stuffed bits, calculate checksum and compare it against the one given in the frame.
 
 </DESCRIPTION>
@@ -19,7 +19,7 @@ The following commented block allows some related informations to be displayed o
 	V1.30: Added decoder trigger & demo signal builder
 	V1.27: Fixed Hex View wrong endianness
 	V1.26: Now the decoding can be aborted
-	V1.25: Added backward compatibility features (specially related to HEX view support) 
+	V1.25: Added backward compatibility features (specially related to HEX view support)
 	V1.24: Corrected some spelling mistakes
 	V1.23: Fixed bug with Extended frame ID value
 	V1.22: Fixed bug with extended frame data field
@@ -50,7 +50,7 @@ The following commented block allows some related informations to be displayed o
 */
 function get_dec_name()
 {
-	return "CAN"; 
+	return "CAN";
 }
 
 
@@ -66,7 +66,7 @@ function get_dec_ver()
 */
 function get_dec_auth()
 {
-	return "IKALOGIC"; 
+	return "IKALOGIC";
 }
 
 /*
@@ -82,7 +82,9 @@ var	GET_CRC  = 50;
 var	GET_ACK	 = 60;
 
 var spb; 				//samples per bit
+var spb_hs;				//samples per bit in high speed mode (CAN FD during data)
 var m; 					//margin between blocks
+var m_hs;				//margin between blocks during High Speed
 var state = GET_SOF; 	//initialise CAN decoder state machine
 var c = 0; 				//general purpose counter
 var i = 0; 				//general purpose counter
@@ -96,6 +98,7 @@ var last_bit; 			//used to detect stuffing errors
 var data_size = 0; 		//to store the DLC field
 var ide_mode = false;
 var rtr_mode = false;
+var edl_mode = false;
 var stop = false;
 var stuffing_ok = true;
 var potential_overload = true;
@@ -117,20 +120,18 @@ var demoBitSeqArr = [];
 
 /* Graphical user interface
 */
-function gui() 
+function gui()  //graphical user interface
 {
-	ui_clear();
-
-	ui_add_ch_selector("ch", "Channel to decode", "CAN");
-	ui_add_baud_selector("rate", "Bit rate", 500000);
-
+	ui_clear();  // clean up the User interface before drawing a new one.
+	ui_add_ch_selector( "ch", "Channel to decode", "CAN" );
+	ui_add_baud_selector( "rate", "Bit rate", 500000 );
+	ui_add_baud_selector( "high_rate", "high bit rate:", 2000000 );
 	ui_add_separator();
-	ui_add_info_label("<b>Hex view options:</b>");
-
-	ui_add_txt_combo("hex_opt", "Include in HEX view:");
-	ui_add_item_to_txt_combo("DATA fields only", true);
-	ui_add_item_to_txt_combo("ID and DATA Fields", false);
-	ui_add_item_to_txt_combo("Everything", false);
+	ui_add_info_label( "<b>Hex view options:</b>" );
+	ui_add_txt_combo( "hex_opt", "Include in HEX view:" );
+		ui_add_item_to_txt_combo( "DATA fields only", true );
+		ui_add_item_to_txt_combo( "ID and DATA Fields" );
+		ui_add_item_to_txt_combo( "Everything" );
 }
 
 
@@ -152,7 +153,9 @@ function decode()
 	}
 
 	spb = sample_rate / rate; 		// Calculate the number of Samples Per Bit.
+	spb_hs = sample_rate / high_rate;
 	m = spb / 10; 					// Margin = 1 tenth of a bit time (expresed in number of samples)
+	m_hs = spb_hs / 10;
 
 	var t = trs_get_first(ch);
 
@@ -201,6 +204,7 @@ function decode()
 				state = GET_ID;
 				rtr_mode = false;
 				ide_mode = false;
+				edl_mode = false;
 				potential_overload = true; 	// This *may* be the beginning of an overload frame
 
 			break;
@@ -224,8 +228,24 @@ function decode()
 					else
 					{
 						bits[b] = bit_sampler_next(ch);		// Regular bit
-						dec_item_add_sample_point(ch, s + (rb * spb), DRAW_POINT);
-						bit_pos.push(s + (rb * spb)); 		// Store the position of that bit 
+						if(!edl_mode)
+						{
+							dec_item_add_sample_point(ch, s + (rb * spb), DRAW_POINT);
+							bit_pos.push(s + (rb * spb)); 		// Store the position of that bit 
+						}
+						else
+						{
+							if(ide_mode)
+							{
+								dec_item_add_sample_point(ch, s + 38*spb + (rb-38) * spb_hs, DRAW_POINT);
+								bit_pos.push(s + 38*spb +(rb-38) * spb_hs); 		// Store the position of that bit 
+							}
+							else
+							{
+								dec_item_add_sample_point(ch, s + (19*spb) + ((rb-19) * spb_hs), DRAW_POINT);
+								bit_pos.push(s + (19*spb) + ((rb-19) * spb_hs)); 		// Store the position of that bit 
+							}
+						}
 
 						if (bits[b] == last_bit)
 						{
@@ -254,12 +274,31 @@ function decode()
 						{
 							rtr_mode = true;
 						}
+						if ((b == 34) && (bits[33] == 1))
+						{
+							edl_mode = true;
+						}
+						
+						if ((b == 35) && (bits[34] == 1) && edl_mode)
+						{
+							bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
+debug("set High Speed");
+						}
 					}
 					else
 					{
 						if ((b == 13) && (bits[12] == 1))
 						{
 							rtr_mode = true;
+						}
+						if ((b == 15) && (bits[14] == 1))
+						{
+							edl_mode = true;
+						}
+						if ((b == 16) && (bits[15] == 1) && edl_mode)
+						{
+							bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
+debug("set High Speed");
 						}
 					}
 
@@ -291,7 +330,6 @@ function decode()
 					{
 						val = (val * 2) + bits[c];
 					}
-
 					dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[11] + (0.5 * spb) - m); 		// Add the ID item
 					dec_item_add_pre_text("IDENTIFIER: "); 
 					dec_item_add_pre_text("ID: "); 
@@ -342,8 +380,11 @@ function decode()
 					}
 
 					data_size = val;
-
-					dec_item_new(ch,bit_pos[15] - (0.5 * spb) + m, bit_pos[18] + (0.5 * spb) - m); 	// Add the ID item
+					
+					if(!edl_mode)
+						dec_item_new(ch,bit_pos[15] - (0.5 * spb) + m, bit_pos[18] + (0.5 * spb) - m); 	// Add the ID item
+					else
+						dec_item_new(ch,bit_pos[15] - (0.5 * spb_hs) + m_hs, bit_pos[18] + (0.5 * spb_hs) - m_hs); 	// Add the ID item
 					dec_item_add_pre_text("DATA LENGTH CODE: "); 
 					dec_item_add_pre_text("DATA LENGTH: ");
 					dec_item_add_pre_text("DATA LEN: ");
@@ -420,7 +461,10 @@ function decode()
 
 					data_size = val;
 
-					dec_item_new(ch, bit_pos[35] - (0.5 * spb) + m, bit_pos[38] + (0.5 * spb) - m); 	// Add the ID item				
+					if(!edl_mode)
+						dec_item_new(ch,bit_pos[35] - (0.5 * spb) + m, bit_pos[38] + (0.5 * spb) - m); 	// Add the ID item
+					else
+						dec_item_new(ch,bit_pos[35] - (0.5 * spb_hs) + m_hs, bit_pos[38] + (0.5 * spb_hs) - m_hs); 	// Add the ID item		
 					dec_item_add_pre_text("DATA LENGTH CODE: "); 
 					dec_item_add_pre_text("DATA LENGTH: ");
 					dec_item_add_pre_text("DATA LEN: ");
@@ -448,8 +492,9 @@ function decode()
 				break;
 
 			case GET_DATA:
-
 				db = 0;
+				if(edl_mode)
+					bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
 
 				while (db < (data_size * 8)) 	// Read data bits
 				{
@@ -467,9 +512,16 @@ function decode()
 					else
 					{
 						bits[b] = bit_sampler_next(ch);		// Regular bit
-						dec_item_add_sample_point(ch, s + (rb * spb), DRAW_POINT);
-						
-						bit_pos.push(s + (rb * spb)); 	// Store the position of that bit
+						if(ide_mode)
+						{
+							dec_item_add_sample_point(ch, s + 38*spb + (rb-38) * spb_hs, DRAW_POINT);
+							bit_pos.push(s + 38*spb +(rb-38) * spb_hs); 		// Store the position of that bit 
+						}
+						else
+						{
+							dec_item_add_sample_point(ch, s + (19*spb) + ((rb-19) * spb_hs), DRAW_POINT);
+							bit_pos.push(s + (19*spb) + ((rb-19) * spb_hs)); 		// Store the position of that bit 
+						}
 
 						if (bits[b] == last_bit)
 						{
@@ -507,8 +559,10 @@ function decode()
 					{
 						val = (val * 2) + bits[b + (i * 8) + c];
 					}
-
-					dec_item_new(ch, bit_pos[b + (i * 8)] - (0.5 * spb) + m, bit_pos[b + (i * 8) + 7] + (0.5 * spb) - m); 	// Add the ID item
+					if(!edl_mode)
+						dec_item_new(ch, bit_pos[b + (i * 8)] - (0.5 * spb) + m, bit_pos[b + (i * 8) + 7] + (0.5 * spb) - m); 	// Add the ID item
+					else
+						dec_item_new(ch, bit_pos[b + (i * 8)] - (0.5 * spb_hs) + m_hs, bit_pos[b + (i * 8) + 7] + (0.5 * spb_hs) - m_hs); 	// Add the ID item
 					dec_item_add_pre_text("DATA: ");
 					dec_item_add_pre_text("D: ");
 					dec_item_add_pre_text("D "); 
@@ -518,7 +572,10 @@ function decode()
 					pkt_data += int_to_str_hex(val) + " ";
 				}
 
-				pkt_add_item(bit_pos[b] - (0.5 * spb), bit_pos[b + ((data_size - 1) * 8) + 7] + (0.5 * spb), "DATA", pkt_data, dark_colors.gray, channel_color);
+				if(!edl_mode)
+					pkt_add_item(bit_pos[b] - (0.5 * spb), bit_pos[b + ((data_size - 1) * 8) + 7] + (0.5 * spb), "DATA", pkt_data, dark_colors.gray, channel_color);
+				else
+					pkt_add_item(bit_pos[b] - (0.5 * spb_hs), bit_pos[b + ((data_size - 1) * 8) + 7] + (0.5 * spb_hs), "DATA", pkt_data, dark_colors.gray, channel_color);
 
 				b += (data_size * 8);
 				state = GET_CRC;
