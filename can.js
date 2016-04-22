@@ -632,22 +632,25 @@ function decode()
 			break;
 
 			case GET_CRC:
-
+				var nbr_stf_b = 0;
 				db = 0;
 				if(edl_mode)
 				{
 					bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
+					bit_sampler_next(ch);
 					
 					
 					
-					while (db < crc_len) //read crc bits
+					while (db-nbr_stf_b < crc_len) //read crc bits
 					{
-						if (db % 5 ==1)
+						if (db % 5 ==0)
 						{
 							bit_sampler_next(ch);
+							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_CROSS);
 							db++;
-							rb++;
-							frame_length_in_sample += spb_hs;
+							nbr_stf_b++;
+							/*rb++;
+							frame_length_in_sample += spb_hs;*/
 						}
 						else
 						{
@@ -855,7 +858,6 @@ function decode()
 					b += 14;
 					state = GET_ACK;
 				}
-
 			break;
 
 			case GET_ACK: 	// and the EOF too.
