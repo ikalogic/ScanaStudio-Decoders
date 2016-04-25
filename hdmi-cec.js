@@ -260,22 +260,12 @@ function decode()
 				if(first_byte)	//data_b is @init and @folo
 				{
 					dec_item_new(ch, data_start_sample,(data_start_sample+t_next_sample)/2); 		
-					dec_item_add_pre_text("Address Initiator 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());			
-					dec_item_add_pre_text("@ Initiator 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());		
-					dec_item_add_pre_text("@Init 0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase())
-					dec_item_add_pre_text("@0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase());
-					dec_item_add_pre_text(( (data_b&0xF0) >>4).toString(16).toUpperCase());
-					pkt_add_item(-1, -1, "INITIATOR", "0x" + ( (data_b&0xF0) >>4).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					decode_address((data_b & 0xf0)>>4);
 				
 					if((data_b&0x0F)!=0x0F)
 					{
 						dec_item_new(ch, (data_start_sample+t_next_sample)/2, t_next_sample); 		
-						dec_item_add_pre_text("Address Follower 0x" + (data_b&0x0F).toString(16).toUpperCase());			
-						dec_item_add_pre_text("@ Follower 0x" + (data_b&0x0F).toString(16).toUpperCase());		
-						dec_item_add_pre_text("@Fol 0x" + (data_b&0x0F).toString(16).toUpperCase())
-						dec_item_add_pre_text("@0x" + (data_b&0x0F).toString(16).toUpperCase());
-						dec_item_add_pre_text((data_b&0x0F).toString(16).toUpperCase())
-						pkt_add_item(-1, -1, "FOLLOWER", "0x" + (data_b&0x0F).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+						decode_address(data_b&0x0F);
 					}
 					else
 					{
@@ -521,4 +511,91 @@ function int_to_str_hex (num)
 	temp += num.toString(16).toUpperCase();
 
 	return temp;
+}
+
+function decode_address (addr)
+{
+	var PKT_COLOR_DATA         = get_ch_light_color(ch);
+	var PKT_COLOR_DATA_TITLE   = dark_colors.gray;
+	switch (addr)
+	{
+		case 0 : 	dec_item_add_pre_text("Televisor 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("TV 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("TV");
+					pkt_add_item(-1, -1, "DEVICE", "TV 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 1 : 	dec_item_add_pre_text("Recording Device 1 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Record Dev 1 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Rec Dev 1 0x" + (addr).toString(16).toUpperCase())
+					dec_item_add_pre_text("RD1 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("RD1");
+					pkt_add_item(-1, -1, "DEVICE", "Recording Device 1 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 2 : 	dec_item_add_pre_text("Recording Device 2 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Record Dev 2 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Rec Dev 2 0x" + (addr).toString(16).toUpperCase())
+					dec_item_add_pre_text("RD2 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("RD2");
+					pkt_add_item(-1, -1, "DEVICE", "Recording Device 2 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 3 : 	dec_item_add_pre_text("Tuner 1 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Tun 1 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Tun1");
+					pkt_add_item(-1, -1, "DEVICE", "Tuner 1 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 4 : 	dec_item_add_pre_text("Playing Device 1 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Play Dev 1 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("PlDv1 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("PD1");
+					pkt_add_item(-1, -1, "DEVICE", "Playing Device 1 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 5 : 	dec_item_add_pre_text("Audio System 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Audio Sys 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Aud Sys 0x" + (addr).toString(16).toUpperCase())
+					dec_item_add_pre_text("AS 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("AS");
+					pkt_add_item(-1, -1, "DEVICE", "Audio System 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 6 : 	dec_item_add_pre_text("Tuner 2 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Tun 2 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Tun2");
+					pkt_add_item(-1, -1, "DEVICE", "Tuner 2 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 7 : 	dec_item_add_pre_text("Tuner 3 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Tun 3 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Tun3");
+					pkt_add_item(-1, -1, "DEVICE", "Tuner 3 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 8 : 	dec_item_add_pre_text("Playing Device 2 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Play Dev 2 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("PlDv2 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("PD2");
+					pkt_add_item(-1, -1, "DEVICE", "Playing Device 2 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 9 : 	dec_item_add_pre_text("Recording Device 3 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Record Dev 3 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Rec Dev 3 0x" + (addr).toString(16).toUpperCase())
+					dec_item_add_pre_text("RD3 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("RD3");
+					pkt_add_item(-1, -1, "DEVICE", "Recording Device 3 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 10 : 	dec_item_add_pre_text("Tuner 3 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Tun 3 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("Tun3");
+					pkt_add_item(-1, -1, "DEVICE", "Tuner 3 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		case 11 : 	dec_item_add_pre_text("Playing Device 3 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("Play Dev 3 0x" + (addr).toString(16).toUpperCase());		
+					dec_item_add_pre_text("PlDv3 0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text("PD3");
+					pkt_add_item(-1, -1, "DEVICE", "Playing Device 3 0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+		default :	dec_item_add_pre_text("Address Device 0x" + (addr).toString(16).toUpperCase());			
+					dec_item_add_pre_text("@ Device 0x" + (add).toString(16).toUpperCase());		
+					dec_item_add_pre_text("@Dev 0x" + (addr).toString(16).toUpperCase())
+					dec_item_add_pre_text("@0x" + (addr).toString(16).toUpperCase());
+					dec_item_add_pre_text((addr).toString(16).toUpperCase());
+					pkt_add_item(-1, -1, "DEVICE", "0x" + (addr).toString(16).toUpperCase(), PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+					break;
+	}
 }
