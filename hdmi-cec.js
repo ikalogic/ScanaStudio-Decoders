@@ -13,7 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	 V1.0:  Initial release - Only generator
+	V1.0:  Initial release - Decoder, Generator and Example
 
 </RELEASE_NOTES>
 
@@ -74,7 +74,6 @@ function gui()
 	ui_clear();	// clean up the User interface before drawing a new one.
 		
 	ui_add_ch_selector( "ch", "Channel to decode", "HDMI-CEC" );
-	ui_add_baud_selector( "baud", "BAUD rate", 416 );
 }
 
 function decode()
@@ -102,7 +101,7 @@ function decode()
 	
 	t = trs_get_first(ch);
 	
-	baud=baud*0.6/2.4;
+	baud=416;
 	
 	spb = sample_rate / baud; 		// calculate the number of Samples Per Bit.
 	m = spb / 10; 					// margin = 1 tenth of a bit time (expressed in number of samples)
@@ -147,7 +146,7 @@ function decode()
 					first_byte=true;
 					//debug("test true");
 					pkt_start("HDMI-CEC (CH " + (ch+1) + ")");
-					dec_item_new(ch, t_sample,t.sample); 		// add the start bit item
+					dec_item_new(ch, t_sample +m,t.sample -m); 		// add the start bit item
 					dec_item_add_pre_text("Start");	
 					dec_item_add_pre_text("S");
 					dec_item_add_comment("Start");
@@ -207,7 +206,7 @@ function decode()
 							if(i==8) // is it EOM bit ?
 							{
 								EOM=false;
-								dec_item_new(ch, t_sample,t_next_sample); 		
+								dec_item_new(ch, t_sample+m,t_next_sample-m); 		
 								dec_item_add_pre_text("Not End Of Message");	
 								dec_item_add_pre_text("EOM = 0");
 								dec_item_add_pre_text("!EOM");
@@ -237,7 +236,7 @@ function decode()
 							if(i==8) // is it EOM bit ?
 							{
 								EOM=true;
-								dec_item_new(ch, t_sample,t_next_sample); 		
+								dec_item_new(ch, t_sample +m,t_next_sample-m); 		
 								dec_item_add_pre_text("End Of Message");	
 								dec_item_add_pre_text("EOM = 1");
 								dec_item_add_pre_text("EOM");
@@ -259,17 +258,17 @@ function decode()
 				hex_add_byte(ch, -1, -1, data_b);
 				if(first_byte)	//data_b is @init and @folo
 				{
-					dec_item_new(ch, data_start_sample,(data_start_sample+t_next_sample)/2); 		
+					dec_item_new(ch, data_start_sample+m,(data_start_sample+t_next_sample)/2 -m); 		
 					decode_address((data_b & 0xf0)>>4);
 				
 					if((data_b&0x0F)!=0x0F)
 					{
-						dec_item_new(ch, (data_start_sample+t_next_sample)/2, t_next_sample); 		
+						dec_item_new(ch, (data_start_sample+t_next_sample)/2 +m, t_next_sample-m); 		
 						decode_address(data_b&0x0F);
 					}
 					else
 					{
-						dec_item_new(ch, (data_start_sample+t_next_sample)/2, t_next_sample); 		
+						dec_item_new(ch, (data_start_sample+t_next_sample)/2 +m, t_next_sample-m); 		
 						dec_item_add_pre_text("Broadcast");			
 						dec_item_add_pre_text("Broad");		
 						dec_item_add_pre_text("@All");
@@ -280,7 +279,7 @@ function decode()
 				}
 				else	//data_b is data
 				{
-					dec_item_new(ch, data_start_sample,t_next_sample); 		
+					dec_item_new(ch, data_start_sample+m,t_next_sample-m); 		
 					dec_item_add_pre_text("Data " + int_to_str_hex(data_b) + " = '" + String.fromCharCode(data_b) + "'");	
 					dec_item_add_pre_text(int_to_str_hex(data_b) + " = '" + String.fromCharCode(data_b) + "'");	
 					dec_item_add_pre_text(int_to_str_hex(data_b) + " '" + String.fromCharCode(data_b) + "'");	
@@ -293,7 +292,7 @@ function decode()
 			{
 				if ( ( (t_next_sample - t_sample) < spb*8/24 ) && ( (t_next_sample - t_sample) > spb*4/24 ) )
 				{
-					dec_item_new(ch, t_sample,t_sample+spb-m); 		
+					dec_item_new(ch, t_sample+m,t_sample+spb-m); 		
 					dec_item_add_pre_text("No Acknowledge");	
 					dec_item_add_pre_text("No ACK");	
 					dec_item_add_pre_text("NACK");	
@@ -303,7 +302,7 @@ function decode()
 				}
 				else
 				{
-					dec_item_new(ch, t_sample,t_sample+spb-m); 		
+					dec_item_new(ch, t_sample+m,t_sample+spb-m); 		
 					dec_item_add_pre_text("Acknowledge");	
 					dec_item_add_pre_text("ACK");	
 					dec_item_add_pre_text("A");
@@ -599,3 +598,4 @@ function decode_address (addr)
 					break;
 	}
 }
+
