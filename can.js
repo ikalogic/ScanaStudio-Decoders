@@ -4,11 +4,17 @@
 						    SCANASTUDIO 2 CAN DECODER
 The following commented block allows some related informations to be displayed online
 <DESCRIPTION>
+
 	CAN Protocol Decoder.
 	This a standard can bus decoder that will interpret and display normal and extended
 	CAN frames. It will also display stuffed bits, calculate checksum and compare it against the one given in the frame.
+	It will also decode CAN-FD frames.
+
 </DESCRIPTION>
+
 <RELEASE_NOTES>
+
+	V1.40: Added CAN-FD compatibility
 	V1.31: Added ScanaStudio 2.3xx compatibility.
 	V1.30: Added decoder trigger & demo signal builder
 	V1.27: Fixed Hex View wrong endianness
@@ -22,9 +28,13 @@ The following commented block allows some related informations to be displayed o
 	V1.15: Added support for RTR frames and Overload frames.
 	V1.10: Used the "bit_sampler" feature for faster decoding.
 	V1.00: Initial release
+
 </RELEASE_NOTES>
+
 <AUTHOR_URL>
+
 	mailto:i.kamal@ikalogic.com
+
 </AUTHOR_URL>
 *************************************************************************************
 */
@@ -39,7 +49,7 @@ The following commented block allows some related informations to be displayed o
 */
 function get_dec_name()
 {
-	return "CAN";
+	return "CAN-FD";
 }
 
 
@@ -47,7 +57,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.31";
+	return "1.40";
 }
 
 
@@ -1608,6 +1618,7 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
+
 
 
 
