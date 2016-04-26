@@ -49,7 +49,7 @@ The following commented block allows some related informations to be displayed o
 */
 function get_dec_name()
 {
-	return "CAN-FD";
+	return "CAN";
 }
 
 
@@ -239,7 +239,7 @@ function decode()
 						bits[b] = bit_sampler_next(ch);		// Regular bit
 						dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
 						bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
-//debug(b + " " +  bits[b], bit_pos[b]);
+
 
 						if (bits[b] == last_bit)
 						{
@@ -329,7 +329,7 @@ function decode()
 					break;
 				}
 				
-				if(edl_mode)
+				if(edl_mode) //if it's CAN-FD
 				{
 					// Check if we are in normal or extended ID mode
 					if (ide_mode == false)	 	// Normal frame
@@ -374,7 +374,7 @@ function decode()
 							pkt_add_item(-1, -1, "RTR = 0", "DATA FRAME", dark_colors.green, channel_color, true);
 						}
 	
-						dec_item_new(ch, bit_pos[13] - (0.5 * spb) + m, bit_pos[13] + (0.5 * spb) - m); 	// Add the IDE bit
+						dec_item_new(ch, bit_pos[13] - (0.5 * spb) + m, bit_pos[13] + (0.5 * spb) - m); 
 						dec_item_add_pre_text("BASE FRAME FORMAT");
 						dec_item_add_pre_text("BASE FRAME"); 
 						dec_item_add_pre_text("BASE"); 
@@ -421,9 +421,9 @@ function decode()
 						}
 						
 						if(!edl_mode)
-							dec_item_new(ch,bit_pos[18] - (0.5 * spb) + m, bit_pos[21] + (0.5 * spb) - m); 	// Add the ID item
+							dec_item_new(ch,bit_pos[18] - (0.5 * spb) + m, bit_pos[21] + (0.5 * spb) - m); 	// Add the DLC item
 						else
-							dec_item_new(ch,bit_pos[18] - (0.5 * spb_hs) + m_hs, bit_pos[21] + (0.5 * spb_hs) - m_hs); 	// Add the ID item
+							dec_item_new(ch,bit_pos[18] - (0.5 * spb_hs) + m_hs, bit_pos[21] + (0.5 * spb_hs) - m_hs); 	// Add the DLC item
 						dec_item_add_pre_text("DATA LENGTH CODE: "); 
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
@@ -454,7 +454,7 @@ function decode()
 							val = (val * 2) + bits[c];
 						}
 	
-						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[31] + (0.5 * spb) - m); 	// Add the ID item
+						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[31] + (0.5 * spb) - m); 	// Add the EID item
 						dec_item_add_pre_text("EXTENDED IDENTIFIER: "); 
 						dec_item_add_pre_text("EID: ");
 						dec_item_add_data(val);
@@ -510,7 +510,6 @@ function decode()
 						for (c = 37; c < 41; c++)
 						{
 							val = (val * 2) + bits[c];
-//debug(bits[c]);
 						}
 	
 						data_size = val;
@@ -531,9 +530,9 @@ function decode()
 						}
 	
 						if(!edl_mode)
-							dec_item_new(ch,bit_pos[37] - (0.5 * spb) + m, bit_pos[40] + (0.5 * spb) - m); 	// Add the ID item
+							dec_item_new(ch,bit_pos[37] - (0.5 * spb) + m, bit_pos[40] + (0.5 * spb) - m); 	// Add the DLC item
 						else
-							dec_item_new(ch,bit_pos[37] - (0.5 * spb_hs) + m_hs, bit_pos[40] + (0.5 * spb_hs) - m_hs); 	// Add the ID item		
+							dec_item_new(ch,bit_pos[37] - (0.5 * spb_hs) + m_hs, bit_pos[40] + (0.5 * spb_hs) - m_hs); 	// Add the DLC item		
 						dec_item_add_pre_text("DATA LENGTH CODE: "); 
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
@@ -612,7 +611,7 @@ function decode()
 	
 						data_size = val;
 	
-						dec_item_new(ch,bit_pos[15] - (0.5 * spb) + m, bit_pos[18] + (0.5 * spb) - m); 	// Add the ID item
+						dec_item_new(ch,bit_pos[15] - (0.5 * spb) + m, bit_pos[18] + (0.5 * spb) - m); 	// Add the DLC item
 						dec_item_add_pre_text("DATA LENGTH CODE: "); 
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
@@ -641,7 +640,7 @@ function decode()
 							val = (val * 2) + bits[c];
 						}
 	
-						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[31] + (0.5 * spb) - m); 	// Add the ID item
+						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[31] + (0.5 * spb) - m); 	// Add the EID item
 						dec_item_add_pre_text("EXTENDED IDENTIFIER: "); 
 						dec_item_add_pre_text("EID: ");
 						dec_item_add_data(val);
@@ -689,7 +688,7 @@ function decode()
 	
 						data_size = val;
 	
-						dec_item_new(ch, bit_pos[35] - (0.5 * spb) + m, bit_pos[38] + (0.5 * spb) - m); 	// Add the ID item				
+						dec_item_new(ch, bit_pos[35] - (0.5 * spb) + m, bit_pos[38] + (0.5 * spb) - m); 	// Add the DLC item				
 						dec_item_add_pre_text("DATA LENGTH CODE: "); 
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
@@ -740,16 +739,8 @@ function decode()
 					else
 					{
 						bits[b] = bit_sampler_next(ch);		// Regular bit
-						if(ide_mode)
-						{
-							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
-							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
-						}
-						else
-						{
-							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
-							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
-						}
+						dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
+						bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
 
 						if (bits[b] == last_bit)
 						{
@@ -825,9 +816,6 @@ function decode()
 				if(edl_mode)
 				{
 					bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
-					//bit_sampler_next(ch);
-					
-					
 					
 					while (db-nbr_stf_b < crc_len) //read crc bits
 					{
@@ -871,10 +859,9 @@ function decode()
 	
 					crc_rg = 0;		// Now calculate our own crc to compare
 	
-//debug("\n");
+
 					for (c = 1; c < b; c++)
 					{
-//debug(bits[c] + ";\t" , bit_pos[c]);
 						crc_nxt = bits[c] ^ ((crc_rg >> (crc_len)) & 0x1);
 						crc_rg = crc_rg << 1;
 	
@@ -891,7 +878,6 @@ function decode()
 						else if (crc_len==21)
 							crc_rg &= 0x1fffff
 					}
-//debug("\n");
 					
 					dec_item_new(ch, bit_pos[b] - (0.5 * spb_hs) + m_hs, bit_pos[b + crc_len-1] + (0.5 * spb_hs) - m_hs); 	// Add the ID item
 					dec_item_add_pre_text("CRC : "); 
@@ -1101,7 +1087,7 @@ function decode()
 				t = trs_go_after(ch, bit_pos[b] + (10.5 * spb));
 				set_progress(100 * t.sample / n_samples);
 				state = GET_SOF;
-				//dec_item_new(ch, bit_pos[0] - (0.5 * spb) + m, bit_pos[b] + (0.5 * spb) - m); 	//<=========================DEBUG ALL THE TRAME
+				//dec_item_new(ch, bit_pos[0] - (0.5 * spb) + m, bit_pos[b] + (0.5 * spb) - m); 	//<=========================DEBUG ALL THE FRAME
 			break;
 		}
 	}
