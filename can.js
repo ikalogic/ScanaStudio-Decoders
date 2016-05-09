@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.41: Fix High-rate bug in case it isn't defined
 	V1.40: Added CAN-FD compatibility
 	V1.31: Added ScanaStudio 2.3xx compatibility.
 	V1.30: Added decoder trigger & demo signal builder
@@ -57,7 +58,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.40";
+	return "1.41";
 }
 
 
@@ -147,19 +148,30 @@ function decode()
 	{
 		hex_opt = 0;
 	}
+	
+	
 
 	if (rate == 0)
 	{
 		return;
 	}
-
+	
 	spb = sample_rate / rate; 		// Calculate the number of Samples Per Bit.
-	spb_hs = sample_rate / high_rate;
+			
+	try 
+	{
+		spb_hs = sample_rate / high_rate;		
+	}
+	catch(e)
+	{
+		spb_hs = sample_rate / 2000000;
+	}
+	
 	m = spb / 10; 					// Margin = 1 tenth of a bit time (expresed in number of samples)
 	m_hs = spb_hs / 10;
 
 	var t = trs_get_first(ch);
-
+	
 	channel_color = get_ch_light_color(ch);
 
 	while (trs_is_not_last(ch) && (stop == false))
@@ -1604,12 +1616,3 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
-
-
-
-
-
-
-
-
-
