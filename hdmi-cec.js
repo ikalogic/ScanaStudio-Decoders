@@ -7,7 +7,7 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-	
+	Consumer Electronics Control (CEC) is an HDMI feature designed to allow the user to command and control up to 15 CEC-enabled devices, that are connected through HDMI.
 
 </DESCRIPTION>
 
@@ -598,4 +598,5 @@ function decode_address (addr)
 					break;
 	}
 }
+
 
