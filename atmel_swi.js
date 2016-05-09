@@ -7,13 +7,19 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
+	Single-Wire Interface is used by Atmel chip to communicate using only one wire.
+	This mode uses a single GPIO connection on the system microprocessor connected to the SDA pin on the device. It permits the fewest number of connector pins to any removable/replaceable entity. The bit rate is up to 26Kb/s and is compatible with standard UART signaling.
 	
+	Logical SWI 0 = 0x7D UART
+	Logical SWI 1 = 0x7F UART
+	
+	Flag and data are always transmitted LSB First.
 
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
-	 V1.0:  Initial release
+	V1.0:  Initial release
 
 </RELEASE_NOTES>
 
@@ -930,3 +936,7 @@ function int_to_str_hex (num)
 
 	return temp;
 }
+
+
+
+
