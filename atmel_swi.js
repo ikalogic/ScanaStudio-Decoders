@@ -108,7 +108,6 @@ function decode()
 	var param2_begin = 0;
 						
 	get_ui_vals();                // Update the content of user interface variables
-	clear_dec_items();            // Clears all the the decoder items and its content
 	
 	channel_color = get_ch_light_color(ch);
 	
@@ -129,23 +128,20 @@ function decode()
 		
 		if (t.val!=FALLING)
 		{
-			t = get_next_falling_edge (ch, t); 		// search start falling edge
+			t = get_next_falling_edge (ch, t); 		// search falling edge
 		}
 		
 		t_sample = t.sample;
 		
 		t = get_next_rising_edge(ch, t);
 		
-		if( ((t.sample - t_sample)>=(spb/7)-m)&&((t.sample - t_sample)<=(spb/7)+m) )
+		if( ((t.sample - t_sample)>=(spb/7)-m)&&((t.sample - t_sample)<=(spb/7)+m) )	//find each following bits and fill bytes with it
 		{
 			t_next_sample = t.sample;
 			t = get_next_falling_edge(ch, t);
 			if( ((t.sample - t_sample)>=spb-m) || (!trs_is_not_last()) )
 			{
 				//bit = 0
-				/*dec_item_new(ch, t_sample+m, t_sample+spb-m );
-				dec_item_add_pre_text("0");
-				debug("0");*/
 				dec_item_add_sample_point(ch, t_sample + spb/2, DRAW_0);
 				bit[cnt_bit]=0;
 				if (cnt_bit==0)
@@ -166,9 +162,6 @@ function decode()
 						if( ((t.sample - t_sample)>=spb-m) || (!trs_is_not_last()) )
 						{
 							//bit = 1
-							/*dec_item_new(ch, t_sample+m, t_sample+spb-m );
-							dec_item_add_pre_text("1");
-							debug("1");*/
 							dec_item_add_sample_point(ch, t_sample + spb/2, DRAW_1);
 							bit[cnt_bit]=1;
 							if (cnt_bit==0)
@@ -187,7 +180,7 @@ function decode()
 			trame = [];
 			pkt_end();
 		}
-		if(cnt_bit==8)
+		if(cnt_bit==8)	//byte is fill, now decode it
 		{
 			val = (bit[7]<<7)|(bit[6]<<6)|(bit[5]<<5)|(bit[4]<<4)|(bit[3]<<3)|(bit[2]<<2)|(bit[1]<<1)|bit[0];
 			switch(state)
@@ -203,6 +196,7 @@ function decode()
 						dec_item_add_pre_text("W");
 						dec_item_add_data(val);
 						
+						pkt_end();
 						pkt_start("ATMEL SWI");
 						pkt_add_item(-1, -1, "WAKE", "", dark_colors.blue, channel_color);
 					}
@@ -275,6 +269,16 @@ function decode()
 						pkt_end();
 						pkt_start("ATMEL SWI");
 						pkt_add_item(-1, -1, "IDLE", "", dark_colors.blue, channel_color);
+					}
+					else
+					{
+						dec_item_new(ch, t_first_bit + m , t_first_bit + spb*8 -m );
+						dec_item_add_pre_text("Byte ");
+						dec_item_add_data(val);
+						
+						pkt_end();
+						pkt_start("ATMEL SWI");
+						pkt_add_item(-1, -1, "Byte", int_to_str_hex(val), dark_colors.black, channel_color);
 					}
 					break;
 				}
@@ -590,7 +594,40 @@ function decode()
 }
 
 
+/*
+*************************************************************************************
+							     DEMO BUILDER
+*************************************************************************************
+*/
 
+function build_demo_signals()
+{
+	ch = 0; 				// The channel on wich signal are genrated
+	baud = 26000;			// The baudrate of the communication
+	
+	inter_transaction_silence = 0.5;	//time in bit spend between two packet of the frame
+	
+	spb=get_sample_rate()/baud;
+	standby(3);
+	write_wake();
+	standby(inter_transaction_silence);
+
+	
+	data_write_str_master(0x12,0x00,0x1234,"Salut !");	
+	standby(inter_transaction_silence);
+
+	data_write_str_slave("Bonjour");
+	standby(inter_transaction_silence);
+	
+	data_write_str_master(0x02,0x05,0x6789,"Bye !");
+	standby(inter_transaction_silence);
+	
+	data_write_str_slave("Bye");
+	standby(inter_transaction_silence);
+	
+	write_idle();
+	standby(inter_transaction_silence);
+}
 /*
 *************************************************************************************
 							     Signal Generator
@@ -607,18 +644,40 @@ function generator_template()
 	ch = 0; 				// The channel on wich signal are genrated
 	baud = 26000;			// The baudrate of the communication
 	
-	inter_transaction_silence = 0.5;	//time in ?s spend between two packet of the frame
+	inter_transaction_silence = 0.5;	//time in bit spend between two packet of the frame
 	
 	spb=get_sample_rate()/baud;
+	/* example of differents function you can use*/
+	standby(3);
+	write_sleep();
 	
+	standby(3);
+	
+	data_write(0x18);
+
 	standby(3);
 	write_wake();
 	standby(inter_transaction_silence);
 
-	
-	data_write_str_master(0x12,0x00,0x1234,"Salut !");
+	/*
+	data_write_str_master(opcode, param1, param2, string)
+	opcode, param1 and param2 are defined in the datasheet
+	string is the data transmitted
+	you should to read it in the aim of use this function in order to be understood the right way by Atmel chip	
+	*/
+	data_write_str_master(0x12,0x00,0x1234,"Salut !");	
 	standby(inter_transaction_silence);
 	
+	
+	data_write(0x18);						//byte wich shouldn't be here but it shows that it is'nt included in frame
+	standby(inter_transaction_silence);
+	
+	
+	/*
+	data_write_str_master(string)
+	
+	string is the data transmitted
+	*/
 	data_write_str_slave("Bonjour");
 	standby(inter_transaction_silence);
 	
