@@ -7,19 +7,13 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-	Single-Wire Interface is used by Atmel chip to communicate using only one wire.
-	This mode uses a single GPIO connection on the system microprocessor connected to the SDA pin on the device. It permits the fewest number of connector pins to any removable/replaceable entity. The bit rate is up to 26Kb/s and is compatible with standard UART signaling.
 	
-	Logical SWI 0 = 0x7D UART
-	Logical SWI 1 = 0x7F UART
-	
-	Flag and data are always transmitted LSB First.
 
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
-	V1.0:  Initial release
+	 V1.0:  Initial release
 
 </RELEASE_NOTES>
 
@@ -147,9 +141,9 @@ function decode()
 			t = get_next_falling_edge(ch, t);
 			if( ((t.sample - t_sample)>=spb-m) || (!trs_is_not_last()) )
 			{
-				//bit = 0
-				dec_item_add_sample_point(ch, t_sample + spb/2, DRAW_0);
-				bit[cnt_bit]=0;
+				//bit = 1
+				dec_item_add_sample_point(ch, t_sample + spb/2, DRAW_1);
+				bit[cnt_bit]=1;
 				if (cnt_bit==0)
 					t_first_bit = t_sample;
 				cnt_bit++;
@@ -167,9 +161,9 @@ function decode()
 						t = get_next_falling_edge(ch, t);
 						if( ((t.sample - t_sample)>=spb-m) || (!trs_is_not_last()) )
 						{
-							//bit = 1
-							dec_item_add_sample_point(ch, t_sample + spb/2, DRAW_1);
-							bit[cnt_bit]=1;
+							//bit = 0
+							dec_item_add_sample_point(ch, t_sample + spb/2, DRAW_0);
+							bit[cnt_bit]=0;
 							if (cnt_bit==0)
 								t_first_bit = t_sample;
 							cnt_bit++;
@@ -482,13 +476,14 @@ function decode()
 						}
 						else
 						{
-							dec_item_add_post_text(" WRONG, Should be: " + val);
+							dec_item_add_post_text(" WRONG, Should be: " + int_to_str_hex(val));
 							dec_item_add_post_text("!");
 							
 							pkt_add_item(-1, -1, "CRC ERROR", int_to_str_hex(crc), dark_colors.red, channel_color);
 						}
 						
 						crc=0;
+						trame = [];
 						state = GET_COMM_TRANS;
 						//pkt_end();
 					}
@@ -569,13 +564,14 @@ function decode()
 						}
 						else
 						{
-							dec_item_add_post_text(" WRONG, Should be: " + val);
+							dec_item_add_post_text(" WRONG, Should be: " +  int_to_str_hex(val));
 							dec_item_add_post_text("!");
 							
 							pkt_add_item(-1, -1, "CRC ERROR", int_to_str_hex(crc), dark_colors.red, channel_color);
 						}
 						
 						crc=0;
+						trame = [];
 						state = GET_COMM_TRANS;
 						//pkt_end();
 					}
@@ -708,7 +704,7 @@ function standby(t)
 	add_samples(ch,1,t*spb);
 }
 
-function data_high()
+function data_low()
 {
 	add_samples(ch,0,spb/7);
 	add_samples(ch,1,spb/7);
@@ -716,7 +712,7 @@ function data_high()
 	add_samples(ch,1,spb*4/7);
 }
 
-function data_low()
+function data_high()
 {
 	add_samples(ch,0,spb/7);
 	add_samples(ch,1,spb*6/7);
@@ -725,7 +721,6 @@ function data_low()
 function data_write_str_slave(str)
 {
 	var i;
-	var iterator=0;
 	var trame = [];
 	var crc = [];
 	var tmp;
@@ -733,15 +728,15 @@ function data_write_str_slave(str)
 	write_transmit();
 	standby(inter_transaction_silence);
 	
-	trame[iterator]=str.length;
-	iterator++;
+	//trame[iterator]=str.length;
+	//iterator++;
+	trame[trame.length]=str.length+3;
 	data_write(str.length + 3);
 	standby(inter_transaction_silence);
 	
 	for(i=0;i<str.length;i++)
 	{
-		trame[iterator] = str.charCodeAt(i);
-		iterator++;
+		trame[trame.length]=str.charCodeAt(i);
 		
 		data_write(str.charCodeAt(i));
 		standby(inter_transaction_silence);
@@ -761,7 +756,6 @@ function data_write_str_slave(str)
 function data_write_str_master(opcode, param1, param2, str)
 {
 	var i;
-	var iterator=0;
 	var trame = [];
 	var crc = [];
 	var tmp;
@@ -769,27 +763,29 @@ function data_write_str_master(opcode, param1, param2, str)
 	write_command();
 	standby(inter_transaction_silence);
 	
-	trame[iterator]=str.length;
-	iterator++;
+	trame[trame.length]=str.length + 7;
 	data_write(str.length + 7);
 	standby(inter_transaction_silence);
 	
 	data_write(opcode);
+	trame[trame.length] = opcode;
 	standby(inter_transaction_silence);
 	
 	data_write(param1);
+	trame[trame.length] = param1;
 	standby(inter_transaction_silence);
 	
 	data_write(param2 & 0xff);
+	trame[trame.length] = param2 & 0xff;
 	standby(inter_transaction_silence);
 	
 	data_write( (param2>>8)&0xff );
+	trame[trame.length] = (param2>>8)&0xff;
 	standby(inter_transaction_silence);
 	
 	for(i=0;i<str.length;i++)
 	{
-		trame[iterator] = str.charCodeAt(i);
-		iterator++;
+		trame[trame.length] = str.charCodeAt(i);
 		
 		data_write(str.charCodeAt(i));
 		standby(inter_transaction_silence);
@@ -833,15 +829,15 @@ function crc_calculation(trame)
 	
 	for(c=0;c<trame.length;c++)
 	{
-		for(i=7;i>=0;i--)
+		for(i=0;i<8;i++)
 		{
-			bit[i+8*c] = (trame[c] >> i) & 0x1;
+			bit[i+8*c] = (trame[c] >>(i) ) & 0x1;
 		}
 	}
 	
 	for(c=0;c<bit.length;c++)
 	{
-		crc_nxt = bit[c] ^ ((crc_rg >> (crc_len)) & 0x1);
+		crc_nxt = bit[c] ^ ((crc_rg >> (crc_len-1)) & 0x1);
 		crc_rg = crc_rg << 1;
 
 		if (crc_nxt == 1)
@@ -936,7 +932,3 @@ function int_to_str_hex (num)
 
 	return temp;
 }
-
-
-
-
