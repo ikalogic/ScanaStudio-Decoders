@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.41: Correted bug related to number of bits in signal generator
 	V1.40: Added ScanaStudio 2.3xx compatibility.
 	V1.39: Added Signal Generator capability
 	V1.38: Added ability to trigger on a phrase like "Hello World"
@@ -61,7 +62,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.40";
+	return "1.41";
 }
 
 
@@ -511,7 +512,7 @@ function put_c (code)
 
     if (order == 1) 	// MSB first
     {
-        for (i = 7; i >= 0; i--)
+        for (i = nbits-1; i >= 0; i--)
         {
             b = ((code >> i) & 0x1)
             
@@ -530,7 +531,7 @@ function put_c (code)
     }
     else
     {
-        for (i = 0; i < 8; i++)
+        for (i = 0; i < nbits; i++)
         {
             b = ((code >> i) & 0x1)
 
@@ -939,6 +940,7 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
 
 
 
