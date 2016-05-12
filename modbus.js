@@ -64,7 +64,17 @@ function get_dec_auth()
 							    GLOBAL VARIABLES
 *************************************************************************************
 */
+
 var channel_color;
+var PARITY_NONE = 0;
+var PARITY_ODD = 1;
+var PARITY_EVEN = 2;
+
+var ch;
+var baud;
+var parity;
+var nbits;
+var samples_per_bit;
 
 /*
 *************************************************************************************
@@ -122,7 +132,7 @@ function decode_RTU()
   	clear_dec_items();            // Clears all the the decoder items and its content
 	
 	var stop_bit;
-	if (PARITY_SELECTOR == 0)
+	if (PARITY_SELECTOR == PARITY_NONE)
 		stop_bit=2;
 	else
 		stop_bit=0;
@@ -306,7 +316,7 @@ function decode_ASCII()
   	clear_dec_items();            // Clears all the the decoder items and its content
 	
 	var stop_bit;
-	if (PARITY_SELECTOR == 0)
+	if (PARITY_SELECTOR == PARITY_NONE)
 		stop_bit=2;
 	else
 		stop_bit=0;
@@ -543,6 +553,141 @@ function decode_ASCII()
 */
 
 
+function generator_template()
+{
+	/*
+		Configuration part : !! Configure this part !!
+		(Do not change variables names)
+	*/
+	
+	ch = 0;	//The channel on which signal are generated
+	baud = 9600;
+	
+	parity = PARITY_NONE; // options are PARITY_NONE, PARITY_ODD, PARITY_EVEN;
+	/*
+		Signal generation part !! Change this part according to your application !!
+	*/
+	
+	delay(50); //Idle state for 50 bits time - This is recommended in most cases
+	
+	modbus_ASCII_write_data("F7031389000A");
+	
+	var data_rtu=[]; 
+	data_rtu= [4,1,0,10,0,13];
+	modbus_RTU_write_data(data_rtu);
+	delay(50); 
+}
+
+function modbus_ASCII_write_data(str)
+{
+	var i;
+	var lrc=0;
+	var temp = ":";
+
+	nbits = 7;
+	samples_per_bit = get_sample_rate() / baud;
+	for(i=0;i<str.length-1;i+=2)
+	{
+		temp += str[i] + str[i+1];
+		if(str.charCodeAt(i) < 58)
+			lrc+= (str.charCodeAt(i) - 0x30)*16;
+		else
+			lrc+= (str.charCodeAt(i) - 55)*16;
+		if(str.charCodeAt(i+1) < 58)
+			lrc+= str.charCodeAt(i+1) - 0x30;
+		else
+			lrc+= str.charCodeAt(i+1) - 55;
+	}
+	
+	lrc = (-lrc)%256;
+	lrc = 256+lrc;
+	
+	if (lrc < 0x10)
+	{
+		temp += "0";
+	}
+
+	temp += lrc.toString(16).toUpperCase() + "\r\n";
+	
+	put_str(temp);
+}
+
+function modbus_RTU_write_data(str)
+{
+	var i;
+	var crc=crc_calculation(str);
+	
+	nbits = 8;
+	samples_per_bit = get_sample_rate() / baud;
+	
+	delay(28);
+	
+	for(i=0;i<str.length;i++)
+	{
+		put_c(str[i]);
+	}
+	
+	put_c(crc&0xff);
+	put_c(crc>>8);
+	
+	delay(28);
+}
+/*
+*/
+function put_str (str)
+{
+    var i;
+    for (i = 0; i < str.length; i++)
+    {
+        put_c(str.charCodeAt(i));
+    }
+}
+
+
+/*
+*/
+function put_c (code)
+{
+    var i;
+    var b;
+	var par = 0;
+
+	add_samples(ch, 0, samples_per_bit);   	// start
+    
+	for (i = 0; i < nbits; i++)
+	{
+		b = ((code >> i) & 0x1)
+
+        add_samples(ch, b, samples_per_bit);
+		par = par ^ b;
+    }
+    
+
+	if (parity > 0)
+	{
+		switch (parity)
+		{
+			case 1: par = par ^ 1; break;
+			case 2: par = par ^ 0; break;
+		}
+
+		add_samples(ch, par, samples_per_bit);
+		add_samples(ch, 1, samples_per_bit); 	// Add stop bits
+	}
+	else
+ 		add_samples(ch, 1, samples_per_bit * 2); 	// Add stop bits
+}
+
+
+/* Adds a delay expressed in number of bits
+*/
+function delay (n_bits)
+{
+    for (var i = 0; i < n_bits; i++)
+    {
+        add_samples(ch, 1, samples_per_bit);
+    }
+}
 
 
 /*
@@ -613,6 +758,8 @@ function crc_calculation(trame)
   	}
   	return crc;
 }
+
+
 
 
 
