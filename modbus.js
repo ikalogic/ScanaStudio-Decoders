@@ -50,8 +50,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "V1.1: Add generator, demo and trigger capability
-";
+	return "V1.1: Add generator, demo and trigger capability";
 }
 
 /* Author 
