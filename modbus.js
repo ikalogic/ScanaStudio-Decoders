@@ -7,13 +7,14 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-	
+	MODBUS© Protocol is a messaging structure, widely used to establish master-slave communication between intelligent devices. A MODBUS message sent from a master to a slave contains the address of the slave, the 'command' (e.g. 'read register' or 'write register'), the data, and a check sum (LRC or CRC).  Since Modbus protocol is just a messaging structure, it is independent of the underlying physical layer. It is traditionally implemented using RS232, RS422, or RS485
 
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
-	 V1.0:  Initial release
+	V1.1: Add generator, demo and trigger capability
+	V1.0:  Initial release
 
 </RELEASE_NOTES>
 
@@ -49,7 +50,8 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.0";
+	return "V1.1: Add generator, demo and trigger capability
+";
 }
 
 /* Author 
@@ -75,6 +77,8 @@ var baud;
 var parity;
 var nbits;
 var samples_per_bit;
+
+var trig_bit_sequence = [];
 
 /*
 *************************************************************************************
@@ -721,14 +725,362 @@ function build_demo_signals()
 							     Trigger
 *************************************************************************************
 */
-function trig_seq_gen() //This function is called by ScanaStudio
+
+
+/* Graphical user interface for the trigger configuration
+*/
+function trig_gui()
 {
-	flexitrig_clear();
-	flexitrig_set_async_mode(true);
-	//flexitrig_append("XXF1",-1,-1);
+	trig_ui_clear();
+
+	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", true);
+		trig_ui_add_label("lab0", "Trigger on any Modbus Frame. In other words, this alternative will trigger on any start bit");
+
+	trig_ui_add_alternative("ALT_SPECIFIC_ADDR","Trigger on an address in frame");
+		trig_ui_add_label("lab1", "The address to be used for trigger. E.g.: for hex: 0x1A or for dec: 26");
+		trig_ui_add_free_text("trig_address", "Trigger address: ");
+		
+	trig_ui_add_alternative("ALT_SPECIFIC_FUNCTION","Trigger on address and function", true);
+		trig_ui_add_label("lab1", "The address to be used for trigger. E.g.: for hex: 0x1A or for dec: 26");
+		trig_ui_add_free_text("trig_address", "Trigger address: ");
+		trig_ui_add_combo("trig_function", "Trigger function: ")
+			trig_ui_add_item_to_combo( "Read Coil Status (0x01)", true );
+			trig_ui_add_item_to_combo( "Read Input Status (0x02)" );
+			trig_ui_add_item_to_combo( "Read Holding Register (0x03)" );
+			trig_ui_add_item_to_combo( "Read Input Register (0x04)" );
+			trig_ui_add_item_to_combo( "Write Single Coil (0x05)" );
+			trig_ui_add_item_to_combo( "Write Single Register (0x06)" );
+			trig_ui_add_item_to_combo( "Write Multiple Coils (0x15)" );
+			trig_ui_add_item_to_combo( "Write Multiple Registers (0x16)" );			
 }
 
 
+function trig_seq_gen() //This function is called by ScanaStudio
+{
+	//flexitrig_clear();
+	
+	get_ui_vals();
+	baud = BAUD_SELECTOR;
+	ch = CH_SELECTOR;
+	
+	if (MODE_SELECTOR == 0)
+		trig_modbus_ASCII();
+	else
+		trig_modbus_RTU();
+		
+	
+	//flexitrig_append("XXF1",-1,-1);
+}
+
+function trig_modbus_ASCII()
+{
+	var temp = "";
+	var fct;
+
+	nbits = 7;
+	if(PARITY_SELECTOR == PARITY_NONE)
+		stop_bit=2;
+	else
+		stop_bit=1;
+		
+	if(ALT_ANY_FRAME == true)
+	{
+		flexitrig_set_async_mode(true);
+		
+		flexitrig_clear();
+		build_trig_byte(0x3a,true);
+	}
+	else if (ALT_SPECIFIC_ADDR == true)
+	{
+		flexitrig_set_async_mode(false);
+		
+		flexitrig_clear();
+		
+		build_trig_byte(0x3a,true);
+		
+		if(trig_address.length>3)
+		{
+			build_trig_byte(trig_address.charCodeAt(2),false);
+			build_trig_byte(trig_address.charCodeAt(3),false);
+		}
+		else
+		{		
+			if (Number(trig_address) < 0x10)
+			{
+				temp += "0";
+			}
+
+			temp += Number(trig_address).toString(16).toUpperCase();	
+				
+			debug(temp);
+			
+			build_trig_byte(temp.charCodeAt(0),false);
+			build_trig_byte(temp.charCodeAt(1),false);
+		}
+	}
+	else if (ALT_SPECIFIC_FUNCTION == true)
+	{
+		flexitrig_set_async_mode(false);
+		
+		flexitrig_clear();
+		
+		build_trig_byte(0x3a,true);
+		
+		if(trig_address.length>3)
+		{
+			build_trig_byte(trig_address.charCodeAt(2),false);
+			build_trig_byte(trig_address.charCodeAt(3),false);
+		}
+		else
+		{		
+			if (Number(trig_address) < 0x10)
+			{
+				temp += "0";
+			}
+
+			temp += Number(trig_address).toString(16).toUpperCase();	
+				
+			debug(temp);
+			
+			build_trig_byte(temp.charCodeAt(0),false);
+			build_trig_byte(temp.charCodeAt(1),false);
+		}
+		
+		switch(trig_function)
+		{
+			case 0:
+				build_trig_byte(0x30, false);
+				build_trig_byte(0x31, false);
+				break;
+			case 1:
+				build_trig_byte(0x30, false);
+				build_trig_byte(0x32, false);
+				break;
+			case 2:
+				build_trig_byte(0x30, false);
+				build_trig_byte(0x33, false);
+				break;
+			case 3:
+				build_trig_byte(0x30, false);
+				build_trig_byte(0x34, false);
+				break;
+			case 4:
+				build_trig_byte(0x30, false);
+				build_trig_byte(0x35, false);
+				break;
+			case 5:
+				build_trig_byte(0x30, false);
+				build_trig_byte(0x36, false);
+				break;
+			case 6:
+				build_trig_byte(0x31, false);
+				build_trig_byte(0x35, false);
+				break;
+			case 7:
+				build_trig_byte(0x31, false);
+				build_trig_byte(0x36, false);
+				break;
+		}
+		
+	}
+}
+
+function trig_modbus_RTU()
+{
+	var temp=0;
+	var step;
+	nbits = 8;
+	if(PARITY_SELECTOR == PARITY_NONE)
+		stop_bit=2;
+	else
+		stop_bit=1;
+		
+	if(ALT_ANY_FRAME == true)
+	{
+		flexitrig_clear();
+		trig_bit_sequence = [1,0];
+		flexitrig_append(build_step(0), -1, -1);
+		flexitrig_append(build_step(1), 28*0.95/baud, -1);
+	}
+	else if (ALT_SPECIFIC_ADDR == true)
+	{
+		flexitrig_clear();
+		
+		if (trig_address.length >3)
+		{
+			if(trig_address.charCodeAt(2) < 58)
+				temp+= (trig_address.charCodeAt(2) - 0x30)*16;
+			else
+				temp+= (trig_address.charCodeAt(2) - 55)*16;
+			if(trig_address.charCodeAt(3) < 58)
+				temp+= trig_address.charCodeAt(3) - 0x30;
+			else
+				temp+= trig_address.charCodeAt(3) - 55;
+				
+			debug(temp);
+			build_trig_byte(Number(temp),true);
+		}
+		else
+		{
+			debug(Number(trig_address));
+			
+			build_trig_byte(Number(trig_address),true);
+		}
+	}
+	
+	else if (ALT_SPECIFIC_FUNCTION == true)
+	{
+		flexitrig_clear();
+		
+		if (trig_address.length >3)
+		{
+			if(trig_address.charCodeAt(2) < 58)
+				temp+= (trig_address.charCodeAt(2) - 0x30)*16;
+			else
+				temp+= (trig_address.charCodeAt(2) - 55)*16;
+			if(trig_address.charCodeAt(3) < 58)
+				temp+= trig_address.charCodeAt(3) - 0x30;
+			else
+				temp+= trig_address.charCodeAt(3) - 55;
+				
+			debug(temp);
+			build_trig_byte(Number(temp),true);
+		}
+		else
+		{
+			debug(Number(trig_address));
+			
+			build_trig_byte(Number(trig_address),true);
+		}
+		
+		switch(trig_function)
+		{
+			case 0:
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+				build_trig_byte(trig_function+1, false);
+				break;
+	
+			case 6:
+			case 7:
+				build_trig_byte(trig_function+9, false);
+				break;
+		}
+		
+	}
+}
+
+
+/*
+*/
+function build_trig_byte (new_byte, first)
+{
+	var lvl = [];
+	var i;
+	var total_steps = 0;
+	var b;
+	var par;
+	var step;
+	var bit_time = 1/baud;	// [s]
+	var bt_max = bit_time * 1.05;	// Allow 5% margin on bit time <-- this may be configurable later.
+	var bt_min = bit_time * 0.95;
+
+	trig_bit_sequence = [];
+
+	if (bt_max == bt_min)
+	{
+		if (bt_min > 0) bt_min--;
+		else bt_max++;
+	}
+	
+	par = 0;
+	lvl[1] = 1;
+	lvl[0] = 0;
+	trig_bit_sequence[0] = 0;
+	
+
+	for (i = 0; i < nbits; i++)
+	{
+		trig_bit_sequence.push(lvl[((new_byte >> i) & 0x1)]);
+		
+		par = par ^ lvl[((new_byte >> i) & 0x1)];
+	}
+
+	if (parity > 0)
+	{
+		switch(parity)
+		{
+			case 1: par = par ^ 1; break;
+			case 2: par = par ^ 0; break;
+		}
+
+		trig_bit_sequence.push(par);
+	}
+
+	trig_bit_sequence.push((~trig_bit_sequence[0]) & 0x1);	// add stop bit
+
+	step = build_step(0);	// Start bit
+
+	if (first) 	// For the very first byte, ignore previous stop byte
+	{
+		flexitrig_append(step, -1, -1); 	// Start edge		
+	}
+	else
+	{
+		flexitrig_append(step, bt_min*stop_bit, -1); 	// Start edge have to be at least "n stop bits" way from the last transition.
+	}
+
+	var last_lvl = trig_bit_sequence[0];
+	var last_index = 0;
+
+	for (i = 1; i < trig_bit_sequence.length; i++)
+	{
+		if (trig_bit_sequence[i] != last_lvl)
+		{
+			last_lvl = trig_bit_sequence[i];
+			step = build_step(i);
+			flexitrig_append(step,bt_min*(i-last_index),bt_max*(i-last_index));
+			last_index = i;
+			total_steps ++;
+		}
+	}
+
+	return total_steps;
+}
+
+
+function build_step (step_index)
+{
+	var step = "";
+	var i;
+	var step_ch_desc;
+	
+	if (trig_bit_sequence[step_index] == 0)
+	{
+		step_ch_desc = "F";
+	}
+	else
+	{
+		step_ch_desc = "R";
+	}
+	
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = step_ch_desc + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+
+	return step;
+}
 /*
 *************************************************************************************
 							        UTILS
@@ -831,6 +1183,11 @@ function function_to_str(data)
 			break;
 	}
 }
+
+
+
+
+
 
 
 
