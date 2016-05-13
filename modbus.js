@@ -224,7 +224,7 @@ function decode_RTU()
 				i_fct = i;
 				trame[trame.length] = buffer[i].data[0];
 				
-				pkt_add_item(-1, -1, "Function", buffer[i].data[0], light_colors.green, channel_color);
+				function_to_str(buffer[i].data[0]);
 				
 				state = 3;
 			}
@@ -417,8 +417,8 @@ function decode_ASCII()
 				dec_item_add_data(val);
 				
 				lrc+= val;
-					
-				pkt_add_item(-1, -1, "Function", val, light_colors.green, channel_color);
+				
+				function_to_str(val);
 				
             	state = 3;
 				i++;
@@ -696,6 +696,37 @@ function delay (n_bits)
 *************************************************************************************
 */
 
+function build_demo_signals()
+{
+	ch = 0;
+	baud = 9600;
+	parity = PARITY_NONE; // options are PARITY_NONE, PARITY_ODD, PARITY_EVEN;
+	
+	
+	delay(50); //Idle state for 50 bits time - This is recommended in most cases
+	modbus_ASCII_write_data("F7031389000A");
+	delay(50); 
+	
+	ch = 1;
+	delay(50); 
+	var data_rtu=[]; 
+	data_rtu= [4,1,0,10,0,13];
+	modbus_RTU_write_data(data_rtu);
+	delay(50); 
+}
+
+
+/*
+*************************************************************************************
+							     Trigger
+*************************************************************************************
+*/
+function trig_seq_gen() //This function is called by ScanaStudio
+{
+	flexitrig_clear();
+	flexitrig_set_async_mode(true);
+	//flexitrig_append("XXF1",-1,-1);
+}
 
 
 /*
@@ -759,6 +790,47 @@ function crc_calculation(trame)
   	return crc;
 }
 
+
+/*
+*/
+function function_to_str(data)
+{
+	switch(data)
+	{
+		case 0x01:
+			dec_item_add_comment("Read Coil Status");
+			pkt_add_item(-1, -1, "Function", data + " Read Coil Status", light_colors.green, channel_color);
+			break;
+		case 0x02:
+			dec_item_add_comment("Read Input Status");
+			pkt_add_item(-1, -1, "Function", data + " Read Input Status", light_colors.green, channel_color);
+			break;
+		case 0x03:
+			dec_item_add_comment("Read Holding Register");
+			pkt_add_item(-1, -1, "Function", data + " Read Holding Register", light_colors.green, channel_color);
+			break;
+		case 0x04:
+			dec_item_add_comment("Read Input Register");
+			pkt_add_item(-1, -1, "Function", data + " Read Input Register", light_colors.green, channel_color);
+			break;
+		case 0x05:
+			dec_item_add_comment("Write Single Coil");
+			pkt_add_item(-1, -1, "Function", data + " Write Single Coil", light_colors.green, channel_color);
+			break;
+		case 0x06:
+			dec_item_add_comment("Write Single Register");
+			pkt_add_item(-1, -1, "Function", data + " Write Single Register", light_colors.green, channel_color);
+			break;
+		case 0x15:
+			dec_item_add_comment("Write Multiple Coils");
+			pkt_add_item(-1, -1, "Function", data + " Write Multiple Coils", light_colors.green, channel_color);
+			break;
+		case 0x16:
+			dec_item_add_comment("Write Multiple Registers");
+			pkt_add_item(-1, -1, "Function", data + " Write Multiple Registers", light_colors.green, channel_color);
+			break;
+	}
+}
 
 
 
