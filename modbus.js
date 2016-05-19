@@ -13,7 +13,8 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.1: Add generator, demo and trigger capability
+	V1.2:  Fix version mistake
+	V1.1:  Add generator, demo and trigger capability
 	V1.0:  Initial release
 
 </RELEASE_NOTES>
@@ -50,7 +51,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "V1.1: Add generator, demo and trigger capability";
+	return "V1.2";
 }
 
 /* Author 
