@@ -7,13 +7,13 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-	MODBUS© Protocol is a messaging structure, widely used to establish master-slave communication between intelligent devices. A MODBUS message sent from a master to a slave contains the address of the slave, the 'command' (e.g. 'read register' or 'write register'), the data, and a check sum (LRC or CRC).  Since Modbus protocol is just a messaging structure, it is independent of the underlying physical layer. It is traditionally implemented using RS232, RS422, or RS485
+	MODBUS Protocol is a messaging structure, widely used to establish master-slave communication between intelligent devices. A MODBUS message sent from a master to a slave contains the address of the slave, the 'command' (e.g. 'read register' or 'write register'), the data, and a check sum (LRC or CRC).  Since Modbus protocol is just a messaging structure, it is independent of the underlying physical layer. It is traditionally implemented using RS232, RS422, or RS485
 
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
-	V1.2:  Fix version mistake
+	V1.2:  Add inverting capability
 	V1.1:  Add generator, demo and trigger capability
 	V1.0:  Initial release
 
@@ -51,7 +51,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "V1.2";
+	return "1.2";
 }
 
 /* Author 
@@ -76,6 +76,7 @@ var ch;
 var baud;
 var parity;
 var nbits;
+var invert;
 var samples_per_bit;
 
 var trig_bit_sequence = [];
@@ -97,6 +98,9 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "No parity bit", true );
 		ui_add_item_to_txt_combo( "Odd parity bit" );
 		ui_add_item_to_txt_combo( "Even parity bit" );
+	ui_add_txt_combo( "invert", "Inverted logic" );
+		ui_add_item_to_txt_combo( "Non inverted logic (default)", true );
+		ui_add_item_to_txt_combo( "Inverted logic: All signals inverted" );
 	ui_add_separator();
 	ui_add_txt_combo( "MODE_SELECTOR", "Mode:" );
 		ui_add_item_to_txt_combo( "Modbus ASCII", true );
@@ -141,7 +145,7 @@ function decode_RTU()
 	else
 		stop_bit=0;
   
-  	buffer = pre_decode("uart.js","ch = "+ CH_SELECTOR +"; baud = "+ BAUD_SELECTOR +"; nbits = 3; parity = "+ PARITY_SELECTOR +"; stop = "+ stop_bit +"; order = 0; invert = 0");
+  	buffer = pre_decode("uart.js","ch = "+ CH_SELECTOR +"; baud = "+ BAUD_SELECTOR +"; nbits = 3; parity = "+ PARITY_SELECTOR +"; stop = "+ stop_bit +"; order = 0; invert = "+ invert);
   
   	// Remove any element that do not contain data, e.g.: Start, Stop
   	for (i = 0; i < buffer.length; i++) 
@@ -205,6 +209,8 @@ function decode_RTU()
 				
 				pkt_add_item(-1, -1, "Address", buffer[i].data[0], dark_colors.green, channel_color);
 				
+				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
+				
 				trame[trame.length] = buffer[i].data[0];
 				
 				state = 2;
@@ -225,6 +231,8 @@ function decode_RTU()
               	dec_item_add_pre_text("F ");//Minimum zoom
 				dec_item_add_data(buffer[i].data[0]);
 				
+				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
+				
 				i_fct = i;
 				trame[trame.length] = buffer[i].data[0];
 				
@@ -241,7 +249,7 @@ function decode_RTU()
 		case 3:
 			if (i < buffer.length)
 			{
-				t=trs_go_after(CH_SELECTOR,buffer[i].end_s + spb);
+				t=trs_go_after(CH_SELECTOR,buffer[i].end_s + spb*2);
 				t_sample = t.sample;
 				if( (t_sample - buffer[i].end_s >= 28*spb) || (!trs_is_not_last(CH_SELECTOR)) )
 				{
@@ -255,6 +263,8 @@ function decode_RTU()
 						trame[trame.length] = buffer[k].data[0];
 						
 						pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+						
+						hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
 					}
 					pkt_end();
 				
@@ -264,6 +274,9 @@ function decode_RTU()
 					dec_item_new(CH_SELECTOR,buffer[i-1].start_s,buffer[i].end_s);
 	              	dec_item_add_pre_text("CRC "); //Maximum zoom
 					dec_item_add_data(crc_red);
+						
+					hex_add_byte(CH_SELECTOR, -1, -1, buffer[i-1].data[0]);
+					hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
 					
 					if (crc==crc_red)
 					{
@@ -325,7 +338,7 @@ function decode_ASCII()
 	else
 		stop_bit=0;
   
-  	buffer = pre_decode("uart.js","ch = "+ CH_SELECTOR +"; baud = "+ BAUD_SELECTOR +"; nbits = 2; parity = "+ PARITY_SELECTOR +"; stop = "+ stop_bit +"; order = 0; invert = 0");
+  	buffer = pre_decode("uart.js","ch = "+ CH_SELECTOR +"; baud = "+ BAUD_SELECTOR +"; nbits = 2; parity = "+ PARITY_SELECTOR +"; stop = "+ stop_bit +"; order = 0; invert = "+ invert);
   
   	// Remove any element that do not contain data, e.g.: Start, Stop
   	for (i = 0; i < buffer.length; i++) 
@@ -366,6 +379,8 @@ function decode_ASCII()
 		
 					pkt_start("Modbus ASCII");
 					pkt_add_item(-1, -1, "Start", ":", dark_colors.blue, channel_color);
+					
+					hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
 	         	}
         	}
       		break;
@@ -389,6 +404,9 @@ function decode_ASCII()
 				dec_item_add_data(val);
 				
 				pkt_add_item(-1, -1, "Address", val, dark_colors.green, channel_color);
+				
+				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
+				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i+1].data[0]);
 				
 				lrc += val;
 					
@@ -419,6 +437,9 @@ function decode_ASCII()
               	dec_item_add_pre_text("Fct ");
               	dec_item_add_pre_text("F ");//Minimum zoom
 				dec_item_add_data(val);
+				
+				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
+				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i+1].data[0]);
 				
 				lrc+= val;
 				
@@ -457,6 +478,8 @@ function decode_ASCII()
 							dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							dec_item_add_data(val);
 							
+							hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+							
 							pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color);
 						}
 						else
@@ -465,6 +488,7 @@ function decode_ASCII()
 								val= (buffer[k].data[0] - 0x30)*16;
 							else
 								val= (buffer[k].data[0] - 55)*16;
+							hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
 						}
 					}
 					
@@ -507,6 +531,9 @@ function decode_ASCII()
 		              	dec_item_add_pre_text("LRC ");
 		              	dec_item_add_pre_text("LRC ");
 						dec_item_add_data(lrc_red);
+						
+						hex_add_byte(CH_SELECTOR, -1, -1, buffer[i-2].data[0]);
+						hex_add_byte(CH_SELECTOR, -1, -1, buffer[i-1].data[0]);
 			
 						if (lrc==lrc_red)
 						{
@@ -534,6 +561,9 @@ function decode_ASCII()
 					dec_item_add_post_text("<CR><LF>");
 					
 					pkt_add_item(-1, -1, "EOF", "<CR><LF>", light_colors.blue, channel_color);
+					
+					hex_add_byte(CH_SELECTOR, -1, -1, "\r\n".charCodeAt(0));
+					hex_add_byte(CH_SELECTOR, -1, -1, "\r\n".charCodeAt(1));
 		
 					state = 0;
 					pkt_end();
@@ -566,6 +596,7 @@ function generator_template()
 	
 	ch = 0;	//The channel on which signal are generated
 	baud = 9600;
+	invert = 0; // options are 0 for no invertion, and 1 for logical invertion
 	
 	parity = PARITY_NONE; // options are PARITY_NONE, PARITY_ODD, PARITY_EVEN;
 	/*
@@ -654,17 +685,54 @@ function put_c (code)
 {
     var i;
     var b;
-	var par = 0;
+    var lvl;
+	var par;
+	var hi;
+	var lo;
+	
+	if (invert == 0)
+	{
+		hi = 1;
+        lo = 0;
+	}
+	else
+	{
+		hi = 0;
+        lo = 1;
+	}
 
-	add_samples(ch, 0, samples_per_bit);   	// start
+	switch (invert)		//add start bit, depending on data inversion mode:
+	{
+		case 0:	add_samples(ch, 0, samples_per_bit); break;   	// default UART, no inversion
+		case 1: add_samples(ch, 1, samples_per_bit); break;   	// inverted logic
+	}
+	
+	if (invert > 0) //if signals are inverted (1) or data only is inverted (2)
+	{
+		par = 1;
+	}
+	else
+	{
+		par = 0;			
+	}
+
     
 	for (i = 0; i < nbits; i++)
 	{
 		b = ((code >> i) & 0x1)
 
-        add_samples(ch, b, samples_per_bit);
-		par = par ^ b;
-    }
+		if (b == 1)
+		{
+			lvl = hi;
+		}
+		else
+		{
+			lvl = lo;
+		}
+
+		add_samples(ch, lvl, samples_per_bit);
+		par = par ^ lvl;
+	}
     
 
 	if (parity > 0)
@@ -676,10 +744,11 @@ function put_c (code)
 		}
 
 		add_samples(ch, par, samples_per_bit);
-		add_samples(ch, 1, samples_per_bit); 	// Add stop bits
+    	add_samples(ch, hi, samples_per_bit); 	// Add stop bits
 	}
 	else
- 		add_samples(ch, 1, samples_per_bit * 2); 	// Add stop bits
+    	add_samples(ch, hi, samples_per_bit * 2); 	// Add stop bits
+
 }
 
 
@@ -689,7 +758,10 @@ function delay (n_bits)
 {
     for (var i = 0; i < n_bits; i++)
     {
-        add_samples(ch, 1, samples_per_bit);
+		if(invert == 0)
+        	add_samples(ch, 1, samples_per_bit);
+		else
+        	add_samples(ch, 0, samples_per_bit);
     }
 }
 
@@ -705,7 +777,7 @@ function build_demo_signals()
 	ch = 0;
 	baud = 9600;
 	parity = PARITY_NONE; // options are PARITY_NONE, PARITY_ODD, PARITY_EVEN;
-	
+	invert = 0;
 	
 	delay(50); //Idle state for 50 bits time - This is recommended in most cases
 	modbus_ASCII_write_data("F7031389000A");
@@ -812,7 +884,7 @@ function trig_modbus_ASCII()
 
 			temp += Number(trig_address).toString(16).toUpperCase();	
 				
-			debug(temp);
+			//debug(temp);
 			
 			build_trig_byte(temp.charCodeAt(0),false);
 			build_trig_byte(temp.charCodeAt(1),false);
@@ -840,7 +912,7 @@ function trig_modbus_ASCII()
 
 			temp += Number(trig_address).toString(16).toUpperCase();	
 				
-			debug(temp);
+			//debug(temp);
 			
 			build_trig_byte(temp.charCodeAt(0),false);
 			build_trig_byte(temp.charCodeAt(1),false);
@@ -996,10 +1068,22 @@ function build_trig_byte (new_byte, first)
 		else bt_max++;
 	}
 	
-	par = 0;
-	lvl[1] = 1;
-	lvl[0] = 0;
-	trig_bit_sequence[0] = 0;
+	switch (invert)	 // First, build trigger bit sequence
+	{
+		case 0:
+			par = 0;
+			lvl[1] = 1;
+			lvl[0] = 0;
+			trig_bit_sequence[0] = 0;
+		break;
+
+		case 1:
+			par = 1;
+			lvl[1] = 0;
+			lvl[0] = 1;
+			trig_bit_sequence[0] = 1;
+		break;
+	}
 	
 
 	for (i = 0; i < nbits; i++)
@@ -1151,38 +1235,42 @@ function function_to_str(data)
 	{
 		case 0x01:
 			dec_item_add_comment("Read Coil Status");
-			pkt_add_item(-1, -1, "Function", data + " Read Coil Status", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Coil Status", light_colors.green, channel_color);
 			break;
 		case 0x02:
 			dec_item_add_comment("Read Input Status");
-			pkt_add_item(-1, -1, "Function", data + " Read Input Status", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Status", light_colors.green, channel_color);
 			break;
 		case 0x03:
 			dec_item_add_comment("Read Holding Register");
-			pkt_add_item(-1, -1, "Function", data + " Read Holding Register", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Holding Register", light_colors.green, channel_color);
 			break;
 		case 0x04:
 			dec_item_add_comment("Read Input Register");
-			pkt_add_item(-1, -1, "Function", data + " Read Input Register", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Register", light_colors.green, channel_color);
 			break;
 		case 0x05:
 			dec_item_add_comment("Write Single Coil");
-			pkt_add_item(-1, -1, "Function", data + " Write Single Coil", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Coil", light_colors.green, channel_color);
 			break;
 		case 0x06:
 			dec_item_add_comment("Write Single Register");
-			pkt_add_item(-1, -1, "Function", data + " Write Single Register", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Register", light_colors.green, channel_color);
 			break;
 		case 0x15:
 			dec_item_add_comment("Write Multiple Coils");
-			pkt_add_item(-1, -1, "Function", data + " Write Multiple Coils", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Coils", light_colors.green, channel_color);
 			break;
 		case 0x16:
 			dec_item_add_comment("Write Multiple Registers");
-			pkt_add_item(-1, -1, "Function", data + " Write Multiple Registers", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Registers", light_colors.green, channel_color);
+			break;
+		default :
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data), light_colors.green, channel_color);
 			break;
 	}
 }
+
 
 
 
