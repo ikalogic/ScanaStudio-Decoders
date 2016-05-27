@@ -13,9 +13,10 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.2:  Add inverting capability
-	V1.1:  Add generator, demo and trigger capability
-	V1.0:  Initial release
+	V1.21: Correct function recognisation
+	V1.2:   Add inverting capability
+	V1.1:   Add generator, demo and trigger capability
+	V1.0:   Initial release
 
 </RELEASE_NOTES>
 
@@ -51,7 +52,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.2";
+	return "1.21";
 }
 
 /* Author 
@@ -134,6 +135,7 @@ function decode_RTU()
 	var val;
 	var spb;
 	var trame = [];
+	var fct;
 	var crc_red;
 	var crc;
   	get_ui_vals();                // Update the content of user interface variables
@@ -174,6 +176,7 @@ function decode_RTU()
 				if( (t_first <= t_sample) && (t_sample - t.sample >= 28*spb) )
 				{
 					state = 1;
+					fct = 0;
 					trame = [];
 					
 					dec_item_new(CH_SELECTOR,buffer[i].start_s-12*spb,buffer[i].start_s-2*spb);
@@ -224,19 +227,11 @@ function decode_RTU()
 		case 2:
 			if (i< buffer.length-1)
 			{
-				dec_item_new(CH_SELECTOR,buffer[i].start_s,buffer[i].end_s);
-              	dec_item_add_pre_text("Function : "); //Maximum zoom
-              	dec_item_add_pre_text("Funct : ");
-              	dec_item_add_pre_text("Fct ");
-              	dec_item_add_pre_text("F ");//Minimum zoom
-				dec_item_add_data(buffer[i].data[0]);
-				
 				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
 				
 				i_fct = i;
+				fct = buffer[i].data[0];
 				trame[trame.length] = buffer[i].data[0];
-				
-				function_to_str(buffer[i].data[0]);
 				
 				state = 3;
 			}
@@ -253,20 +248,537 @@ function decode_RTU()
 				t_sample = t.sample;
 				if( (t_sample - buffer[i].end_s >= 28*spb) || (!trs_is_not_last(CH_SELECTOR)) )
 				{
-					pkt_start("Data");
-					for(k=i_fct+1;k<i-1;k++)
+					switch(fct)
 					{
-						dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
-		              	dec_item_add_pre_text("Data : ");
-						dec_item_add_data(buffer[k].data[0]);
+						case 0x01:
+						case 0x02:
+							if (i-i_fct==6)
+							{//requete
+								
+								dec_item_new(CH_SELECTOR,buffer[i_fct].start_s,buffer[i_fct].end_s);
+				              	dec_item_add_pre_text("Function : "); //Maximum zoom
+				              	dec_item_add_pre_text("Funct : ");
+				              	dec_item_add_pre_text("Fct ");
+				              	dec_item_add_pre_text("F ");//Minimum zoom
+								dec_item_add_data(buffer[i_fct].data[0]);
+								function_to_str(buffer[i_fct].data[0], "Request");
+								
+								for(k=i_fct+1;k<i-1;k++)
+								{
+									switch(k-(i_fct+1))
+									{
+										case 0:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Starting Address Hi : ");
+											pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 1:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											dec_item_add_pre_text("Coil Address Lo : ");
+											pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 2:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(fct==0x01)
+											{
+							              		dec_item_add_pre_text("Quantity of Coils Hi : ");
+												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+							              		dec_item_add_pre_text("Quantity of inputs Hi : ");
+												pkt_add_item(-1, -1, "Quantity of inputs Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 3:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(fct==0x01)
+											{
+							              		dec_item_add_pre_text("Quantity of Coils Lo : ");
+												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+							              		dec_item_add_pre_text("Quantity of inputs Lo : ");
+												pkt_add_item(-1, -1, "Quantity of inputs Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										default :
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Data : ");
+											dec_item_add_data(buffer[k].data[0]);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											break;
+									}
+									
+									trame[trame.length] = buffer[k].data[0];
+									
+									
+									hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+								}
+							}
+							else
+							{//reponse
+								
+								dec_item_new(CH_SELECTOR,buffer[i_fct].start_s,buffer[i_fct].end_s);
+				              	dec_item_add_pre_text("Function : "); //Maximum zoom
+				              	dec_item_add_pre_text("Funct : ");
+				              	dec_item_add_pre_text("Fct ");
+				              	dec_item_add_pre_text("F ");//Minimum zoom
+								dec_item_add_data(buffer[i_fct].data[0]);
+								function_to_str(buffer[i_fct].data[0], "Response");
+								
+								
+								for(k=i_fct+1;k<i-1;k++)
+								{
+									switch(k-(i_fct+1))
+									{
+										case 0:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Byte Count : ");
+											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										default :
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Data : ");
+											dec_item_add_data(buffer[k].data[0]);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											break;
+									}
+									
+									trame[trame.length] = buffer[k].data[0];
+									
+									
+									hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+								}
+							}
+							break;
+							
+						case 0x03:
+						case 0x04:
+							if (i-i_fct==6)
+							{//requete
+								
+								dec_item_new(CH_SELECTOR,buffer[i_fct].start_s,buffer[i_fct].end_s);
+				              	dec_item_add_pre_text("Function : "); //Maximum zoom
+				              	dec_item_add_pre_text("Funct : ");
+				              	dec_item_add_pre_text("Fct ");
+				              	dec_item_add_pre_text("F ");//Minimum zoom
+								dec_item_add_data(buffer[i_fct].data[0]);
+								function_to_str(buffer[i_fct].data[0], "Request");
+								
+								
+								for(k=i_fct+1;k<i-1;k++)
+								{
+									switch(k-(i_fct+1))
+									{
+										case 0:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Starting Address Hi : ");
+											pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 1:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											dec_item_add_pre_text("Starting Address Lo : ");
+											pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 2:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Quantity of Registers Hi : ");
+											pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 3:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Quantity of Registers Lo : ");
+											pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										default :
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Data : ");
+											dec_item_add_data(buffer[k].data[0]);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											break;
+									}
+									
+									trame[trame.length] = buffer[k].data[0];
+									
+									
+									hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+								}
+							}
+							else
+							{//reponse
+								
+								dec_item_new(CH_SELECTOR,buffer[i_fct].start_s,buffer[i_fct].end_s);
+				              	dec_item_add_pre_text("Function : "); //Maximum zoom
+				              	dec_item_add_pre_text("Funct : ");
+				              	dec_item_add_pre_text("Fct ");
+				              	dec_item_add_pre_text("F ");//Minimum zoom
+								dec_item_add_data(buffer[i_fct].data[0]);
+								function_to_str(buffer[i_fct].data[0], "Responce");
+								
+								
+								for(k=i_fct+1;k<i-1;k++)
+								{
+									switch(k-(i_fct+1))
+									{
+										case 0:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Byte Count : ");
+											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										default :
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(k%2)
+											{
+							              		dec_item_add_pre_text("Data Hi : ");
+												pkt_add_item(-1, -1, "Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+							              		dec_item_add_pre_text("Data Lo : ");
+												pkt_add_item(-1, -1, "Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+									}
+									
+									trame[trame.length] = buffer[k].data[0];
+									
+									
+									hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+								}
+							}
+							break;
+							
+						case 0x05:
+						case 0x06:
+							for(k=i_fct+1;k<i-1;k++)
+							{
+								switch(k-(i_fct+1))
+								{
+									case 0:
+										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+										if (fct==0x05)
+										{
+						              		dec_item_add_pre_text("Coil Address Hi : ");
+											pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+										}
+										else
+										{
+						              		dec_item_add_pre_text("Register Address Hi : ");
+											pkt_add_item(-1, -1, "Register Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+										}
+										dec_item_add_data(buffer[k].data[0]);
+										break;
+										
+									case 1:
+										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+										if (fct==0x05)
+										{
+						              		dec_item_add_pre_text("Coil Address Lo : ");
+											pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+										}
+										else
+										{
+						              		dec_item_add_pre_text("Register Address Lo : ");
+											pkt_add_item(-1, -1, "Register Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+										}
+										dec_item_add_data(buffer[k].data[0]);
+										break;
+										
+									case 2:
+										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+						              	dec_item_add_pre_text("Write Data Hi : ");
+										pkt_add_item(-1, -1, "Write Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+										dec_item_add_data(buffer[k].data[0]);
+										break;
+										
+									case 3:
+										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+						              	dec_item_add_pre_text("Write Data Lo : ");
+										pkt_add_item(-1, -1, "Write Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+										dec_item_add_data(buffer[k].data[0]);
+										break;
+										
+									default :
+										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+						              	dec_item_add_pre_text("Data : ");
+										dec_item_add_data(buffer[k].data[0]);
+										pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+										break;
+								}
+								
+								trame[trame.length] = buffer[k].data[0];
+								
+								
+								hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+							}
+							break;
 						
-						trame[trame.length] = buffer[k].data[0];
-						
-						pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
-						
-						hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+						case 0x0F:
+						case 0x10:
+						if (i-i_fct==6)
+							{//reponse
+								
+								dec_item_new(CH_SELECTOR,buffer[i_fct].start_s,buffer[i_fct].end_s);
+				              	dec_item_add_pre_text("Function : "); //Maximum zoom
+				              	dec_item_add_pre_text("Funct : ");
+				              	dec_item_add_pre_text("Fct ");
+				              	dec_item_add_pre_text("F ");//Minimum zoom
+								dec_item_add_data(buffer[i_fct].data[0]);
+								function_to_str(buffer[i_fct].data[0], "Response");
+								
+								
+								for(k=i_fct+1;k<i-1;k++)
+								{
+									switch(k-(i_fct+1))
+									{
+										case 0:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if (fct==0x10)
+											{
+								              	dec_item_add_pre_text("Starting Address Hi : ");
+												pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+								              	dec_item_add_pre_text("Coil Address Hi : ");
+												pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 1:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if (fct==0x10)
+											{
+								              	dec_item_add_pre_text("Starting Address Lo : ");
+												pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+								              	dec_item_add_pre_text("Coil Address Lo : ");
+												pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 2:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(fct==0x0F)
+											{
+							              		dec_item_add_pre_text("Quantity of Coils Hi : ");
+												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+							              		dec_item_add_pre_text("Quantity of Registers Hi : ");
+												pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 3:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(fct==0x0F)
+											{
+							              		dec_item_add_pre_text("Quantity of Coils Lo : ");
+												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+							              		dec_item_add_pre_text("Quantity of Registers Lo : ");
+												pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										default :
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Data : ");
+											dec_item_add_data(buffer[k].data[0]);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											break;
+									}
+									
+									trame[trame.length] = buffer[k].data[0];
+									
+									
+									hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+								}
+							}
+							else
+							{//request
+								
+								dec_item_new(CH_SELECTOR,buffer[i_fct].start_s,buffer[i_fct].end_s);
+				              	dec_item_add_pre_text("Function : "); //Maximum zoom
+				              	dec_item_add_pre_text("Funct : ");
+				              	dec_item_add_pre_text("Fct ");
+				              	dec_item_add_pre_text("F ");//Minimum zoom
+								dec_item_add_data(buffer[i_fct].data[0]);
+								function_to_str(buffer[i_fct].data[0], "Request");
+								
+								
+								for(k=i_fct+1;k<i-1;k++)
+								{
+									switch(k-(i_fct+1))
+									{
+										case 0:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if (fct==0x10)
+											{
+								              	dec_item_add_pre_text("Starting Address Hi : ");
+												pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+								              	dec_item_add_pre_text("Coil Address Hi : ");
+												pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 1:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if (fct==0x10)
+											{
+								              	dec_item_add_pre_text("Starting Address Lo : ");
+												pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+								              	dec_item_add_pre_text("Coil Address Lo : ");
+												pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 2:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(fct==0x0F)
+											{
+							              		dec_item_add_pre_text("Quantity of Coils Hi : ");
+												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+							              		dec_item_add_pre_text("Quantity of Registers Hi : ");
+												pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 3:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(fct==0x0F)
+											{
+							              		dec_item_add_pre_text("Quantity of Coils Lo : ");
+												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											else
+											{
+							              		dec_item_add_pre_text("Quantity of Registers Lo : ");
+												pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										case 4:
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+							              	dec_item_add_pre_text("Byte Count : ");
+											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color);
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+											
+										default :
+											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+											if(k%2)
+											{
+												if(fct==0x10)
+												{
+								              		dec_item_add_pre_text("Data Hi : ");
+													pkt_add_item(-1, -1, "Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												}
+												else
+												{
+								              		dec_item_add_pre_text("Write Data Hi : ");
+													pkt_add_item(-1, -1, "Write Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												}
+											}
+											else
+											{
+												if(fct==0x10)
+												{
+								              		dec_item_add_pre_text("Data Lo : ");
+													pkt_add_item(-1, -1, "Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												}
+												else
+												{
+								              		dec_item_add_pre_text("Write Data Lo : ");
+													pkt_add_item(-1, -1, "Write Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												}
+											}
+											dec_item_add_data(buffer[k].data[0]);
+											break;
+									}
+									
+									trame[trame.length] = buffer[k].data[0];
+									
+									
+									hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+								}
+							}
+							break;
+							
+						default:
+								
+							dec_item_new(CH_SELECTOR,buffer[i_fct].start_s,buffer[i_fct].end_s);
+			              	dec_item_add_pre_text("Function : "); //Maximum zoom
+			              	dec_item_add_pre_text("Funct : ");
+			              	dec_item_add_pre_text("Fct ");
+			              	dec_item_add_pre_text("F ");//Minimum zoom
+							dec_item_add_data(buffer[i_fct].data[0]);
+							function_to_str(buffer[i_fct].data[0], "");
+								
+								
+							pkt_start("Data");
+							for(k=i_fct+1;k<i-1;k++)
+							{
+								dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
+				              	dec_item_add_pre_text("Data : ");
+								dec_item_add_data(buffer[k].data[0]);
+								
+								trame[trame.length] = buffer[k].data[0];
+								
+								pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+								
+								hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
+							}
+							pkt_end();
+							break;
 					}
-					pkt_end();
+					
 				
 					crc = crc_calculation(trame);
 					
@@ -1229,47 +1741,48 @@ function crc_calculation(trame)
 
 /*
 */
-function function_to_str(data)
+function function_to_str(data, r_a)
 {
 	switch(data)
 	{
 		case 0x01:
 			dec_item_add_comment("Read Coil Status");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Coil Status", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Coil Status " + r_a, light_colors.green, channel_color);
 			break;
 		case 0x02:
 			dec_item_add_comment("Read Input Status");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Status", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Status " + r_a, light_colors.green, channel_color);
 			break;
 		case 0x03:
 			dec_item_add_comment("Read Holding Register");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Holding Register", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Holding Register " + r_a, light_colors.green, channel_color);
 			break;
 		case 0x04:
 			dec_item_add_comment("Read Input Register");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Register", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Register " + r_a, light_colors.green, channel_color);
 			break;
 		case 0x05:
 			dec_item_add_comment("Write Single Coil");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Coil", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Coil " + r_a, light_colors.green, channel_color);
 			break;
 		case 0x06:
 			dec_item_add_comment("Write Single Register");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Register", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Register " + r_a, light_colors.green, channel_color);
 			break;
-		case 0x15:
+		case 0x0F:
 			dec_item_add_comment("Write Multiple Coils");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Coils", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Coils " + r_a, light_colors.green, channel_color);
 			break;
-		case 0x16:
+		case 0x10:
 			dec_item_add_comment("Write Multiple Registers");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Registers", light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Registers " + r_a, light_colors.green, channel_color);
 			break;
 		default :
 			pkt_add_item(-1, -1, "Function", int_to_str_hex (data), light_colors.green, channel_color);
 			break;
 	}
 }
+
 
 
 
