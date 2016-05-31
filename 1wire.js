@@ -1430,9 +1430,20 @@ function pkt_add_packet (ok)
 	{
 		obj = pktObjects[i];
 
-		if (obj.title.localeCompare("ROM COMMAND") == 0) desc += obj.data;
-		if (obj.title.localeCompare("FAMILY CODE") == 0) desc += "FAMILY:" + obj.data + " ";
-		if (obj.title.localeCompare("DATA") == 0) desc += "DATA(" + obj.dataObjArr.length + ")";
+		if (obj.title.localeCompare("ROM COMMAND") == 0) 
+		{
+			desc += obj.data;
+		}
+
+		if (obj.title.localeCompare("FAMILY CODE") == 0) 
+		{
+			desc += "FAMILY:" + obj.data + " ";
+		}
+
+		if (obj.title.localeCompare("DATA") == 0) 
+		{
+			desc += "DATA[" + obj.dataObjArr.length + "]";
+		}
 	}
 
 	var pktStart = pktObjects[0].start;
