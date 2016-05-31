@@ -7,14 +7,16 @@
 The following commented block allows some related information to be displayed online
 
 <DESCRIPTION>
-	
+
 	DMX-512 Protocol Decoder.
 	A standart decoder of unidirectional DMX-512 differential interface commonly used to control stage lighting and effects. 
-	
+
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
+	V1.08: New Packet View layout.
+	V1.07: Decoding bytes after Start Code fixed. Thanks to Paul Hughes.
 	V1.06: Now the decoding can be aborted
 	V1.05: Fixed several timings related bugs.
 	V1.00: First release.
@@ -30,6 +32,11 @@ The following commented block allows some related information to be displayed on
 *************************************************************************************
 */
 
+/*
+*************************************************************************************
+								      INFO
+*************************************************************************************
+*/
 
 /* The decoder name as it will appear to the users of this script
 */
@@ -43,7 +50,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.06";
+	return "1.08";
 }
 
 
@@ -51,7 +58,7 @@ function get_dec_ver()
 */
 function get_dec_auth()
 {
-	return "IKALOGIC";
+	return "IKALOGIC, PRH";
 }
 
 
@@ -61,11 +68,21 @@ function gui()
 {
 	ui_clear();	// clean up the User interface before drawing a new one.
 	ui_add_ch_selector("ch", "Channel to decode", "DMX-512");
+
+	ui_add_separator();
+	ui_add_info_label("<b>Packet View options:</b>");
+
+	ui_add_txt_combo("packetViewOpt", "Show in Packet View:");
+		ui_add_item_to_txt_combo("Data value only", true);
+		ui_add_item_to_txt_combo("Data index and value", false);
 }
 
-
-/* Constants
+/*
+*************************************************************************************
+							    GLOBAL VARIABLES
+*************************************************************************************
 */
+
 var DMXOBJECT_TYPE =
 {
 	BREAK : 0x01,
@@ -93,6 +110,28 @@ var DMX_DELAY =
 	INTER_FRAME     : 1000000
 };
 
+function DmxObject (type, value, info, start, end, count)
+{
+	this.type = type;
+	this.value = value;
+	this.info = info;
+	this.start = start;
+	this.end = end;
+	this.count = count;
+};
+
+function PktObject (title, titleColor, data, dataLen, dataObjArr, dataColor, start, end)
+{
+	this.title = title;
+	this.titleColor = titleColor;
+	this.data = data;
+	this.dataLen = dataLen;
+	this.dataObjArr = dataObjArr;
+	this.dataColor = dataColor;
+	this.start = start;
+	this.end = end;
+};
+
 var DMX512_PACKET_SIZE = 512;
 var DMX512_BAUD_RATE = 250000;
 
@@ -104,25 +143,15 @@ var PKT_COLOR_BREAK_TITLE;
 var PKT_COLOR_STOP_TITLE;
 var PKT_COLOR_START_TITLE;
 
-
-/* Object definitions
-*/
-function DmxObject (type, value, info, start, end, count)
-{
-	this.type = type;
-	this.value = value;
-	this.info = info;
-	this.start = start;
-	this.end = end;
-	this.count = count;
-};
-
-
-/* Global variables
-*/
 var dmxObjectsArr, breakObjectsArr, mabObjectsArr;
+var pktObjects;
 var noBreak = true;
 
+/*
+*************************************************************************************
+								   DECODER
+*************************************************************************************
+*/
 
 /*
 */
@@ -159,10 +188,21 @@ function decode()
 
 	var dmxObj = 0;
 	var dmxObjCnt = 0;
+	var pktOk = true;
+	var pktObj = new PktObject();
 
-	dmxObjectsArr = new Array();
-	breakObjectsArr = new Array();
-	mabObjectsArr = new Array();
+	pktObj.title = "DATA";
+	pktObj.data = "";
+	pktObj.titleColor = PKT_COLOR_DATA_TITLE;
+	pktObj.dataColor = PKT_COLOR_DATA;
+	pktObj.dataObjArr = [];
+	pktObj.start = false;
+	pktObj.dataLen = 0;
+
+	dmxObjectsArr = [];
+	breakObjectsArr = [];
+	mabObjectsArr = [];
+	pktObjects = [];
 
 	decode_signal();
 
@@ -190,9 +230,19 @@ function decode()
 					dec_item_add_pre_text("BR");
 					dec_item_add_comment("BREAK");
 
-					pkt_end();
-					pkt_start("DMX-512");
-					pkt_add_item(-1, -1, "BREAK", "", PKT_COLOR_BREAK_TITLE, PKT_COLOR_DATA, true);
+					if (pktObj.dataLen > 0)
+					{
+						pktObjects.push(pktObj);
+						pkt_add_packet(pktOk);
+						pktOk = true;
+						
+						pktObj.dataObjArr = [];
+						pktObj.data = "";
+						pktObj.start = false;
+						pktObj.dataLen = 0;
+					}
+
+					pktObjects.push(new PktObject("BREAK", PKT_COLOR_BREAK_TITLE, "", 0, 0, PKT_COLOR_DATA, dmxObj.start, dmxObj.end));
 			break;
 
 			case DMXOBJECT_TYPE.MAB:
@@ -202,7 +252,7 @@ function decode()
 					dec_item_add_pre_text("MAB");
 					dec_item_add_comment("MARK AFTER BREAK");
 
-					pkt_add_item(-1, -1, "MAB", "", PKT_COLOR_MAB_TITLE, PKT_COLOR_DATA, true);
+					pktObjects.push(new PktObject("MAB", PKT_COLOR_MAB_TITLE, "", 0, 0, PKT_COLOR_DATA, dmxObj.start, dmxObj.end));
 			break;
 
 			case DMXOBJECT_TYPE.BYTE:
@@ -216,6 +266,7 @@ function decode()
 					if (dmxObj.info.length > 0)
 					{
 						dataColor = PKT_COLOR_INVALID;
+						pktOk = false;
 					}
 					else
 					{
@@ -229,16 +280,12 @@ function decode()
 						dec_item_add_pre_text("SC:");
 						dec_item_add_post_text(" " + dmxObj.info);
 
-						if (noBreak)
+						if (pktObj.dataLen > 0)
 						{
-							pkt_end();
-							pkt_start("DMX-512");
-							pkt_add_item(-1, -1, "START CODE", "" + util_dec2hex(dmxObj.value), PKT_COLOR_START_TITLE, dataColor, true);
+							pktObjects.push(pktObj);
 						}
-						else
-						{
-							pkt_add_item(-1, -1, "START CODE", "" + util_dec2hex(dmxObj.value), PKT_COLOR_START_TITLE, dataColor, true);
-						}
+
+						pktObjects.push(new PktObject("START CODE", PKT_COLOR_START_TITLE, "" + util_dec2hex(dmxObj.value), 0, 0, dataColor, dmxObj.start, dmxObj.end));
 					}
 					else
 					{
@@ -246,14 +293,37 @@ function decode()
 						dec_item_add_pre_text("DATA " + dmxObj.count + ": ");
 						dec_item_add_pre_text("D" + dmxObj.count + ":");
 						dec_item_add_post_text(" " + dmxObj.info);
-						
-						pkt_add_item(-1, -1, "DATA " + dmxObj.count, util_dec2hex(dmxObj.value), PKT_COLOR_DATA_TITLE, dataColor, true);
+
+						if (packetViewOpt > 0)
+						{
+							var temp = dmxObj.count + " : " + util_dec2hex(dmxObj.value);
+							dmxObj.value = temp;
+						}
+						else
+						{
+							dmxObj.value = util_dec2hex(dmxObj.value);
+						}
+
+						pktObj.data += dmxObj.value + " ";
+						pktObj.dataObjArr.push(dmxObj);
+						pktObj.dataLen++;
+
+						if (!pktObj.start)
+						{
+							pktObj.start = dmxObj.start;
+						}
+
+						pktObj.end = dmxObj.end;
 					}
 			break;
 		}
 	}
 
-	pkt_end();
+	if (pktObj.dataLen > 0)
+	{
+		pktObjects.push(pktObj);
+		pkt_add_packet(pktOk);
+	}
 }
 
 
@@ -305,11 +375,6 @@ function decode_signal()
 			tr = util_get_next_falling(ch, tr);				// Skip the delay after BREAK and reach the very first start bit
 			var byteStart = tr.sample;
 
-			if (byteStart >= breakStart)
-			{
-				// return false;
-			}
-
 			var bit, dataByte = 0;
 			var midSample = tr.sample + (bitStep / 2);
 			var byteInfo = "";
@@ -342,24 +407,24 @@ function decode_signal()
 				midSample += bitStep;
 			}
 
-			if (trs_is_not_last(ch) != true)
-			{
-				return false;
-			}
-
 			var byteEnd = byteStart + (bitStep * 11);
 			dmxObjectsArr.push(new DmxObject(DMXOBJECT_TYPE.BYTE, dataByte, byteInfo, byteStart, byteEnd, byteCnt));
 			byteCnt++;
 
-			tr = trs_go_after(ch, tr.sample + (bitStep * 11));			// Go to next byte
+			tr = trs_go_after(ch, tr.sample + (bitStep * 11) - (bitStep / 2));		// Go to next byte	
 
-			if (tr.sample >= endOfFrame)								// if we've reached the end of frame before 512 + 1 bytes -> stop
+			if (tr.sample >= endOfFrame)											// if we've reached the end of frame before 512 + 1 bytes -> stop
 			{
 				if (tr.sample < n_samples - 1)
 				{
-					tr = trs_go_after(ch, endOfFrame);					// Go to start of next BREAK
+					tr = trs_go_after(ch, endOfFrame);								// Go to start of next BREAK
 					break;
 				}
+			}
+
+			if (trs_is_not_last(ch) != true)
+			{
+				return false;
 			}
 		}
 
@@ -417,12 +482,120 @@ function test_signal()
 	return ERR_CODES.OK;
 }
 
-
 /*
 *************************************************************************************	
 									   UTILS
 /************************************************************************************
 */	
+
+/*
+*/
+function pkt_add_packet (ok)
+{
+	var obj;
+	var desc = "";
+	var objCnt = 0;
+	var pktDataPerLine = 7;
+
+	if (packetViewOpt > 0)
+	{
+		pktDataPerLine = 0;
+	}
+
+	if (pktObjects.length < 1)
+	{
+		return;
+	}
+
+	for (var i = 0; i < pktObjects.length; i++)
+	{
+		obj = pktObjects[i];
+
+		if (obj.title.localeCompare("START CODE") == 0) 
+		{
+			desc += "SC: " + obj.data;
+		}
+
+		if (obj.title.localeCompare("DATA") == 0)
+		{
+			desc += " DATA[" + obj.dataLen + "]";
+		}
+	}
+
+	var pktStart = pktObjects[0].start;
+	var pktEnd = pktObjects[pktObjects.length - 1].end;
+
+	pkt_start("DMX-512");
+
+	if (ok)
+	{
+		pkt_add_item(pktStart, pktEnd, "DMX-512 FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+	}
+	else
+	{
+		pkt_add_item(pktStart, pktEnd, "DMX-512 FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA);
+	}
+
+	pkt_start("NEW FRAME");
+
+	while (pktObjects.length > objCnt)
+	{
+		obj = pktObjects[objCnt];
+		objCnt++;
+
+		if (obj.title.localeCompare("DATA") == 0)
+		{
+			if (obj.dataLen > pktDataPerLine)
+			{
+				var dataLine = "";
+				var lineStart = false, lineEnd;
+				var dataCnt = 0, lineCnt = 0;
+
+				while (obj.dataObjArr.length > dataCnt)
+				{
+					if (lineCnt <= pktDataPerLine)
+					{
+						if (!lineStart)
+						{
+							lineStart = obj.dataObjArr[dataCnt].start;
+						}
+
+						lineEnd = obj.dataObjArr[dataCnt].end;
+						dataLine = dataLine + obj.dataObjArr[dataCnt].value + " ";
+						lineCnt++;
+						dataCnt++;
+					}
+					else
+					{
+						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+						lineStart = false;
+						dataLine = "";
+						lineCnt = 0;
+					}
+				}
+
+				if (lineCnt > 0)
+				{
+					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+				}
+			}
+			else
+			{
+				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			}
+		}
+		else
+		{
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+		}
+	}
+
+	pkt_end();
+	pkt_end();
+
+	pktObjects.length = 0;
+	pktObjects = [];
+}
 
 
 /*
@@ -468,43 +641,6 @@ function util_get_ch_color (k)
 	chColor.b = (chColor.b * 1 + 255 * 3) / 4;
 
 	return chColor;
-}
-
-
-/*	
-*/
-function util_add_pkt_data (start, end, str, strLen)
-{
-	var pktDataPerLine = 10;
-
-	if (strLen > pktDataPerLine)
-	{
-		var strArr = str.split(" ", pktDataPerLine);
-		var strTemp = strArr.toString();
-		strTemp = strTemp.replace(/,/g, " ");
-		strTemp += " ...";
-
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-
-		strArr = str.split(" ");
-
-		for (var i = pktDataPerLine - 1; i < strArr.length; i += pktDataPerLine)
-		{
-			strArr[i] += "\n";
-		}
-
-		strTemp = strArr.toString();
-		strTemp = strTemp.replace(/,/g, " ");
-
-		pkt_start("DATA");
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-		pkt_end();
-
-	}
-	else
-	{
-		pkt_add_item(start, end, "DATA", str, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
-	}
 }
 
 
