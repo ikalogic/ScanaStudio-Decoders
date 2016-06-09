@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.42: Fix demo generator stuffing error
 	V1.41: Fix High-rate bug in case it isn't defined
 	V1.40: Added CAN-FD compatibility
 	V1.31: Added ScanaStudio 2.3xx compatibility.
@@ -58,7 +59,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.41";
+	return "1.42";
 }
 
 
@@ -1193,6 +1194,7 @@ function demo_generate()
 	var lastBit = 0;
 	var sameBitCnt = 0;
 	var stuffedBitArr = [];
+	var last_stuffbit_add = 2;
 
 	lastBit = demoBitSeqArr[0];
 	stuffedBitArr.push(lastBit);
@@ -1212,16 +1214,23 @@ function demo_generate()
 		{
 			sameBitCnt = 0;
 		}
+		if (last_stuffbit_add == currBit)
+		{
+			sameBitCnt++;
+		}
+		last_stuffbit_add = 2;
 
 		if (sameBitCnt >= 4)
 		{
 			if (lastBit !== 0)
 			{
 				stuffedBitArr.push(0);
+				last_stuffbit_add = 0;
 			}
 			else
 			{
-				stuffedBitArr.push(1);		
+				stuffedBitArr.push(1);
+				last_stuffbit_add = 1;		
 			}
 
 			sameBitCnt = -1;
@@ -1252,7 +1261,6 @@ function demo_generate()
 	demoBitSeqArr = [];
 	stuffedBitArr = [];
 }
-
 
 /*
 */
@@ -1616,3 +1624,4 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
+
