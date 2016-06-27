@@ -379,9 +379,224 @@ function build_demo_signals()
 	var header=initiator*16+follower;
 	data_str = String.fromCharCode(header) + data_str;
 	write_str(data_str);
-	standby_us(3);
+	standby(3);
 } 
 
+
+/*
+*************************************************************************************
+							       TRIGGER
+*************************************************************************************
+*/
+var smpl_rate;
+/* Graphical user interface for the trigger configuration
+*/
+function trig_gui()
+{
+	trig_ui_clear();
+	
+	trig_ui_add_alternative("alt_start", "Trigger on any frame", true);
+		trig_ui_add_label("lab0", "Trigger on any frame. In other words, this alternative will trigger on any start sequence");
+		
+	trig_ui_add_alternative("alt_initiator", "Trigger on Initiator address", false);
+		trig_ui_add_combo("trig_initiator","Initiator address: ")
+			trig_ui_add_item_to_combo( "TV (0x0)", true);
+			trig_ui_add_item_to_combo( "Recording Device 1 (0x1)" );
+			trig_ui_add_item_to_combo( "Recording Device 2 (0x2)" );
+			trig_ui_add_item_to_combo( "Tuner 1 (0x3)" );
+			trig_ui_add_item_to_combo( "Playback Device 1 (0x4)" );
+			trig_ui_add_item_to_combo( "Audio System (0x5)" );
+			trig_ui_add_item_to_combo( "Tuner 2 (0x6)" );
+			trig_ui_add_item_to_combo( "Tuner 3 (0x7)" );
+			trig_ui_add_item_to_combo( "Playback Device 2 (0x8)" );
+			trig_ui_add_item_to_combo( "Recording Device 3 (0x9)" );
+			trig_ui_add_item_to_combo( "Tuner 4 (0xA)" );
+			trig_ui_add_item_to_combo( "Playback Device 3 (0xB)" );
+			
+	trig_ui_add_alternative("alt_follower", "Trigger on Initiator and Follower address", false);
+		trig_ui_add_combo("trig_initiator","Initiator address: ")
+			trig_ui_add_item_to_combo( "TV (0x0)", true);
+			trig_ui_add_item_to_combo( "Recording Device 1 (0x1)" );
+			trig_ui_add_item_to_combo( "Recording Device 2 (0x2)" );
+			trig_ui_add_item_to_combo( "Tuner 1 (0x3)" );
+			trig_ui_add_item_to_combo( "Playback Device 1 (0x4)" );
+			trig_ui_add_item_to_combo( "Audio System (0x5)" );
+			trig_ui_add_item_to_combo( "Tuner 2 (0x6)" );
+			trig_ui_add_item_to_combo( "Tuner 3 (0x7)" );
+			trig_ui_add_item_to_combo( "Playback Device 2 (0x8)" );
+			trig_ui_add_item_to_combo( "Recording Device 3 (0x9)" );
+			trig_ui_add_item_to_combo( "Tuner 4 (0xA)" );
+			trig_ui_add_item_to_combo( "Playback Device 3 (0xB)" );
+		trig_ui_add_combo("trig_follower","Follower address: ")
+			trig_ui_add_item_to_combo( "TV (0x0)", true);
+			trig_ui_add_item_to_combo( "Recording Device 1 (0x1)" );
+			trig_ui_add_item_to_combo( "Recording Device 2 (0x2)" );
+			trig_ui_add_item_to_combo( "Tuner 1 (0x3)" );
+			trig_ui_add_item_to_combo( "Playback Device 1 (0x4)" );
+			trig_ui_add_item_to_combo( "Audio System (0x5)" );
+			trig_ui_add_item_to_combo( "Tuner 2 (0x6)" );
+			trig_ui_add_item_to_combo( "Tuner 3 (0x7)" );
+			trig_ui_add_item_to_combo( "Playback Device 2 (0x8)" );
+			trig_ui_add_item_to_combo( "Recording Device 3 (0x9)" );
+			trig_ui_add_item_to_combo( "Tuner 4 (0xA)" );
+			trig_ui_add_item_to_combo( "Playback Device 3 (0xB)" );
+}
+
+/*
+*/
+function trig_seq_gen()
+{
+	var i=0;
+	
+	flexitrig_clear();
+	get_ui_vals();
+	smpl_rate = get_sample_rate();
+	
+	if (alt_start == true)
+		build_trig_bit_start();
+	
+	if (alt_initiator == true)
+	{
+		build_trig_bit_start();
+		for (i=3;i>=0;i++)
+		{
+			if ((trig_initiator>>i)&0x1)
+				build_trig_bit_1();
+			else
+				build_trig_bit_0();
+		}
+	}
+	if (alt_follower == true)
+	{
+		build_trig_bit_start();
+		for (i=3;i>=0;i++)
+		{
+			if ((trig_initiator>>i)&0x1)
+				build_trig_bit_1();
+			else
+				build_trig_bit_0();
+		}
+		for (i=3;i>=0;i++)
+		{
+			if ((trig_follower>>i)&0x1)
+				build_trig_bit_1();
+			else
+				build_trig_bit_0();
+		}
+	}
+}
+
+function build_trig_bit_start()
+{
+	var step = "";
+	var i;
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,-1,-1);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "R" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0035*smpl_rate,0.0039*smpl_rate);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0004*smpl_rate,0.0012*smpl_rate);
+}
+
+function build_trig_bit_1()
+{
+	var step = "";
+	var i;
+	
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "R" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0004*smpl_rate,0.0008*smpl_rate);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0009*smpl_rate,0.00235*smpl_rate);
+}
+
+function build_trig_bit_0()
+{
+	var step = "";
+	var i;
+	
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "R" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0013*smpl_rate,0.0017*smpl_rate);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.00025*smpl_rate,0.00145*smpl_rate);
+}
 
 /*
 *************************************************************************************
@@ -598,5 +813,7 @@ function decode_address (addr)
 					break;
 	}
 }
+
+
 
 
