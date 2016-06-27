@@ -67,7 +67,7 @@ var baud = 26000;
 var spb;
 var inter_transaction_silence;
 
-var UNKNOWN_STATE = 0;
+var GET_COMM_TRANS = 0;
 var GET_COMM_TRANS = 1;
 var GET_TRANS_COUNT = 20;
 var GET_TRANS_DATA = 21;
@@ -103,7 +103,7 @@ function decode()
 	var bit = [];
 	var cnt_bit = 0;
 	var val;
-	var state = UNKNOWN_STATE;
+	var state = GET_COMM_TRANS;
 	var trame = [];
 	var nbr_data = 0;
 	var nbr_param = 0;
@@ -112,6 +112,7 @@ function decode()
 	var crc_begin=0;
 	var param2 = 0;
 	var param2_begin = 0;
+	var first_val=0;
 						
 	get_ui_vals();                // Update the content of user interface variables
 	
@@ -141,7 +142,7 @@ function decode()
 		
 		t = get_next_rising_edge(ch, t);
 		
-		if( ((t.sample - t_sample)>=(spb/7)-m)&&((t.sample - t_sample)<=(spb/7)+m) )	//find each following bits and fill bytes with it
+		if( ((t.sample - t_sample)>=(spb/9)-m)&&((t.sample - t_sample)<=(spb/9)+m) )	//find each following bits and fill bytes with it
 		{
 			t_next_sample = t.sample;
 			t = get_next_falling_edge(ch, t);
@@ -157,11 +158,11 @@ function decode()
 			else
 			{
 				//bit may be 1
-				if( ((t.sample - t_next_sample)>=(spb/7)-m)&&((t.sample - t_next_sample)<=(spb/7)+m) )
+				if( ((t.sample - t_next_sample)>=(spb/9)-m)&&((t.sample - t_next_sample)<=(spb/9)+m) )
 				{
 					t_next_sample = t.sample;
 					t = get_next_rising_edge(ch, t);
-					if( ((t.sample - t_next_sample)>=(spb/7)-m)&&((t.sample - t_next_sample)<=(spb/7)+m) )
+					if( ((t.sample - t_next_sample)>=(spb/9)-m)&&((t.sample - t_next_sample)<=(spb/9)+m) )
 					{	
 						t_next_sample = t.sample;
 						t = get_next_falling_edge(ch, t);
@@ -178,10 +179,34 @@ function decode()
 				}
 			}
 		}
+		else if( ((t.sample - t_sample)>=(8*spb/9)-m)&&((t.sample - t_sample)<=(8*spb/9)+m) )
+		{
+			t_next_sample = t.sample;
+			t = get_next_falling_edge(ch, t);
+			if( ((t.sample - t_sample)>=spb-m) || (!trs_is_not_last()) )
+			{
+				//bit = WAKE
+				t_first_bit = t_sample;
+				
+				state = GET_COMM_TRANS;
+				dec_item_new(ch, t_first_bit + m , t_first_bit + spb -m );
+				dec_item_add_pre_text("WAKE ");
+				dec_item_add_pre_text("W ");
+				dec_item_add_pre_text("W");
+						
+				pkt_end();
+				pkt_start("ATMEL SWI");
+				pkt_add_item(-1, -1, "WAKE", "", dark_colors.blue, channel_color);
+				
+				cnt_bit = 0;
+				bit = [];
+				trame = [];
+			}
+		}
 		else
 		{
 			cnt_bit = 0;
-			state = UNKNOWN_STATE;
+			state = GET_COMM_TRANS;
 			bit = [];
 			trame = [];
 			pkt_end();
@@ -191,33 +216,6 @@ function decode()
 			val = (bit[7]<<7)|(bit[6]<<6)|(bit[5]<<5)|(bit[4]<<4)|(bit[3]<<3)|(bit[2]<<2)|(bit[1]<<1)|bit[0];
 			switch(state)
 			{
-				case UNKNOWN_STATE: 
-				{
-					if(val==0)
-					{
-						state = GET_COMM_TRANS;
-						dec_item_new(ch, t_first_bit + m , t_first_bit + spb*8 -m );
-						dec_item_add_pre_text("WAKE ");
-						dec_item_add_pre_text("W ");
-						dec_item_add_pre_text("W");
-						dec_item_add_data(val);
-						
-						pkt_end();
-						pkt_start("ATMEL SWI");
-						pkt_add_item(-1, -1, "WAKE", "", dark_colors.blue, channel_color);
-					}
-					else
-					{
-						dec_item_new(ch, t_first_bit + m , t_first_bit + spb*8 -m );
-						dec_item_add_pre_text("Byte ");
-						dec_item_add_data(val);
-						
-						pkt_end();
-						pkt_start("ATMEL SWI");
-						pkt_add_item(-1, -1, "Byte", int_to_str_hex(val), dark_colors.black, channel_color);
-					}
-					break;
-				}
 				case GET_COMM_TRANS:
 				{
 					if(val==0x77)
@@ -229,6 +227,7 @@ function decode()
 						dec_item_add_pre_text("CMD");
 						dec_item_add_pre_text("C");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_end();
 						pkt_start("MASTER COMMAND");
@@ -243,6 +242,7 @@ function decode()
 						dec_item_add_pre_text("TRS");
 						dec_item_add_pre_text("T");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_end();
 						pkt_start("MASTER REQUEST");
@@ -250,13 +250,14 @@ function decode()
 					}
 					else if(val==0xcc)
 					{	//sleep
-						state = UNKNOWN_STATE;
+						state = GET_COMM_TRANS;
 						dec_item_new(ch, t_first_bit + m , t_first_bit + spb*8 -m );
 						dec_item_add_pre_text("SLEEP ");
 						dec_item_add_pre_text("SLP ");
 						dec_item_add_pre_text("SLP");
 						dec_item_add_pre_text("S");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_end();
 						pkt_start("ATMEL SWI");
@@ -264,13 +265,14 @@ function decode()
 					}
 					else if(val==0xbb)
 					{	//idle
-						state = UNKNOWN_STATE;
+						state = GET_COMM_TRANS;
 						dec_item_new(ch, t_first_bit + m , t_first_bit + spb*8 -m );
 						dec_item_add_pre_text("IDLE ");
 						dec_item_add_pre_text("IDL ");
 						dec_item_add_pre_text("IDL");
 						dec_item_add_pre_text("I");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_end();
 						pkt_start("ATMEL SWI");
@@ -281,6 +283,7 @@ function decode()
 						dec_item_new(ch, t_first_bit + m , t_first_bit + spb*8 -m );
 						dec_item_add_pre_text("Byte ");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_end();
 						pkt_start("ATMEL SWI");
@@ -298,6 +301,7 @@ function decode()
 					dec_item_add_pre_text("CNT");
 					dec_item_add_pre_text("C");
 					dec_item_add_data(val);
+					hex_add_byte(ch, -1, -1, val);
 					
 					pkt_add_item(-1, -1, "COUNT", val, light_colors.orange, channel_color);
 					
@@ -308,7 +312,8 @@ function decode()
 				{
 					dec_item_new(ch, t_first_bit + m , t_first_bit + spb*8 -m );
 					dec_item_add_data(val);
-					dec_item_add_pre_text("OP");
+					dec_item_add_pre_text("OP ");
+					hex_add_byte(ch, -1, -1, val);
 					
 					pkt_add_item(-1, -1, "OPCODE", int_to_str_hex(val), dark_colors.orange, channel_color);
 					
@@ -396,6 +401,7 @@ function decode()
 						dec_item_add_pre_text("PAR1");
 						dec_item_add_pre_text("P1");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_add_item(-1, -1, "PARAM1", int_to_str_hex(val), light_colors.orange, channel_color);
 					}
@@ -403,6 +409,7 @@ function decode()
 					{
 						param2_begin = t_first_bit;
 						param2 = val;
+						first_val = val
 					}
 					if(nbr_param==3)
 					{
@@ -413,6 +420,8 @@ function decode()
 						dec_item_add_pre_text("PAR2");
 						dec_item_add_pre_text("P2");
 						dec_item_add_data(param2);
+						hex_add_byte(ch, -1, -1, first_val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_add_item(-1, -1, "PARAM2", int_to_str_hex(param2), dark_colors.orange, channel_color);
 						
@@ -443,6 +452,7 @@ function decode()
 						dec_item_add_pre_text("D ");
 						dec_item_add_pre_text("D");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_add_item(-1, -1, "Data", int_to_str_hex(val), light_colors.yellow, channel_color);
 					
@@ -460,6 +470,7 @@ function decode()
 						crc=val;
 						crc_begin = t_first_bit;
 						crc_cnt++;
+						first_val = val;
 					}
 					else if(crc_cnt==1)
 					{
@@ -470,6 +481,8 @@ function decode()
 						dec_item_add_pre_text("CRC : ");
 						dec_item_add_pre_text("CRC");
 						dec_item_add_data(crc);
+						hex_add_byte(ch, -1, -1, first_val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						val = crc_calculation(trame);
 						
@@ -506,6 +519,7 @@ function decode()
 					dec_item_add_pre_text("CNT");
 					dec_item_add_pre_text("C");
 					dec_item_add_data(val);
+					hex_add_byte(ch, -1, -1, val);
 					
 					pkt_add_item(-1, -1, "COUNT", val, light_colors.green, channel_color);
 					
@@ -531,6 +545,7 @@ function decode()
 						dec_item_add_pre_text("D ");
 						dec_item_add_pre_text("D");
 						dec_item_add_data(val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						pkt_add_item(-1, -1, "Data", int_to_str_hex(val), light_colors.yellow, channel_color);
 						
@@ -548,6 +563,7 @@ function decode()
 						crc=val;
 						crc_begin = t_first_bit;
 						crc_cnt++;
+						first_val = val;
 					}
 					else if(crc_cnt==1)
 					{
@@ -558,6 +574,8 @@ function decode()
 						dec_item_add_pre_text("CRC : ");
 						dec_item_add_pre_text("CRC");
 						dec_item_add_data(crc);
+						hex_add_byte(ch, -1, -1, first_val);
+						hex_add_byte(ch, -1, -1, val);
 						
 						val = crc_calculation(trame);
 						
@@ -590,6 +608,7 @@ function decode()
 					dec_item_add_pre_text("Byte ");
 					dec_item_add_pre_text("");
 					dec_item_add_data(val);
+					hex_add_byte(ch, -1, -1, val);
 					break;
 				}
 			}
@@ -699,6 +718,285 @@ function generator_template()
 	standby(inter_transaction_silence);
 }
 
+/*
+*************************************************************************************
+							       TRIGGER
+*************************************************************************************
+*/
+/* Graphical user interface for the trigger configuration
+*/
+function trig_gui()
+{
+	trig_ui_clear();
+	trig_ui_add_alternative("alt_wake","Trigger on Wake Sequence");
+		trig_ui_add_label("lab0","Trigger on Wake Sequence. It happens to wake up the chip. ");
+		
+	trig_ui_add_alternative("alt_byte", "Trigger on byte value", true);
+		trig_ui_add_label("lab1","Type decimal or hex value. E.g.: for hex: 0x1A or for dec: 26");
+		trig_ui_add_free_text("trig_byte", "Trigger byte: ");
+	
+	trig_ui_add_alternative("alt_flag", "Trigger on Flag");
+		trig_ui_add_label("lab2","Trigger on input/output flag.");
+		trig_ui_add_combo("trig_flag","Choose a kind of flag: ");
+			trig_ui_add_item_to_combo("Command (0x77)", true);
+			trig_ui_add_item_to_combo("Transmit (0x88)");
+			trig_ui_add_item_to_combo("Reset (0x00)");
+			trig_ui_add_item_to_combo("Sleep (0xCC)");
+			trig_ui_add_item_to_combo("Idle (0xBB)");
+}
+
+function trig_seq_gen()
+{
+	flexitrig_clear();
+	get_ui_vals();
+	
+	if(alt_wake == true)
+	{
+		build_trig_wake();
+	}
+	if(alt_byte == true)
+	{
+		if(trig_byte.length >3)
+		{
+			var mb;
+			var v_mb
+			
+			switch(trib_byte.charCodeAt(3))
+			{
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					v_mb = trib_byte.charCodeAt(3) - '0';
+					break;
+				case 'A':
+				case 'B':
+				case 'C':
+				case 'D':
+				case 'E':
+				case 'F':
+					v_mb = trib_byte.charCodeAt(3) - 'A';
+					break;
+				case 'a':
+				case 'b':
+				case 'c':
+				case 'd':
+				case 'e':
+				case 'f':
+					v_mb = trib_byte.charCodeAt(3) - 'a';
+					break;
+			}
+			
+			mb = v_mb;
+			
+			switch(trib_byte.charCodeAt(2))
+			{
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					v_mb = trib_byte.charCodeAt(2) - '0';
+					break;
+				case 'A':
+				case 'B':
+				case 'C':
+				case 'D':
+				case 'E':
+				case 'F':
+					v_mb = trib_byte.charCodeAt(2) - 'A';
+					break;
+				case 'a':
+				case 'b':
+				case 'c':
+				case 'd':
+				case 'e':
+				case 'f':
+					v_mb = trib_byte.charCodeAt(2) - 'a';
+					break;
+			}
+			
+			mb += v_mb*256;
+			
+			build_trig_byte(mb);			
+		}
+		else
+		{
+			build_trig_byte(Number(trig_byte));
+		}
+	}
+	if(alt_flag == true)
+	{
+		switch(trig_flag)
+		{
+			case 0:
+				build_trig_byte(0x77);
+				break;
+			case 1:
+				build_trig_byte(0x88);
+				break;
+			case 2:
+				build_trig_byte(0x00);
+				break;
+			case 3:
+				build_trig_byte(0xCC);
+				break;
+			case 4:
+				build_trig_byte(0xBB);
+				break;
+		}
+	}
+}
+
+function build_trig_byte(my_byte)
+{
+	var i;
+	for(i=0;i<8;i++)
+	{
+		if( (my_byte>>i)&0x01 == 0x01)
+			build_trig_bit_1();
+		else
+			build_trig_bit_0();
+	}
+}
+
+function build_trig_wake()
+{
+	var step = "";
+	var i;
+	
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,-1,-1);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "R" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0000328*sample_rate,0.00003648*sample_rate);
+}
+
+function build_trig_bit_1()
+{
+	var step = "";
+	var i;
+	
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,-1,-1);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "R" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0000041*sample_rate,0.00000860*sample_rate);
+}
+
+function build_trig_bit_0()
+{
+	var step = "";
+	var i;
+	
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,-1,-1);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "R" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0000041*sample_rate,0.00000860*sample_rate);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "F" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0000041*sample_rate,0.00000860*sample_rate);
+	
+	step = "";
+	for (i = 0; i < get_device_max_channels(); i++)
+	{	
+		if (i == ch)
+		{
+			step = "R" + step;
+		}
+		else
+		{
+			step = "X" + step;
+		}	
+	}
+	flexitrig_append(step,0.0000041*sample_rate,0.00000860*sample_rate);
+}
 
 /*
 *************************************************************************************
@@ -712,16 +1010,16 @@ function standby(t)
 
 function data_low()
 {
-	add_samples(ch,0,spb/7);
-	add_samples(ch,1,spb/7);
-	add_samples(ch,0,spb/7);
-	add_samples(ch,1,spb*4/7);
+	add_samples(ch,0,spb/9);
+	add_samples(ch,1,spb/9);
+	add_samples(ch,0,spb/9);
+	add_samples(ch,1,spb*6/9);
 }
 
 function data_high()
 {
-	add_samples(ch,0,spb/7);
-	add_samples(ch,1,spb*6/7);
+	add_samples(ch,0,spb/9);
+	add_samples(ch,1,spb*8/9);
 }
 
 function data_write_str_slave(str)
@@ -856,7 +1154,9 @@ function crc_calculation(trame)
 
 function write_wake()
 {
-	data_write(0x00);
+	//data_write(0x00);
+	add_samples(ch,0,8*spb/9);
+	add_samples(ch,1,spb/7);
 }
 
 function write_idle()
@@ -938,3 +1238,4 @@ function int_to_str_hex (num)
 
 	return temp;
 }
+
