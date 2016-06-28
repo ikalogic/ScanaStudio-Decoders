@@ -448,17 +448,18 @@ function decode()
 						state = GET_CS;
 						break;
 					}
-					if(opt_cs==1)
+					
+					if(opt_cs==1)											//if we don't look at CS, we'll look at periodicity on sclk 
 					{
 						if (delta_clk>= 1.1*(t_clk.sample - t_clk_prev.sample))
 						{
 							t_clk_prev = t_clk;
 							t_clk = trs_get_next(ch_clk);
 							
-							if (delta_clk>= 1.1*(t_clk.sample - t_clk_prev.sample))
+							if (delta_clk>= 1.1*(t_clk.sample - t_clk_prev.sample))		//a long state occured on sclk
 							{
 								t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
-								t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
+								t_clk = trs_get_prev(ch_clk);
 								t_clk_prev = t_clk;
 								t_clk = trs_get_next(ch_clk);
 								delta_clk = t_clk.sample - t_clk_prev.sample
