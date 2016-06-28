@@ -1,10 +1,7 @@
 /*
 *************************************************************************************
-
 							SCANASTUDIO 2 SPI DECODER
-
 The following commented block allows some related informations to be displayed online
-
 <DESCRIPTION>
 
 	SPI Protocol Decoder.
@@ -14,6 +11,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.59: Fixed bug in SPI decoder when CS is not valide
 	V1.58: Fixed bug in SPI generator, thanks to user Camille
 	V1.57: Added ScanaStudio 2.3xx compatibility.
 	V1.56: Added generator capability
@@ -68,7 +66,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.58";
+	return "1.59";
 }
 
 
@@ -343,6 +341,7 @@ function decode()
 	var skip_first_cs_falling_edge = false;
 	var PKT_COLOR_DATA_MOSI = get_ch_light_color(ch_mosi);
 	var PKT_COLOR_DATA_MISO = get_ch_light_color(ch_miso);
+	var delta_clk;
 	
 	if ((t.sample > 0) && (t.val != cspol)) 	// if the CS starts low, no need to search for the falling edge
 	{
@@ -416,6 +415,7 @@ function decode()
 				var data_miso = 0;
 				bits_mosi.length = 0;
 				bits_miso.length = 0;
+				delta_clk = t_clk.sample - t_clk_prev.sample;
 				
 				while ((bits_mosi.length < (nbits)) && (trs_is_not_last(ch_clk))) 	// Read data bits for a whole transfer
 				{
@@ -436,21 +436,42 @@ function decode()
 							var bit_miso = sample_val(ch_miso, t_clk.sample);
 						}
 
-						bits_mosi.push(bit_mosi);
 						bits_miso.push(bit_miso);
+						bits_mosi.push(bit_mosi);
 					}
 
 					t_clk_prev = t_clk;
 					t_clk = trs_get_next(ch_clk);
 					
-					if (t_clk.sample > t_end.sample) 						// if we are out of the CS limits
+					if(t_clk.sample > t_end.sample) 						// if we are out of the CS limits
 					{
 						state = GET_CS;
 						break;
 					}
+					if(opt_cs==1)
+					{
+						if (delta_clk>= 1.1*(t_clk.sample - t_clk_prev.sample))
+						{
+							t_clk_prev = t_clk;
+							t_clk = trs_get_next(ch_clk);
+							
+							if (delta_clk>= 1.1*(t_clk.sample - t_clk_prev.sample))
+							{
+								t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
+								t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
+								t_clk_prev = t_clk;
+								t_clk = trs_get_next(ch_clk);
+								delta_clk = t_clk.sample - t_clk_prev.sample
+								state = GET_CS;
+								break;
+							}
+						}
+						else
+							delta_clk = t_clk.sample - t_clk_prev.sample;
+					}
 				}
 
-				if ((bits_mosi.length < 8) && (bits_miso.length < 8))		// Invalid cs signal, skip it
+				if ((bits_mosi.length < (nbits)) && (bits_miso.length < (nbits)))		// Invalid cs signal, skip it
 				{
 					t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
 					state = GET_CS;
@@ -603,7 +624,6 @@ function generator_template()
 		in the "configuration" part.
 		
 		Then, use the following functions to generate SPI packets:
-
 		gen_add_delay(delay,cs_state)
 		=============================
 			Description
@@ -1098,4 +1118,3 @@ function get_bit_margin()
 	var k = 1;
 	return ((k * get_srate()) / 10000000);
 }
-
