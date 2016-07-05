@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.17: Fixed checksum calculation for DHT22
 	V1.16: Now the decoding can be aborted
     V1.15: Add Packet/Hex View support.
     V1.1:  Add DHT22 sensor support.
@@ -27,6 +28,7 @@ The following commented block allows some related informations to be displayed o
 
     mailto:ianmac51@gmail.com
     mailto:rolf.ziegler@z-control.ch
+    mailto:v.kosinov@ikalogic.com
 
 </AUTHOR_URL>
 
@@ -45,7 +47,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-    return "1.16";
+    return "1.17";
 }
 
 
@@ -166,7 +168,7 @@ function decode()
     var i = 0;                      // count the data bits in main while loop
 
     while (trs_is_not_last(ch))
-    {	
+    {
 	    if (abort_requested() == true)	// Allow the user to abort this script
 		{
 			return false;
@@ -292,7 +294,17 @@ function decode()
     pkt_add_item(-1, -1, "TEMPERATURE", get_formatted_temp(temp), PKT_COLOR_TEMP_TITLE, PKT_COLOR_DATA, true);
     hex_add_byte(ch, -1, -1, temp);
 
-    var checksum = myByte[0] + myByte[2];
+	var checksum;
+
+	if (DHTxx.DEVICE == "DHT11")
+    {
+		checksum = myByte[0] + myByte[2];
+    }
+    else if (DHTxx.DEVICE == "DHT22")
+    {
+		checksum = ((myByte[0] + myByte[1] + myByte[2] + myByte[3]) & 0xFF);
+    }
+
     var chekResult = "(ERROR)"
 
     if (checksum == myByte[4])
@@ -324,10 +336,10 @@ function get_preamble_data (ch, t)
     var next = 0;
 
     t = get_next_falling_edge(ch, t);  // Falling edge is start of data
-    trStart = t.sample;
+    trStart = t.sample;             
 
     t = get_next_rising_edge(ch, t);
-    next = t.sample;
+    next = t.sample;    
 
     tranLen = tr_len_us((next - trStart));
 
