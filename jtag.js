@@ -13,7 +13,6 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.03: Fix some bugs
 	V1.02: Prevented incompatible workspaces from using the decoder
 	V1.01: Now the decoding can be aborted
 	V1.0:  Initial release
@@ -40,7 +39,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.03";
+	return "1.02";
 }
 
 /* Author 
@@ -105,7 +104,6 @@ var TAP_Controller =
 
 
 var TMS_Transition;
-var TDO_Transition;
 var Scan_type = 0;
 var start_shift = 0;
 var spb;
@@ -136,16 +134,16 @@ var PKT_COLOR_PAUSE_TITLE;
 var PKT_COLOR_EXIT2_TITLE;
 var PKT_COLOR_UPDATE;
 
-	
 function decode()
 {
 	var TAP_state = TAP_Controller.Test_Reset;
 	var TCK_Transition;
+	var TDO_Transition;
 	var TDI_transition;
 	var trs_now,trs_next,time,baud,
 	var text = "TEST RESET";
 	var small_text = "RESET"
-	var very_small_text = "RST";
+	var very_small_text = "RST";	
 
 	if (!check_scanastudio_support())
     {
@@ -185,28 +183,23 @@ function decode()
 	PKT_COLOR_EXIT2_TITLE = dark_colors.yellow;
 	PKT_COLOR_UPDATE = dark_colors.black;
 	
-	if(trs_is_not_last(ch_tck))
-	{
-		TCK_Transition = trs_get_first(ch_tck);
-		TCK_Transition = trs_get_next(ch_tck);	
-		TMS_Transition = trs_go_before(ch_tms,TCK_Transition.sample);
+	TCK_Transition = trs_get_first(ch_tck);
+	TCK_Transition = trs_get_next(ch_tck);	
+	TMS_Transition = trs_go_before(ch_tms,TCK_Transition.sample);
+	
+	trs_now = TCK_Transition.sample;
+	TCK_Transition = trs_get_next(ch_tck);
+	trs_next = TCK_Transition.sample;
+	TCK_Transition = trs_get_prev(ch_tck);
+	TCK_Transition = trs_get_prev(ch_tck);
+	
+	time = ((trs_next - trs_now)/sample_rate);
+	baud = 1/time;
+	spb = sample_rate/baud;
+	
+	pkt_start("JTAG");	
 		
-		trs_now = TCK_Transition.sample;
-		TCK_Transition = trs_get_next(ch_tck);
-		trs_next = TCK_Transition.sample;
-		TCK_Transition = trs_get_prev(ch_tck);
-		TCK_Transition = trs_get_prev(ch_tck);
-		
-		time = ((trs_next - trs_now)/sample_rate);
-		baud = 1/time;
-		spb = sample_rate/baud;
-		
-		pkt_start("JTAG");	
-			
-		trs_now = TCK_Transition.sample;
-	}
-	else
-		return false;
+	trs_now = TCK_Transition.sample;
 		
 	while(trs_is_not_last(ch_tck))
 	{
@@ -322,8 +315,7 @@ function decode()
 				pkt_add_item(-1,-1,"SHIFT","",PKT_COLOR_SHIFT_TITLE ,PKT_COLOR_DATA ,true);
 
 				Decode_Data();
-				if(TMS_Transition.sample >= TCK_Transition.sample)
-					TCK_Transition = trs_go_after(ch_tck,TMS_Transition.sample);
+				TCK_Transition = trs_go_after(ch_tck,TMS_Transition.sample);
 				trs_now = TCK_Transition.sample;
 				TCK_Transition = trs_get_next(ch_tck);
 				trs_next = TCK_Transition.sample+spb;
@@ -412,8 +404,7 @@ function decode()
 			dec_item_add_pre_text(small_text);
 			dec_item_add_pre_text(very_small_text);
 		}
-		if (trs_next >= trs_now)
-			trs_now = trs_next;
+		trs_now = trs_next;
 		
 		set_progress(100 * trs_now / n_samples);
 	}
@@ -439,18 +430,8 @@ function Decode_Data()
 	var first_data = true;
 	var sample_data_start = 0;
 	var sample_data_end = 0;
-	var tmp_sample = trs_go_after(ch_tck,start_shift+1*spb);
-	while(tmp_sample.val == 1)
-	{
-	    if (abort_requested() == true)
-		{
-			return false;
-		}
-		tmp_sample = trs_get_next(ch_tck);
-	}
-	//var nav = trs_go_after(ch_tck,start_shift+3*spb);
-	var nav=tmp_sample;
-	nav = trs_get_next(ch_tck);
+	var tmp_sample = trs_go_after(ch_tck,start_shift);
+	var nav = trs_go_after(ch_tck,start_shift+(3*(spb/2)));
 	var data_recovery = true;
 	var cnt = 0;
 	
@@ -458,11 +439,8 @@ function Decode_Data()
 	
 	cnt_text = 0;
 	TMS_Transition = trs_go_before(ch_tms,nav.sample);
-	sample_data_start = tmp_sample.sample-3*spb/2;
+	sample_data_start = tmp_sample.sample;
 	start_pkt_data = tmp_sample.sample;
-	
-	if (typeof(TDO_Transition)!=typeof(transition))
-		TDO_Transition = new transition(0,0);
 	
 	while(data_recovery == true)
 	{
@@ -495,40 +473,38 @@ function Decode_Data()
 				first_data = false;
 			}
 			
-			if(TDO_Transition.val == 0)
+	/*		if(TDO_Transition.val == 0)
 				dec_item_add_sample_point(ch_tdo,nav.sample,0);
 			else
 				dec_item_add_sample_point(ch_tdo,nav.sample,1);
 				
 			if(TDI_transition.val == 0)
-				dec_item_add_sample_point(ch_tdi,nav.sample,0);	
+				dec_item_add_sample_point(ch_tdi,nav.sample+(spb/2),0);	
 			else
-				dec_item_add_sample_point(ch_tdi,nav.sample,1);
+				dec_item_add_sample_point(ch_tdi,nav.sample+(spb/2),1);*/
 		
-			
 			cnt++;
+			
 			if(cnt%length_data == 0)
 			{
 				Text_data();
-				tmp_sample = trs_go_after(ch_tck,nav.sample+spb);
+				tmp_sample = trs_go_after(ch_tck,nav.sample);
 				nav = trs_go_before(ch_tck,nav.sample);
 				sample_data_end = tmp_sample.sample;
-				dec_item_new(ch_tdo,sample_data_start+(spb/2),sample_data_end+(spb/2));
+				dec_item_new(ch_tdo,sample_data_start,sample_data_end);
 				dec_item_add_pre_text("DO = 0x"+data_tdo);
 				hex_add_byte(ch_tdo,-1,-1,data_hex_do);
-				
-				dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
-				dec_item_add_pre_text("DI = 0x"+data_tdi);
-				hex_add_byte(ch_tdi,-1,-1,data_hex_di);
-				
 				
 				tmp_sample = trs_get_next(ch_tck);
 				nav = trs_get_prev(ch_tck);
 				sample_data_end = tmp_sample.sample
+				dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
+				dec_item_add_pre_text("DI = 0x"+data_tdi);
+				hex_add_byte(ch_tdi,-1,-1,data_hex_di);
+				
 				cnt_text++;
 				sample_data_start = tmp_sample.sample;
 			}
-			
 			
 			nav = trs_get_next(ch_tck);
 			nav = trs_get_next(ch_tck);
@@ -536,27 +512,22 @@ function Decode_Data()
 		}
 		else
 		{
-			
-			//if(Scan_type == TAP_Controller.DR_Scan)
-			//{
+			if(Scan_type == TAP_Controller.DR_Scan)
+			{
 				TDO_Transition = trs_go_before(ch_tdo,nav.sample);
 				tab_data_tdo[cnt] = TDO_Transition.val;
-				if(TDO_Transition.val == 0)
-					dec_item_add_sample_point(ch_tdo,nav.sample,0);	
+			/*	if(TDO_Transition.val == 0)
+					dec_item_add_sample_point(ch_tdo,nav.sample-spb,0);	
 				else
-					dec_item_add_sample_point(ch_tdo,nav.sample,1);
-			//}
+					dec_item_add_sample_point(ch_tdo,nav.sample-spb,1);*/
+			}
 		
 			TDI_transition = trs_go_before(ch_tdi,nav.sample);
 			tab_data_tdi[cnt] = TDI_transition.val;
-			if(TDI_transition.val == 0)
-				dec_item_add_sample_point(ch_tdi,nav.sample,0);	
+		/*	if(TDI_transition.val == 0)
+				dec_item_add_sample_point(ch_tdi,nav.sample+(spb/2),0);	
 			else
-				dec_item_add_sample_point(ch_tdi,nav.sample,1);
-				
-				
-			tmp_sample = trs_go_after(ch_tck,nav.sample+spb);
-			sample_data_end = tmp_sample.sample;
+				dec_item_add_sample_point(ch_tdi,nav.sample+(spb/2),1);*/
 
 			data_recovery = false;
 		}
@@ -579,35 +550,35 @@ function Decode_Data()
 
 	if(cnt != 0)
 	{
-		dec_item_new(ch_tdo,sample_data_start+(spb/2),sample_data_end+(spb/2));
+		dec_item_new(ch_tdo,sample_data_start,sample_data_end);
 		dec_item_add_pre_text("DO = 0x"+data_tdo);
 		dec_item_add_pre_text("0x"+data_tdo);
 		hex_add_byte(ch_tdo,-1,-1,data_hex_do);
-		
-		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
-		dec_item_add_pre_text("DI = 0x"+data_tdi);
-		dec_item_add_pre_text("0x"+data_tdi);
-		hex_add_byte(ch_tdi,-1,-1,data_hex_di);
 		
 		tmp_sample = trs_get_next(ch_tck);
 		nav = trs_get_prev(ch_tck);
 		sample_data_end = tmp_sample.sample
 		end_pkt_data = tmp_sample.sample;
+		
+		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
+		dec_item_add_pre_text("DI = 0x"+data_tdi);
+		dec_item_add_pre_text("0x"+data_tdi);
+		hex_add_byte(ch_tdi,-1,-1,data_hex_di);
 	}
 	else
 	{
-		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
+		dec_item_new(ch_tdo,sample_data_start,sample_data_end);
 		dec_item_add_pre_text("DO = "+TDO_Transition.val);
 		dec_item_add_pre_text(TDO_Transition.val);
-		
-		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
-		dec_item_add_pre_text("DI = "+TDI_transition.val);	
-		dec_item_add_pre_text(TDI_transition.val);	
 		
 		tmp_sample = trs_get_next(ch_tck);
 		nav = trs_get_prev(ch_tck);
 		sample_data_end = tmp_sample.sample;
-		end_pkt_data = tmp_sample.sample;
+		end_pkt_data = tmp_sample.sample+(spb/2);
+		
+		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
+		dec_item_add_pre_text("DI = "+TDI_transition.val);	
+			dec_item_add_pre_text(TDI_transition.val);	
 	}	
 	
 	pkt_data_do();	
@@ -852,13 +823,6 @@ function hex_to_ascii(hexx)
 		
 	return str;
 }
-
-
-
-
-
-
-
 
 
 
