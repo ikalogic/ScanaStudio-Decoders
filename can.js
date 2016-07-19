@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.43: Allow desinchronization and permit resynchronisation
 	V1.42: Fix demo generator stuffing error
 	V1.41: Fix High-rate bug in case it isn't defined
 	V1.40: Added CAN-FD compatibility
@@ -59,7 +60,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.42";
+	return "1.43";
 }
 
 
@@ -142,8 +143,9 @@ function gui()  //graphical user interface
    to update the decoded items
 */
 function decode()
-{
+{	
 	get_ui_vals();
+
 
 	if (typeof hex_opt === 'undefined') 
 	{
@@ -192,7 +194,8 @@ function decode()
 				}
 
 				s = t.sample + (spb * 0.5); 		// Position our reader on the middle of first bit
-				bit_sampler_ini(ch,spb / 2, spb); 	// Initialize the bit sampler (to be able tu use "bit_sampler_next()")
+				
+				bit_sampler_ini(ch,spb * 3 / 4, spb); 	// Initialize the bit sampler (to be able tu use "bit_sampler_next()")
 				bit_sampler_next(ch); 				// Read and skip the start bit
 
 				dec_item_new(ch,t.sample,t.sample + spb - m); 	// Add the start bit item
@@ -236,7 +239,7 @@ function decode()
 					
 					if(edl_mode && (((b==35)&&ide_mode) || ((b==16)&&!ide_mode)) )
 					{
-						bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
+						bit_sampler_ini(ch,spb_hs *3 / 4, spb_hs); 	// use High speed since now
 						bit_sampler_next(ch);
 					}
 							
@@ -733,7 +736,7 @@ function decode()
 				db = 0;
 				if(edl_mode)
 				{
-					bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
+					bit_sampler_ini(ch,spb_hs * 3 / 4, spb_hs); 	// use High speed since now
 				}
 
 				while (db < (data_size * 8)) 	// Read data bits
@@ -828,7 +831,7 @@ function decode()
 				db = 0;
 				if(edl_mode)
 				{
-					bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
+					bit_sampler_ini(ch,spb_hs * 3 / 4, spb_hs); 	// use High speed since now
 					
 					while (db-nbr_stf_b < crc_len) //read crc bits
 					{
@@ -1053,7 +1056,7 @@ function decode()
 
 			case GET_ACK: 	// and the EOF too.
 				bit_sampler_next(ch); 	// CRC delimiter
-				bit_sampler_ini(ch,spb / 2, spb); 	// use Low speed since now
+				bit_sampler_ini(ch,spb * 3 / 4, spb); 	// use Low speed since now
 				ack_chk = bit_sampler_next(ch);
 				bit_sampler_next(ch); 	// ACK delimiter
 
@@ -1624,4 +1627,8 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
+
+
+
+
 
