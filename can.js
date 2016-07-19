@@ -14,7 +14,8 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.43: Allow desinchronization and permit resynchronisation
+	V1.44: Add resynchronization on each recessif to dominant transition
+	V1.43: Allow desinchronization and permit resynchronization
 	V1.42: Fix demo generator stuffing error
 	V1.41: Fix High-rate bug in case it isn't defined
 	V1.40: Added CAN-FD compatibility
@@ -60,7 +61,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.43";
+	return "1.44";
 }
 
 
@@ -112,6 +113,8 @@ var eof_chk;
 var ack_chk;
 var pkt_data; 			//to accumulate all the data of a packet
 var channel_color;
+
+var trs_tmp;
 
 var trigBitArr = [];
 var demoBitSeqArr = [];
@@ -195,7 +198,7 @@ function decode()
 
 				s = t.sample + (spb * 0.5); 		// Position our reader on the middle of first bit
 				
-				bit_sampler_ini(ch,spb * 3 / 4, spb); 	// Initialize the bit sampler (to be able tu use "bit_sampler_next()")
+				bit_sampler_ini(ch,spb /2, spb); 	// Initialize the bit sampler (to be able tu use "bit_sampler_next()")
 				bit_sampler_next(ch); 				// Read and skip the start bit
 
 				dec_item_new(ch,t.sample,t.sample + spb - m); 	// Add the start bit item
@@ -239,7 +242,7 @@ function decode()
 					
 					if(edl_mode && (((b==35)&&ide_mode) || ((b==16)&&!ide_mode)) )
 					{
-						bit_sampler_ini(ch,spb_hs *3 / 4, spb_hs); 	// use High speed since now
+						bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
 						bit_sampler_next(ch);
 					}
 							
@@ -253,8 +256,33 @@ function decode()
 					else
 					{
 						bits[b] = bit_sampler_next(ch);		// Regular bit
-						dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
-						bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+						if( (last_bit == 1)&&(bits[b] == 0) )
+						{
+							if(edl_mode && (((b>35)&&ide_mode) || ((b>16)&&!ide_mode)) )
+							{
+								trs_tmp = trs_get_prev(ch);
+								frame_length_in_sample = trs_tmp.sample - s + spb_hs/2;
+								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, trs_tmp.sample + spb_hs/2, DRAW_POINT);
+								bit_sampler_ini(ch,spb_hs / 2, spb_hs);
+								bit_sampler_next(ch);
+							}
+							else
+							{
+								trs_tmp = trs_get_prev(ch);
+								frame_length_in_sample = trs_tmp.sample - s + spb/2;
+								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, trs_tmp.sample + spb/2, DRAW_POINT);
+								bit_sampler_ini(ch,spb / 2, spb);
+								bit_sampler_next(ch);
+							}
+						}
+						else
+						{
+							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
+						}
+							
 
 
 						if (bits[b] == last_bit)
@@ -736,7 +764,7 @@ function decode()
 				db = 0;
 				if(edl_mode)
 				{
-					bit_sampler_ini(ch,spb_hs * 3 / 4, spb_hs); 	// use High speed since now
+					bit_sampler_ini(ch,spb_hs /2, spb_hs); 	// use High speed since now
 				}
 
 				while (db < (data_size * 8)) 	// Read data bits
@@ -754,9 +782,34 @@ function decode()
 					}
 					else
 					{
-						bits[b] = bit_sampler_next(ch);		// Regular bit
-						dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
-						bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+						bits[b] = bit_sampler_next(ch);		// Regular bitif( (last_bit == 1)&&(bits[b] == 0) )
+						if( (last_bit == 1)&&(bits[b] == 0) )
+						{
+							if(edl_mode)
+							{
+								trs_tmp = trs_get_prev(ch);
+								frame_length_in_sample = trs_tmp.sample - s + spb_hs/2;
+								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, trs_tmp.sample + spb_hs/2, DRAW_POINT);
+								bit_sampler_ini(ch,spb_hs / 2, spb_hs);
+								bit_sampler_next(ch);
+							}
+							else
+							{
+								trs_tmp = trs_get_prev(ch);
+								frame_length_in_sample = trs_tmp.sample - s + spb/2;
+								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, trs_tmp.sample + spb/2, DRAW_POINT);
+								bit_sampler_ini(ch,spb / 2, spb);
+								bit_sampler_next(ch);
+							}
+						}
+						else
+						{
+							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
+						}
+							
 
 						if (bits[b] == last_bit)
 						{
@@ -825,13 +878,13 @@ function decode()
 				// add packet for CRC, and error frames
 				// add the packet stop
 			break;
-
+			
 			case GET_CRC:
 				var nbr_stf_b = 0;
 				db = 0;
 				if(edl_mode)
 				{
-					bit_sampler_ini(ch,spb_hs * 3 / 4, spb_hs); 	// use High speed since now
+					bit_sampler_ini(ch,spb_hs /2, spb_hs); 	// use High speed since now
 					
 					while (db-nbr_stf_b < crc_len) //read crc bits
 					{
@@ -845,9 +898,22 @@ function decode()
 						else
 						{
 							bits[b] = bit_sampler_next(ch);	 // Regular bit
-							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
-							bit_pos.push(s + frame_length_in_sample); 	 // Store the position of that bit (for later usage)
-	
+							if( (last_bit == 1)&&(bits[b] == 0) )
+							{
+								trs_tmp = trs_get_prev(ch);
+								frame_length_in_sample = trs_tmp.sample - s + spb_hs/2;
+								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, trs_tmp.sample + spb_hs/2, DRAW_POINT);
+								bit_sampler_ini(ch,spb_hs / 2, spb_hs);
+								bit_sampler_next(ch);
+							}
+							else
+							{
+								bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
+							}
+							last_bit = bits[b];
+							
 							b++;
 							db++;
 						}
@@ -953,8 +1019,21 @@ function decode()
 						else
 						{
 							bits[b] = bit_sampler_next(ch);	 // Regular bit
-							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
-							bit_pos.push(s + frame_length_in_sample); 	 // Store the position of that bit (for later usage)
+							if( (last_bit == 1)&&(bits[b] == 0) )
+							{
+								trs_tmp = trs_get_prev(ch);
+								frame_length_in_sample = trs_tmp.sample - s + spb/2;
+								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, trs_tmp.sample + spb/2, DRAW_POINT);
+								bit_sampler_ini(ch,spb / 2, spb);
+								bit_sampler_next(ch);
+							}
+							else
+							{
+								bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+								dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
+							}
+							
 	
 							if (bits[b] == last_bit)
 							{
@@ -1056,7 +1135,7 @@ function decode()
 
 			case GET_ACK: 	// and the EOF too.
 				bit_sampler_next(ch); 	// CRC delimiter
-				bit_sampler_ini(ch,spb * 3 / 4, spb); 	// use Low speed since now
+				//bit_sampler_ini(ch, 0, spb); 	// use Low speed since now
 				ack_chk = bit_sampler_next(ch);
 				bit_sampler_next(ch); 	// ACK delimiter
 
@@ -1064,13 +1143,22 @@ function decode()
 					dec_item_new(ch,bit_pos[b] + (1.5 * spb) + m, bit_pos[b] + (2.5 * spb) - m); 	// Add the ACK item
 				else
 					dec_item_new(ch,bit_pos[b] + (2.5 * spb_hs) + m, bit_pos[b] + (2.5 * spb_hs) + spb - m); 	// Add the ACK item
-				dec_item_add_pre_text("ACK");
-				dec_item_add_pre_text("ACK");
-				dec_item_add_pre_text("A");
+				
+				if(ack_chk == 1)
+				{
+					dec_item_add_pre_text("NO ACK");
+					dec_item_add_pre_text("NACK");
+					dec_item_add_pre_text("!A");
+				}
+				else
+				{	
+					dec_item_add_pre_text("ACK");
+					dec_item_add_pre_text("ACK");
+					dec_item_add_pre_text("A");
+				}
 				pkt_add_item(-1, -1, "ACK", ack_chk.toString(10), dark_colors.black, channel_color);
 				eof_chk = 0;
-
-				for (c = 0; c < 7; c++)
+				for (c = 0; c < 7; c++) 
 				{
 					eof_chk += bit_sampler_next(ch);
 				}
@@ -1153,6 +1241,7 @@ function check_stuffing()
 	{
 		potential_overload = false; 	// if we got at least one stuffed bit, then it's no more possible to have an overload frame
 		dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_CROSS);
+		
 		last_bit = tmp_bit;
 
 		return true;
@@ -1627,6 +1716,7 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
+
 
 
 
