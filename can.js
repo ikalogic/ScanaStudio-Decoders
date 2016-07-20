@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.45: Fix ACK recognition
 	V1.44: Add resynchronization on each recessif to dominant transition
 	V1.43: Allow desinchronization and permit resynchronization
 	V1.42: Fix demo generator stuffing error
@@ -61,7 +62,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.44";
+	return "1.45";
 }
 
 
@@ -999,11 +1000,12 @@ function decode()
 					}
 	
 					b += crc_len-1;
+					bit_pos[b] += spb;
 					state = GET_ACK;
 				}
 				else
 				{
-					while (db < 15) //read crc bits
+					while (db < 16) //read crc bits
 					{
 						if (sb == 4)
 						{
@@ -1066,7 +1068,7 @@ function decode()
 					}
 	
 					val = 0;
-					b -= 15;
+					b -= 16;
 	
 					for (c = 0; c < 15; c++)
 					{
@@ -1128,21 +1130,20 @@ function decode()
 						dec_item_add_post_text("!");
 					}
 	
-					b += 14;
+					b += 15;
 					state = GET_ACK;
 				}
 			break;
 
 			case GET_ACK: 	// and the EOF too.
-				bit_sampler_next(ch); 	// CRC delimiter
-				//bit_sampler_ini(ch, 0, spb); 	// use Low speed since now
+				bit_pos[b] -= spb;// CRC delimiter
 				ack_chk = bit_sampler_next(ch);
 				bit_sampler_next(ch); 	// ACK delimiter
 
 				if(!edl_mode)
-					dec_item_new(ch,bit_pos[b] + (1.5 * spb) + m, bit_pos[b] + (2.5 * spb) - m); 	// Add the ACK item
+					dec_item_new(ch,bit_pos[b] + (1.5 * spb) + m, bit_pos[b] + (3.5 * spb) - m); 	// Add the ACK item
 				else
-					dec_item_new(ch,bit_pos[b] + (2.5 * spb_hs) + m, bit_pos[b] + (2.5 * spb_hs) + spb - m); 	// Add the ACK item
+					dec_item_new(ch,bit_pos[b] + (2.5 * spb_hs) + m, bit_pos[b] + (2.5 * spb_hs) + 2*spb - m); 	// Add the ACK item
 				
 				if(ack_chk == 1)
 				{
@@ -1716,6 +1717,8 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
+
+
 
 
 
