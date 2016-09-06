@@ -11,6 +11,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.60: Fixed bug in SPI decoder and improve display
 	V1.59: Fixed bug in SPI decoder when CS is not valide
 	V1.58: Fixed bug in SPI generator, thanks to user Camille
 	V1.57: Added ScanaStudio 2.3xx compatibility.
@@ -66,7 +67,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.59";
+	return "1.60";
 }
 
 
@@ -331,6 +332,7 @@ function decode()
 		trs_get_first(ch_mosi);
 	}
 
+	var delta_affichage;
 	var t = trs_get_first(ch_cs);
 	var t_end =  new transition(0,0);
 	var t_clk = trs_get_first(ch_clk);
@@ -366,36 +368,39 @@ function decode()
 					pkt_show_info = true;
 					t_end.sample = n_samples;
 					state = GET_DATA;
+					t = t_clk;
 
 					break;
 				}
-
-				if (skip_first_cs_falling_edge)
-				{
-					skip_first_cs_falling_edge = false;
-
-					t_end.sample = t.sample;
-					t_end.val = t.val;
-					t.sample = 0;
-					t.val = cspol;
-
-					dec_item_new(ch_cs, t.sample, t_end.sample);
-					dec_item_add_pre_text("Warning: The leading edge of CS (Chip Select) line is missing!");
-					dec_item_add_pre_text("Warning: CS leading edge is missing!");
-					dec_item_add_pre_text("Warning: CS!");
-					dec_item_add_pre_text("W: CS!");
-					dec_item_add_pre_text("!CS!");
-					dec_item_add_pre_text("!");
-					dec_item_add_comment ("Leading edge edge of CS line is missing!");
-				}
 				else
 				{
-					while ((t.val != cspol) && trs_is_not_last(ch_cs))		// search for a new packet (an active CS state)
+					if (skip_first_cs_falling_edge)
 					{
-						t = trs_get_next(ch_cs);
+						skip_first_cs_falling_edge = false;
+		
+						t_end.sample = t.sample;
+						t_end.val = t.val;
+						t.sample = 0;
+						t.val = cspol;
+		
+						dec_item_new(ch_cs, t.sample, t_end.sample);
+						dec_item_add_pre_text("Warning: The leading edge of CS (Chip Select) line is missing!");
+						dec_item_add_pre_text("Warning: CS leading edge is missing!");
+						dec_item_add_pre_text("Warning: CS!");
+						dec_item_add_pre_text("W: CS!");
+						dec_item_add_pre_text("!CS!");
+						dec_item_add_pre_text("!");
+						dec_item_add_comment ("Leading edge edge of CS line is missing!");
 					}
-
-					t_end = trs_get_next(ch_cs);
+					else
+					{
+						while ((t.val != cspol) && trs_is_not_last(ch_cs))		// search for a new packet (an active CS state)
+						{
+							t = trs_get_next(ch_cs);
+						}
+		
+						t_end = trs_get_next(ch_cs);
+					}
 				}
 
 				while ((t_clk.sample < t.sample) && trs_is_not_last(ch_clk))	// go to the clock transition just after the start of the Chip Select signal
@@ -425,15 +430,23 @@ function decode()
 						{
 							s_start = t_clk.sample - get_bit_margin();
 						}
+						
+						if (bits_mosi.length == nbits-1)
+						{
+							delta_affichage = t_clk.sample - s_start;
+							delta_affichage /= nbits*1.8;
+						}
 
 						if (opt != OPT_IGNORE_MOSI)
 						{
 							var bit_mosi = sample_val(ch_mosi, t_clk.sample);
+							dec_item_add_sample_point(ch_mosi, t_clk.sample, bit_mosi);
 						}
 
 						if (opt != OPT_IGNORE_MISO) 
 						{
 							var bit_miso = sample_val(ch_miso, t_clk.sample);
+							dec_item_add_sample_point(ch_miso, t_clk.sample, bit_miso);
 						}
 
 						bits_miso.push(bit_miso);
@@ -441,7 +454,10 @@ function decode()
 					}
 
 					t_clk_prev = t_clk;
-					t_clk = trs_get_next(ch_clk);
+					if (trs_is_not_last(ch_clk))
+						t_clk = trs_get_next(ch_clk);
+					else
+						break;
 					
 					if(t_clk.sample > t_end.sample) 						// if we are out of the CS limits
 					{
@@ -451,17 +467,23 @@ function decode()
 					
 					if(opt_cs==1)											//if we don't look at CS, we'll look at periodicity on sclk 
 					{
-						if (delta_clk>= 1.1*(t_clk.sample - t_clk_prev.sample))
+						if (delta_clk>= 1.5*(t_clk.sample - t_clk_prev.sample))
 						{
 							t_clk_prev = t_clk;
-							t_clk = trs_get_next(ch_clk);
+							if (trs_is_not_last(ch_clk))
+								t_clk = trs_get_next(ch_clk);
+							else
+								break;
 							
-							if (delta_clk>= 1.1*(t_clk.sample - t_clk_prev.sample))		//a long state occured on sclk
+							if (delta_clk>= 1.5*(t_clk.sample - t_clk_prev.sample))		//a long state occured on sclk
 							{
 								t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
 								t_clk = trs_get_prev(ch_clk);
 								t_clk_prev = t_clk;
-								t_clk = trs_get_next(ch_clk);
+								if (trs_is_not_last(ch_clk))
+									t_clk = trs_get_next(ch_clk);
+								else
+									break;
 								delta_clk = t_clk.sample - t_clk_prev.sample
 								state = GET_CS;
 								break;
@@ -532,7 +554,7 @@ function decode()
 				{
 					case OPT_IGNORE_MOSI:
 
-							dec_item_new(ch_miso, s_start, s_end);
+							dec_item_new(ch_miso, s_start-delta_affichage, s_end+delta_affichage);
 							dec_item_add_data(data_miso);
 
 							pkt_add_item(-1, -1, "MISO", data_miso_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
@@ -540,7 +562,7 @@ function decode()
 
 					case OPT_IGNORE_MISO:
 
-							dec_item_new(ch_mosi, s_start, s_end);
+							dec_item_new(ch_mosi, s_start-delta_affichage, s_end+delta_affichage);
 							dec_item_add_data(data_mosi);
 
 							pkt_add_item(-1, -1, "MOSI", data_mosi_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
@@ -548,9 +570,9 @@ function decode()
 
 					case OPT_IGNORE_NONE:
 
-							dec_item_new(ch_mosi, s_start, s_end);
+							dec_item_new(ch_mosi, s_start-delta_affichage, s_end+delta_affichage);
 							dec_item_add_data(data_mosi);
-							dec_item_new(ch_miso, s_start, s_end);
+							dec_item_new(ch_miso, s_start-delta_affichage, s_end+delta_affichage);
 							dec_item_add_data(data_miso);
 
 							pkt_add_item(-1, -1, data_mosi_str, data_miso_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
@@ -586,7 +608,10 @@ function decode()
 				}
 
 				t = t_end;
-				t_clk = trs_get_next(ch_clk);
+				if (trs_is_not_last(ch_clk))
+					t_clk = trs_get_next(ch_clk);
+				else
+					break;
 
 				if (t_clk.sample >= t_end.sample)
 				{
@@ -995,10 +1020,12 @@ function trig_seq_gen()
 					if (trig_data_line == 0)	// trig_data_line: 0 - MOSI, 1 - MISO
 					{
 						spi_step.mosi = ((trig_byte >> i) & 0x1).toString();
+						//spi_step.miso = "X";
 					}
 					else
 					{
 						spi_step.miso = ((trig_byte >> i) & 0x1).toString();
+						//spi_step.mosi = "X";
 					}
 				}
 
@@ -1014,10 +1041,12 @@ function trig_seq_gen()
 					if (trig_data_line == 0)	// trig_data_line: 0 - MOSI, 1 - MISO
 					{
 						spi_step.mosi = ((trig_byte >> i) & 0x1).toString();
+						//spi_step.miso = "X";
 					}
 					else
 					{
 						spi_step.miso = ((trig_byte >> i) & 0x1).toString();
+						//spi_step.mosi = "X";
 					}
 				}
 
@@ -1116,6 +1145,8 @@ function get_srate()
 */
 function get_bit_margin()
 {
-	var k = 1;
-	return ((k * get_srate()) / 10000000);
+	var k = 0;
+	return ((k * get_srate()) / 100000000);
 }
+
+
