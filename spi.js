@@ -11,6 +11,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.61: Upgrade PacketView
 	V1.60: Fixed bug in SPI decoder and improve display
 	V1.59: Fixed bug in SPI decoder when CS is not valide
 	V1.58: Fixed bug in SPI generator, thanks to user Camille
@@ -67,7 +68,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.60";
+	return "1.61";
 }
 
 
@@ -369,11 +370,12 @@ function decode()
 					t_end.sample = n_samples;
 					state = GET_DATA;
 					t = t_clk;
-
+					pkt_show_info = false;
 					break;
 				}
 				else
 				{
+					pkt_end();
 					if (skip_first_cs_falling_edge)
 					{
 						skip_first_cs_falling_edge = false;
@@ -403,15 +405,24 @@ function decode()
 					}
 				}
 
-				while ((t_clk.sample < t.sample) && trs_is_not_last(ch_clk))	// go to the clock transition just after the start of the Chip Select signal
+				while (t_clk.sample < t.sample)	// go to the clock transition just after the start of the Chip Select signal
 				{
-					t_clk = trs_get_next(ch_clk);
+					if (trs_is_not_last(ch_clk))
+						t_clk = trs_get_next(ch_clk);
+					else
+					{
+						pkt_end();
+						abort_requested();
+						break;
+					}
 				}
-
-				pkt_start("SPI");
-				pkt_show_info = true;
-				state = GET_DATA;
-
+				
+				if (trs_is_not_last(ch_clk))
+				{
+					pkt_start("SPI");
+					pkt_show_info = true;
+					state = GET_DATA;
+				}
 			break;
 
 			case GET_DATA:
@@ -457,7 +468,11 @@ function decode()
 					if (trs_is_not_last(ch_clk))
 						t_clk = trs_get_next(ch_clk);
 					else
+					{
+						pkt_end();
+						abort_requested();
 						break;
+					}
 					
 					if(t_clk.sample > t_end.sample) 						// if we are out of the CS limits
 					{
@@ -473,7 +488,11 @@ function decode()
 							if (trs_is_not_last(ch_clk))
 								t_clk = trs_get_next(ch_clk);
 							else
+							{
+								pkt_end();
+								abort_requested();
 								break;
+							}
 							
 							if (delta_clk>= 1.5*(t_clk.sample - t_clk_prev.sample))		//a long state occured on sclk
 							{
@@ -483,7 +502,11 @@ function decode()
 								if (trs_is_not_last(ch_clk))
 									t_clk = trs_get_next(ch_clk);
 								else
+								{
+									pkt_end();
+									abort_requested();
 									break;
+								}
 								delta_clk = t_clk.sample - t_clk_prev.sample
 								state = GET_CS;
 								break;
@@ -492,6 +515,13 @@ function decode()
 						else
 							delta_clk = t_clk.sample - t_clk_prev.sample;
 					}
+				}
+				
+				if (!trs_is_not_last(ch_clk))
+				{
+					pkt_end();
+					abort_requested();
+					break;
 				}
 
 				if ((bits_mosi.length < (nbits)) && (bits_miso.length < (nbits)))		// Invalid cs signal, skip it
@@ -547,7 +577,9 @@ function decode()
 				if (pkt_show_info)
 				{
 					pkt_show_info = false;
-					pkt_add_item(0, n_samples, "MOSI", "MISO", PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
+					pkt_add_item(-1,-1,"SPI Frame","Data",dark_colors.orange,light_colors.orange,true);
+					pkt_start();
+					//pkt_add_item(0, n_samples, "MOSI", "MISO", PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
 				}
 
 				switch (opt)
@@ -575,7 +607,9 @@ function decode()
 							dec_item_new(ch_miso, s_start-delta_affichage, s_end+delta_affichage);
 							dec_item_add_data(data_miso);
 
-							pkt_add_item(-1, -1, data_mosi_str, data_miso_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
+							pkt_add_item(-1, -1, "MISO", data_miso_str, get_ch_color(ch_miso), PKT_COLOR_DATA_MISO, true);
+							pkt_add_item(-1, -1, "MOSI", data_mosi_str, get_ch_color(ch_mosi), PKT_COLOR_DATA_MOSI, true);
+							//pkt_add_item(-1, -1, data_mosi_str, data_miso_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
 					break;
 				}
 
@@ -611,7 +645,11 @@ function decode()
 				if (trs_is_not_last(ch_clk))
 					t_clk = trs_get_next(ch_clk);
 				else
+				{
+					pkt_end();
+					abort_requested();
 					break;
+				}
 
 				if (t_clk.sample >= t_end.sample)
 				{
@@ -1015,7 +1053,7 @@ function trig_seq_gen()
 		{
 			for (i = nbits; i >= 0; i--)		// nbits: 1 - 128 bits in byte
 			{
-			    if (alt_specific_byte)
+			    if ( (alt_specific_byte) && (typeof byte_pos !== 'undefined') )
 				{
 					if (trig_data_line == 0)	// trig_data_line: 0 - MOSI, 1 - MISO
 					{
@@ -1036,7 +1074,7 @@ function trig_seq_gen()
 		{
 			for (i = 0; i <= nbits; i++)		// nbits: 1 - 128 bits in data byte
 			{
-			    if (alt_specific_byte)
+			    if (alt_specific_byte)//( (alt_specific_byte) && (typeof byte_pos !== 'undefined') )
 				{
 					if (trig_data_line == 0)	// trig_data_line: 0 - MOSI, 1 - MISO
 					{
@@ -1148,5 +1186,9 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
+
+
+
+
 
 
