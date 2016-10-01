@@ -15,12 +15,13 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.68: More stable I2C trigger.
 	V1.67: Fixed 10-bit address error.
-	       New Packet View layout.
+	New Packet View layout.
 	V1.66: Fixed (N)ACK display error.
 	V1.65: Added ScanaStudio 2.3xx compatibility.
 	V1.64: Fix for slow decoding speed, progress report
-	       and demo generator overflow.
+	and demo generator overflow.
 	V1.63: Added generator capability.
 	V1.62: Fixed (N)ACK display error.
 	V1.61: Fixed a ScanaQuad compatibility issue.
@@ -73,7 +74,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.67";
+	return "1.68";
 }
 
 
@@ -1203,7 +1204,7 @@ function trig_gui()
 	
 		trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is an 8 bit field containing the R/W Flag");
 		trig_ui_add_free_text("trig_add", "Slave Address: ");
-		trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", true);
+		trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", false);
 }
 
 
@@ -1308,18 +1309,18 @@ function trig_seq_gen()
 
 			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
 		}
-		
 		if (ack_needed_a == true)	// Add ACK field (if needed)
 		{
+		
 			i2c_step.sda = "0";
 			i2c_step.scl = "R";
-
 			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
 		}
 
 		flexitrig_set_summary_text("Trig on I2C Add: 0x" + trig_add.toString(16));
 	}
 
+	flexitrig_set_async_mode(false);
 	flexitrig_clear();
 
 	for (i = 0; i < i2c_trig_steps.length; i++)		// Now actualy build flexitrig array
@@ -1672,3 +1673,10 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
+
+
+
+
+
+
+
