@@ -13,10 +13,11 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.25: Fixed DS18B20 temp calculation.
 	V1.21: Now the decoding can be aborted
-	V1.2: Corrected a bug related to CRC calculations (Thanks to Petar Pasti)
-    V1.1: Added Packet/Hex View support.
-	V1.0: Initial release.
+	V1.20: Corrected a bug related to CRC calculations (Thanks to Petar Pasti)
+    V1.10: Added Packet/Hex View support.
+	V1.0:  Initial release.
 
 </RELEASE_NOTES>
 
@@ -126,10 +127,10 @@ var DEV_CMD =
 
 var TEMP_RESOLUTION =
 {
-    B9  : {val:  9, tempRes: 0.5},
-    B10 : {val: 10, tempRes: 0.25},
-    B11 : {val: 11, tempRes: 0.125},
-    B12 : {val: 12, tempRes: 0.0625}
+    B9  : {val:  9, tempRes: 0.5,    undefBits: 3},
+    B10 : {val: 10, tempRes: 0.25,   undefBits: 2},
+    B11 : {val: 11, tempRes: 0.125,  undefBits: 1},
+    B12 : {val: 12, tempRes: 0.0625, undefBits: 0}
 };
 
 
@@ -323,14 +324,13 @@ function decode()
 
                     break;
 
-                    case DS2760_LOCK:
+                    case DEV_CMD.DS2760_LOCK:
 
                         dec_item_add_pre_text("CMD: LOCK");
                         dec_item_add_pre_text("CMD");
                         pkt_add_item(-1, -1, "COMMAND", "LOCK", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
 
                     break;
-
 
                     default:
 
@@ -425,8 +425,9 @@ function decode_grp1()
     {
         var tempLsb = scratchPad.shift().data;
         var tempMsb = scratchPad.shift().data;
-        var temp = (tempLsb | (tempMsb << 8));
+		var temp = (tempLsb | (tempMsb << 8));
         var tempRes = 0;
+		var undefBits = 0;
 
         for (var k in TEMP_RESOLUTION)
         {
@@ -435,6 +436,7 @@ function decode_grp1()
             if (uiTempRes == res.val)
             {
                 tempRes = res.tempRes;
+				undefBits = res.undefBits;
             }
         }
 
@@ -444,9 +446,10 @@ function decode_grp1()
         {
             temp = (0xFFFF - temp) + 1;
             tempSign = "-";
-        }
+        }	
 
-        temp = temp * tempRes;
+		temp = (temp >> undefBits);
+		temp = temp * tempRes;
 
         strComplete = "TEMP: " + get_formatted_temp(tempSign, temp);
         strShort = get_formatted_temp(tempSign, temp);
@@ -477,7 +480,29 @@ function decode_grp1()
 
             if (Device.str.indexOf("MAX31826") == -1)           // MAX31826 doesn't have 2 alarm temp bytes
             {
-                strComplete += "  ALARM TEMP: {HIGH: " + get_formatted_temp(tempSignH, tempH) + ", LOW: " + get_formatted_temp(tempSignL, tempL) + "}";
+                strComplete += "  ALARM TEMP: {HIGH: ";
+
+				if (tempH > 125)
+				{
+					strComplete += "NOT SET"
+				}
+				else
+				{
+					strComplete += get_formatted_temp(tempSignH, tempH);
+				}
+
+				strComplete += ", LOW: ";
+
+				if (tempL > 55)
+				{
+					strComplete += "NOT SET"
+				}
+				else
+				{
+					strComplete += get_formatted_temp(tempSignL, tempL);
+				}
+
+				strComplete += "}";
             }
 
             if (scratchPad.length >= 1)
