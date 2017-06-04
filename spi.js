@@ -11,6 +11,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.62: Better progress reporting, better demo mode generator, better packet view
 	V1.61: Upgrade PacketView
 	V1.60: Fixed bug in SPI decoder and improve display
 	V1.59: Fixed bug in SPI decoder when CS is not valide
@@ -68,7 +69,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.61";
+	return "1.62";
 }
 
 
@@ -130,176 +131,167 @@ function SpiTrigStep (mosi, miso, clk, cs)
 
 /* Graphical user interface for this decoder
 */
-function gui()
+function gui()  //graphical user interface
 {
 	ui_clear();  // clean up the User interface before drawing a new one.
-
-	ui_add_ch_selector("ch_mosi", "MOSI (Master Out) Line", "MOSI");
-	ui_add_ch_selector("ch_miso", "MISO (Slave Out) Line", "MISO");
-	ui_add_ch_selector("ch_clk", "CLOCK Line", "SCLK");
-	ui_add_ch_selector("ch_cs", "Chip Select (Slave select)", "CS");
-
-	ui_add_txt_combo( "nbits", "Bits per word");
-	ui_add_item_to_txt_combo( "1" );
-	ui_add_item_to_txt_combo( "2" );
-	ui_add_item_to_txt_combo( "3" );
-	ui_add_item_to_txt_combo( "4" );
-	ui_add_item_to_txt_combo( "5" );
-	ui_add_item_to_txt_combo( "6" );
-	ui_add_item_to_txt_combo( "7" );
-	ui_add_item_to_txt_combo( "8", true);
-	ui_add_item_to_txt_combo( "9" );
-	ui_add_item_to_txt_combo( "10" );
-	ui_add_item_to_txt_combo( "11" );
-	ui_add_item_to_txt_combo( "12" );
-	ui_add_item_to_txt_combo( "13" );
-	ui_add_item_to_txt_combo( "14" );
-	ui_add_item_to_txt_combo( "15" );
-	ui_add_item_to_txt_combo( "16" );
-	ui_add_item_to_txt_combo( "17" );
-	ui_add_item_to_txt_combo( "18" );
-	ui_add_item_to_txt_combo( "19" );
-	ui_add_item_to_txt_combo( "20" );
-	ui_add_item_to_txt_combo( "21" );
-	ui_add_item_to_txt_combo( "22" );
-	ui_add_item_to_txt_combo( "23" );
-	ui_add_item_to_txt_combo( "24" );
-	ui_add_item_to_txt_combo( "25" );
-	ui_add_item_to_txt_combo( "26" );
-	ui_add_item_to_txt_combo( "27" );
-	ui_add_item_to_txt_combo( "28" );
-	ui_add_item_to_txt_combo( "29" );
-	ui_add_item_to_txt_combo( "30" );
-	ui_add_item_to_txt_combo( "31" );
-	ui_add_item_to_txt_combo( "32" );
-	ui_add_item_to_txt_combo( "33" );
-	ui_add_item_to_txt_combo( "34" );
-	ui_add_item_to_txt_combo( "35" );
-	ui_add_item_to_txt_combo( "36" );
-	ui_add_item_to_txt_combo( "37" );
-	ui_add_item_to_txt_combo( "38" );
-	ui_add_item_to_txt_combo( "39" );
-	ui_add_item_to_txt_combo( "40" );
-	ui_add_item_to_txt_combo( "41" );
-	ui_add_item_to_txt_combo( "42" );
-	ui_add_item_to_txt_combo( "43" );
-	ui_add_item_to_txt_combo( "44" );
-	ui_add_item_to_txt_combo( "45" );
-	ui_add_item_to_txt_combo( "46" );
-	ui_add_item_to_txt_combo( "47" );
-	ui_add_item_to_txt_combo( "48" );
-	ui_add_item_to_txt_combo( "49" );
-	ui_add_item_to_txt_combo( "50" );
-	ui_add_item_to_txt_combo( "51" );
-	ui_add_item_to_txt_combo( "52" );
-	ui_add_item_to_txt_combo( "53" );
-	ui_add_item_to_txt_combo( "54" );
-	ui_add_item_to_txt_combo( "55" );
-	ui_add_item_to_txt_combo( "56" );
-	ui_add_item_to_txt_combo( "57" );
-	ui_add_item_to_txt_combo( "58" );
-	ui_add_item_to_txt_combo( "59" );
-	ui_add_item_to_txt_combo( "60" );
-	ui_add_item_to_txt_combo( "61" );
-	ui_add_item_to_txt_combo( "62" );
-	ui_add_item_to_txt_combo( "63" );
-	ui_add_item_to_txt_combo( "64" );
-	ui_add_item_to_txt_combo( "65" );
-	ui_add_item_to_txt_combo( "66" );
-	ui_add_item_to_txt_combo( "67" );
-	ui_add_item_to_txt_combo( "68" );
-	ui_add_item_to_txt_combo( "69" );
-	ui_add_item_to_txt_combo( "70" );
-	ui_add_item_to_txt_combo( "71" );
-	ui_add_item_to_txt_combo( "72" );
-	ui_add_item_to_txt_combo( "73" );
-	ui_add_item_to_txt_combo( "74" );
-	ui_add_item_to_txt_combo( "75" );
-	ui_add_item_to_txt_combo( "76" );
-	ui_add_item_to_txt_combo( "77" );
-	ui_add_item_to_txt_combo( "78" );
-	ui_add_item_to_txt_combo( "79" );
-	ui_add_item_to_txt_combo( "80" );
-	ui_add_item_to_txt_combo( "81" );
-	ui_add_item_to_txt_combo( "82" );
-	ui_add_item_to_txt_combo( "83" );
-	ui_add_item_to_txt_combo( "84" );
-	ui_add_item_to_txt_combo( "85" );
-	ui_add_item_to_txt_combo( "86" );
-	ui_add_item_to_txt_combo( "87" );
-	ui_add_item_to_txt_combo( "88" );
-	ui_add_item_to_txt_combo( "89" );
-	ui_add_item_to_txt_combo( "90" );
-	ui_add_item_to_txt_combo( "91" );
-	ui_add_item_to_txt_combo( "92" );
-	ui_add_item_to_txt_combo( "93" );
-	ui_add_item_to_txt_combo( "94" );
-	ui_add_item_to_txt_combo( "95" );
-	ui_add_item_to_txt_combo( "96" );
-	ui_add_item_to_txt_combo( "97" );
-	ui_add_item_to_txt_combo( "98" );
-	ui_add_item_to_txt_combo( "99" );
-	ui_add_item_to_txt_combo( "100" );
-	ui_add_item_to_txt_combo( "101" );
-	ui_add_item_to_txt_combo( "102" );
-	ui_add_item_to_txt_combo( "103" );
-	ui_add_item_to_txt_combo( "104" );
-	ui_add_item_to_txt_combo( "105" );
-	ui_add_item_to_txt_combo( "106" );
-	ui_add_item_to_txt_combo( "107" );
-	ui_add_item_to_txt_combo( "108" );
-	ui_add_item_to_txt_combo( "109" );
-	ui_add_item_to_txt_combo( "110" );
-	ui_add_item_to_txt_combo( "111" );
-	ui_add_item_to_txt_combo( "112" );
-	ui_add_item_to_txt_combo( "113" );
-	ui_add_item_to_txt_combo( "114" );
-	ui_add_item_to_txt_combo( "115" );
-	ui_add_item_to_txt_combo( "116" );
-	ui_add_item_to_txt_combo( "117" );
-	ui_add_item_to_txt_combo( "118" );
-	ui_add_item_to_txt_combo( "119" );
-	ui_add_item_to_txt_combo( "120" );
-	ui_add_item_to_txt_combo( "121" );
-	ui_add_item_to_txt_combo( "122" );
-	ui_add_item_to_txt_combo( "123" );
-	ui_add_item_to_txt_combo( "124" );
-	ui_add_item_to_txt_combo( "125" );
-	ui_add_item_to_txt_combo( "126" );
-	ui_add_item_to_txt_combo( "127" );
-	ui_add_item_to_txt_combo( "128" );
-
+	ui_add_ch_selector( "ch_mosi", "MOSI (Master Out) Line", "MOSI" );
+	ui_add_ch_selector( "ch_miso", "MISO (Slave Out) Line", "MISO" );
+	ui_add_ch_selector( "ch_clk", "CLOCK Line", "SCLK" );
+	ui_add_ch_selector( "ch_cs", "Chip Select (Slave select)", "CS" );
+	ui_add_txt_combo( "nbits", "Bits per word" );
+		ui_add_item_to_txt_combo( "1" );
+		ui_add_item_to_txt_combo( "2" );
+		ui_add_item_to_txt_combo( "3" );
+		ui_add_item_to_txt_combo( "4" );
+		ui_add_item_to_txt_combo( "5" );
+		ui_add_item_to_txt_combo( "6" );
+		ui_add_item_to_txt_combo( "7" );
+		ui_add_item_to_txt_combo( "8", true );
+		ui_add_item_to_txt_combo( "9" );
+		ui_add_item_to_txt_combo( "10" );
+		ui_add_item_to_txt_combo( "11" );
+		ui_add_item_to_txt_combo( "12" );
+		ui_add_item_to_txt_combo( "13" );
+		ui_add_item_to_txt_combo( "14" );
+		ui_add_item_to_txt_combo( "15" );
+		ui_add_item_to_txt_combo( "16" );
+		ui_add_item_to_txt_combo( "17" );
+		ui_add_item_to_txt_combo( "18" );
+		ui_add_item_to_txt_combo( "19" );
+		ui_add_item_to_txt_combo( "20" );
+		ui_add_item_to_txt_combo( "21" );
+		ui_add_item_to_txt_combo( "22" );
+		ui_add_item_to_txt_combo( "23" );
+		ui_add_item_to_txt_combo( "24" );
+		ui_add_item_to_txt_combo( "25" );
+		ui_add_item_to_txt_combo( "26" );
+		ui_add_item_to_txt_combo( "27" );
+		ui_add_item_to_txt_combo( "28" );
+		ui_add_item_to_txt_combo( "29" );
+		ui_add_item_to_txt_combo( "30" );
+		ui_add_item_to_txt_combo( "31" );
+		ui_add_item_to_txt_combo( "32" );
+		ui_add_item_to_txt_combo( "33" );
+		ui_add_item_to_txt_combo( "34" );
+		ui_add_item_to_txt_combo( "35" );
+		ui_add_item_to_txt_combo( "36" );
+		ui_add_item_to_txt_combo( "37" );
+		ui_add_item_to_txt_combo( "38" );
+		ui_add_item_to_txt_combo( "39" );
+		ui_add_item_to_txt_combo( "40" );
+		ui_add_item_to_txt_combo( "41" );
+		ui_add_item_to_txt_combo( "42" );
+		ui_add_item_to_txt_combo( "43" );
+		ui_add_item_to_txt_combo( "44" );
+		ui_add_item_to_txt_combo( "45" );
+		ui_add_item_to_txt_combo( "46" );
+		ui_add_item_to_txt_combo( "47" );
+		ui_add_item_to_txt_combo( "48" );
+		ui_add_item_to_txt_combo( "49" );
+		ui_add_item_to_txt_combo( "50" );
+		ui_add_item_to_txt_combo( "51" );
+		ui_add_item_to_txt_combo( "52" );
+		ui_add_item_to_txt_combo( "53" );
+		ui_add_item_to_txt_combo( "54" );
+		ui_add_item_to_txt_combo( "55" );
+		ui_add_item_to_txt_combo( "56" );
+		ui_add_item_to_txt_combo( "57" );
+		ui_add_item_to_txt_combo( "58" );
+		ui_add_item_to_txt_combo( "59" );
+		ui_add_item_to_txt_combo( "60" );
+		ui_add_item_to_txt_combo( "61" );
+		ui_add_item_to_txt_combo( "62" );
+		ui_add_item_to_txt_combo( "63" );
+		ui_add_item_to_txt_combo( "64" );
+		ui_add_item_to_txt_combo( "65" );
+		ui_add_item_to_txt_combo( "66" );
+		ui_add_item_to_txt_combo( "67" );
+		ui_add_item_to_txt_combo( "68" );
+		ui_add_item_to_txt_combo( "69" );
+		ui_add_item_to_txt_combo( "70" );
+		ui_add_item_to_txt_combo( "71" );
+		ui_add_item_to_txt_combo( "72" );
+		ui_add_item_to_txt_combo( "73" );
+		ui_add_item_to_txt_combo( "74" );
+		ui_add_item_to_txt_combo( "75" );
+		ui_add_item_to_txt_combo( "76" );
+		ui_add_item_to_txt_combo( "77" );
+		ui_add_item_to_txt_combo( "78" );
+		ui_add_item_to_txt_combo( "79" );
+		ui_add_item_to_txt_combo( "80" );
+		ui_add_item_to_txt_combo( "81" );
+		ui_add_item_to_txt_combo( "82" );
+		ui_add_item_to_txt_combo( "83" );
+		ui_add_item_to_txt_combo( "84" );
+		ui_add_item_to_txt_combo( "85" );
+		ui_add_item_to_txt_combo( "86" );
+		ui_add_item_to_txt_combo( "87" );
+		ui_add_item_to_txt_combo( "88" );
+		ui_add_item_to_txt_combo( "89" );
+		ui_add_item_to_txt_combo( "90" );
+		ui_add_item_to_txt_combo( "91" );
+		ui_add_item_to_txt_combo( "92" );
+		ui_add_item_to_txt_combo( "93" );
+		ui_add_item_to_txt_combo( "94" );
+		ui_add_item_to_txt_combo( "95" );
+		ui_add_item_to_txt_combo( "96" );
+		ui_add_item_to_txt_combo( "97" );
+		ui_add_item_to_txt_combo( "98" );
+		ui_add_item_to_txt_combo( "99" );
+		ui_add_item_to_txt_combo( "100" );
+		ui_add_item_to_txt_combo( "101" );
+		ui_add_item_to_txt_combo( "102" );
+		ui_add_item_to_txt_combo( "103" );
+		ui_add_item_to_txt_combo( "104" );
+		ui_add_item_to_txt_combo( "105" );
+		ui_add_item_to_txt_combo( "106" );
+		ui_add_item_to_txt_combo( "107" );
+		ui_add_item_to_txt_combo( "108" );
+		ui_add_item_to_txt_combo( "109" );
+		ui_add_item_to_txt_combo( "110" );
+		ui_add_item_to_txt_combo( "111" );
+		ui_add_item_to_txt_combo( "112" );
+		ui_add_item_to_txt_combo( "113" );
+		ui_add_item_to_txt_combo( "114" );
+		ui_add_item_to_txt_combo( "115" );
+		ui_add_item_to_txt_combo( "116" );
+		ui_add_item_to_txt_combo( "117" );
+		ui_add_item_to_txt_combo( "118" );
+		ui_add_item_to_txt_combo( "119" );
+		ui_add_item_to_txt_combo( "120" );
+		ui_add_item_to_txt_combo( "121" );
+		ui_add_item_to_txt_combo( "122" );
+		ui_add_item_to_txt_combo( "123" );
+		ui_add_item_to_txt_combo( "124" );
+		ui_add_item_to_txt_combo( "125" );
+		ui_add_item_to_txt_combo( "126" );
+		ui_add_item_to_txt_combo( "127" );
+		ui_add_item_to_txt_combo( "128" );
 	ui_add_txt_combo( "order", "Bit Order" );
-	ui_add_item_to_txt_combo( "Most significant bit first (MSB)", true );
-	ui_add_item_to_txt_combo( "Least significant bit first (LSB)" );
-
+		ui_add_item_to_txt_combo( "Most significant bit first (MSB)", true );
+		ui_add_item_to_txt_combo( "Least significant bit first (LSB)" );
 	ui_add_txt_combo( "cpol", "Clock polarity" );
-	ui_add_item_to_txt_combo( "(CPOL = 0) clock LOW when inactive", true );
-	ui_add_item_to_txt_combo( "(CPOL = 1) Clock HIGH when inactive" );
-
+		ui_add_item_to_txt_combo( "(CPOL = 0) clock LOW when inactive", true );
+		ui_add_item_to_txt_combo( "(CPOL = 1) Clock HIGH when inactive" );
 	ui_add_txt_combo( "cpha", "Clock phase" );
-	ui_add_item_to_txt_combo( "(CPHA = 0) Data samples on leading edge", true );
-	ui_add_item_to_txt_combo( "(CPHA = 1) Data samples on trailing edge" );
-
+		ui_add_item_to_txt_combo( "(CPHA = 0) Data samples on leading edge", true );
+		ui_add_item_to_txt_combo( "(CPHA = 1) Data samples on trailing edge" );
 	ui_add_txt_combo( "cspol", "Chip Select" );
-	ui_add_item_to_txt_combo( "is active low", true );
-	ui_add_item_to_txt_combo( "is active high" );
-
+		ui_add_item_to_txt_combo( "is active low", true );
+		ui_add_item_to_txt_combo( "is active high" );
 	ui_add_txt_combo( "opt", "MOSI/MISO options" );
-	ui_add_item_to_txt_combo( "None", true );
-	ui_add_item_to_txt_combo( "Ignore MOSI line" );
-	ui_add_item_to_txt_combo( "Ignore MISO line" );
-
+		ui_add_item_to_txt_combo( "None", true );
+		ui_add_item_to_txt_combo( "Ignore MOSI line" );
+		ui_add_item_to_txt_combo( "Ignore MISO line" );
 	ui_add_txt_combo( "opt_cs", "CS options" );
-	ui_add_item_to_txt_combo( "None", true );
-	ui_add_item_to_txt_combo( "Ignore CS (Chip Select) line" );
-
+		ui_add_item_to_txt_combo( "None", true );
+		ui_add_item_to_txt_combo( "Ignore CS (Chip Select) line" );
 	ui_add_txt_combo( "n_to_decode", "Decode" );
-	ui_add_item_to_txt_combo( "Only first 500 data words" );
-	ui_add_item_to_txt_combo( "Only first 1000 data words" );
-	ui_add_item_to_txt_combo( "Only first 5000 data words", true );
-	ui_add_item_to_txt_combo( "Only first 10000 data words" );
-	ui_add_item_to_txt_combo( "Everything" );
+		ui_add_item_to_txt_combo( "Only first 500 data words" );
+		ui_add_item_to_txt_combo( "Only first 1000 data words" );
+		ui_add_item_to_txt_combo( "Only first 5000 data words", true );
+		ui_add_item_to_txt_combo( "Only first 10000 data words" );
+		ui_add_item_to_txt_combo( "Everything" );
 }
 
 
@@ -308,6 +300,7 @@ function gui()
 */
 function decode()
 {
+
 	get_ui_vals();
 
 	nbits = nbits + 1;		// readjust the number of bits variable
@@ -767,17 +760,28 @@ function build_demo_signals()
 {
 	var demo_cnt = 0;
 	var offset = 0;
-
+	var inter_transaction_silence;
+	var scanastudio_version_maj = Number(get_scanastudio_version().split(".")[0]) + (get_scanastudio_version().split(".")[1]/1000);
+	var scanastudio_version_minor = get_scanastudio_version().split(".")[2];
+	
 	gen_bit_rate = 1000000; // bit rate expressed in Hz
 
 	ini_spi_generator();
+	inter_transaction_silence = n_samples / (20 * samples_per_bit);
 
 	gen_add_delay(samples_per_us * 5, cs_idle);
-
+	
 	while (get_samples_acc(ch_clk) < n_samples)
 	{
+	
+		
+		if (scanastudio_version_maj > 2.4) //SCANASTUDIO 2.5 introduced the ability to report progress from within the samples generator.	
+		{
+			set_progress(get_samples_acc(ch_clk) * 100 / n_samples  );
+		}
+		
 		gen_cs(true);
-
+		
 		for (var i = 0; i < 10; i++)
 		{
 			gen_add_word(demo_cnt, i + offset);
@@ -785,7 +789,7 @@ function build_demo_signals()
 		}
 
 		gen_cs(false);
-		gen_add_delay(samples_per_us * 20, cs_idle);
+		gen_add_delay(inter_transaction_silence,1);
 
 		demo_cnt++;
 
@@ -849,10 +853,12 @@ function gen_cs (st_sp)
 	if (st_sp)
 	{
 		add_samples(ch_cs, cs_active, samples_per_bit);
+			cs_state = cs_active;
 	}
 	else
 	{
 		add_samples(ch_cs, cs_idle, samples_per_bit);
+			cs_state = cs_idle;
 	}
 }
 
@@ -929,7 +935,6 @@ function gen_add_bit (b_mosi, b_miso)
 */
 function gen_add_delay (d, cs_state)
 {
-	
 	add_samples(ch_mosi, 0, d);
 	add_samples(ch_miso, 0, d);
 	add_samples(ch_clk, c_idle, d);
@@ -1186,6 +1191,12 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
+
+
+
+
+
+
 
 
 
