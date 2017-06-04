@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.69: Show packet frames event if there is no data available.
 	V1.68: More stable I2C trigger.
 	V1.67: Fixed 10-bit address error.
 	New Packet View layout.
@@ -74,7 +75,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.68";
+	return "1.69";
 }
 
 
@@ -320,18 +321,15 @@ function decode()
 					dec_item_add_pre_text("S");
 
 					if (!firstIter)
-					{
-						if (pktObj.dataLen > 0)
-						{
-							pktObjects.push(pktObj);
-							pkt_add_packet(pktOk);
+					{						
+						pktObjects.push(pktObj);
+						pkt_add_packet(pktOk);
 
-							pktOk = true;
-							pktObj.data = "";
-							pktObj.dataObjArr = [];
-							pktObj.start = false;
-							pktObj.dataLen = 0;
-						}
+						pktOk = true;
+						pktObj.data = "";
+						pktObj.dataObjArr = [];
+						pktObj.start = false;
+						pktObj.dataLen = 0;
 					}
 
 					pktObjects.push(new PktObject("START", PKT_COLOR_START_TITLE, "", 0, 0, PKT_COLOR_DATA, condSt, condEnd));
