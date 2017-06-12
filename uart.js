@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.42: Fixed bug related to number of bits in demo signals builder
 	V1.41: Correted bug related to number of bits in signal generator
 	V1.40: Added ScanaStudio 2.3xx compatibility.
 	V1.39: Added Signal Generator capability
@@ -62,7 +63,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.41";
+	return "1.42";
 }
 
 
@@ -440,7 +441,7 @@ function build_demo_signals()
 {
 	var demo_cnt = 0;
 
-	
+
 
 	if (stop == 0) 		// readjust number of stop bits
 	{
@@ -455,7 +456,10 @@ function build_demo_signals()
 		stop = 2;
 	}
 
-	ini_uart_generator();	
+
+	nbits += 5; 			// readjust the number of bits to start counting from 5 instead of 0.
+	
+	ini_uart_generator(); //must be called to initialise the UART generator.
 	
 	var inter_transaction_silence = n_samples / (100 * samples_per_bit);
 	//debug("inter_transaction_silence = " + inter_transaction_silence);
@@ -940,6 +944,7 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
 
 
 
