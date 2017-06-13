@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.28: 
 	V1.27: Prevented incompatible workspaces from using the decoder
 	V1.26: Now the decoding can be aborted
 	V1.25: A few minor fixes. New initial offset control.
@@ -53,7 +54,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.27";
+	return "1.28";
 }
 
 
@@ -69,8 +70,6 @@ function get_dec_auth()
 							    GLOBAL VARIABLES
 *************************************************************************************
 */
-
-var MAX_BITS_IN_WORD = 32;
 
 function I2sObject (type, value, ws, start, end)
 {
@@ -111,7 +110,7 @@ function gui()
 		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
 		return;
 	}
-	
+
 	ui_add_ch_selector("chSd", "(SD) Serial Data", "SD");
 	ui_add_ch_selector("chSck", "(SCK) Serial Clock", "SCK");
 	ui_add_ch_selector("chWs", "(WS) Word Select", "WS");
@@ -121,6 +120,13 @@ function gui()
 		ui_add_item_to_txt_combo("16");
 		ui_add_item_to_txt_combo("24");
 		ui_add_item_to_txt_combo("32");
+
+	ui_add_txt_combo("uiDecodeWords", "Decode");
+		ui_add_item_to_txt_combo("Only first 50 data words");
+		ui_add_item_to_txt_combo("Only first 100 data words");
+		ui_add_item_to_txt_combo("Only first 500 data words");
+		ui_add_item_to_txt_combo("Only first 1000 data words");
+		ui_add_item_to_txt_combo("Everything", true);
 }
 
 
@@ -131,6 +137,12 @@ function decode()
 {
 	get_ui_vals();			// Update the content of all user interface related variables
 	clear_dec_items();		// Clears all the the decoder items and its content
+
+	if (uiDecodeWords == 0) uiDecodeWords = 50;
+	if (uiDecodeWords == 1) uiDecodeWords = 100;
+	if (uiDecodeWords == 2) uiDecodeWords = 500;
+	if (uiDecodeWords == 3) uiDecodeWords = 1000;
+	if (uiDecodeWords == 4) uiDecodeWords = 0;
 
 	bitsInWord = (uiBitsInWord + 1) * 8;
 
@@ -192,32 +204,31 @@ function decode()
 function decode_signal()
 {
 	var trSck, trSd, trWs;
+	var words = 0;
 
 	trSck = trs_get_first(chSck);
-	avgtHigh = get_avg_thigh(chSck, trSck);			// Get average high time of SCL signal (1/2 of period)
+	avgtHigh = get_avg_thigh(chSck, trSck);								// Get average high time of SCK signal (1/2 of period)
 	trSck = trs_get_first(chSck);
-	trSd = trs_get_first(chSd);						// Position the navigator for sda/scl channels at the first transition
+	trSd = trs_get_first(chSd);											// Position the navigator for sda/scl channels at the first transition
 
 	trWs = get_ws_offset();
 	trSck = trs_go_after(chSck, trWs.sample + 1);
-
-	while (trs_is_not_last(chSck) != false)				// Read data for a whole transfer
+	
+	while (trs_is_not_last(chSck) != false)								// Read data for a whole transfer
 	{
-		if (abort_requested() == true)					// Allow the user to abort this script
+		if (abort_requested() == true)									// Allow the user to abort this script
 		{
 			return false;
 		}
 
-		set_progress(100 * trSck.sample / n_samples);	// Give feedback to ScanaStudio about decoding progress
+		set_progress(100 * trSck.sample / n_samples);					// Give feedback to ScanaStudio about decoding progress
 
 		var wordValue = 0;
-		var wordStart, wordEnd;
+		var wordStart = 0, wordEnd = 0;
 
 		trSck = trs_get_next(chSck);									// Skip fisrt transition, MSB of new word begins on 2nd rising edge of SCK
 
-		// Interpret all bits as words
-
-		for (var i = 0; i < MAX_BITS_IN_WORD; i++)							//  For 8/16/24/32 bits in word (defined by user)
+		for (var i = 0; i < bitsInWord; i++)							//  For 8/16/24/32 bits in word (defined by user)
 		{
 			trSck = get_next_rising_edge(chSck, trSck);
 			var trSckPrev = trSck;
@@ -225,44 +236,41 @@ function decode_signal()
 
 			if (trSck != false)											// trSck == false if this is the last transition
 			{
-				if (i < bitsInWord)
+				var newtHigh = get_trsdiff_samples(trSckPrev, trSck);
+				var bitStart = trSckPrev.sample;
+				var bitEnd;
+				var bitValue = sample_val(chSd, bitStart);				// Read bit value on SCK rising edge
+
+				if ((avgtHigh * 2) >= newtHigh)							// If High pulse duration on SCL is longer than usually - end of transmisson
 				{
-					var newtHigh = get_trsdiff_samples(trSckPrev, trSck);
-					var bitStart = trSckPrev.sample;
-					var bitEnd;
-					var bitValue = sample_val(chSd, bitStart);		// Read bit value on SCK rising edge
-
-					if ((avgtHigh * 2) >= newtHigh)					// If High pulse duration on SCL is longer than usually - end of transmisson
-					{
-						bitEnd = trSck.sample;
-					}
-					else
-					{
-						bitEnd = bitStart + (avgtHigh / 2);
-					}
-
-					wordValue <<= 1;
-							
-					if (bitValue == 1)
-					{
-						wordValue |= 0x01;
-					}
-
-					if (i == bitsInWord / 2)
-					{
-						var wsValue = sample_val(chWs, bitStart);
-					}
-
-					if(i == 0)
-					{
-						wordStart = bitStart;
-					}
-
-					wordEnd = bitEnd;
-
-					var midSample = ((bitStart + bitEnd) / 2);
-					dec_item_add_sample_point(chSd, midSample, bitValue ? DRAW_1 : DRAW_0);
+					bitEnd = trSck.sample;
 				}
+				else
+				{
+					bitEnd = bitStart + (avgtHigh / 2);
+				}
+
+				wordValue <<= 1;
+
+				if (bitValue == 1)
+				{
+					wordValue |= 0x01;
+				}
+
+				if (i == (bitsInWord / 2))
+				{
+					var wsValue = sample_val(chWs, bitStart);
+				}
+
+				if (i == 0)
+				{
+					wordStart = (bitStart + (avgtHigh * 2)) - 1;
+				}
+
+				wordEnd = (bitEnd - (avgtHigh * 2)) + 1;
+
+				var midSample = ((bitStart + bitEnd) / 2);
+				dec_item_add_sample_point(chSd, midSample, bitValue ? DRAW_1 : DRAW_0);
 			}
 			else
 			{
@@ -271,6 +279,13 @@ function decode_signal()
 		}
 
 		i2sObjectsArr.push(new I2sObject(true, wordValue, wsValue, wordStart, wordEnd));
+
+		words += 1;
+
+		if ((uiDecodeWords > 0) && (words >= uiDecodeWords))
+		{
+			return true;
+		}
 	}
 
 	return true;
@@ -351,7 +366,7 @@ function get_avg_thigh (ch, trSt)
 {
 	var trSck = get_next_rising_edge(ch, trSt);
 	var trSckPrev = trSck;
-	trScl = get_next_falling_edge(ch, trSck);
+	trSck = get_next_falling_edge(ch, trSck);
 
 	return (trSck.sample - trSckPrev.sample);
 }
