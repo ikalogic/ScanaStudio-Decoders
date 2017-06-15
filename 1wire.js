@@ -301,7 +301,7 @@ function gui()
 	ui_add_item_to_txt_combo( "Overdrive speed" );
 
 	ui_add_separator();
-	ui_add_info_label( "<b>Hex view options:</b>" );
+	ui_add_info_label( "Hex view options", true );
 
 	ui_add_txt_combo( "uiHexView", "Include in HEX view:" );
 	ui_add_item_to_txt_combo( "DATA fields only", true );
@@ -508,7 +508,7 @@ function decode()
 						dec_item_add_pre_text(cmd.str);
 						dec_item_add_data(owByte.value);
 
-						pktObjects.push(new PktObject("ROM COMMAND", PKT_COLOR_ROMCMD_TITLE, cmd.str, 0, 0, PKT_COLOR_DATA, owByte.start, owByte.end));
+						pktObjects.push(new PktObject("ROM CMD", PKT_COLOR_ROMCMD_TITLE, cmd.str, 0, 0, PKT_COLOR_DATA, owByte.start, owByte.end));
 						
 						switch (cmd)
 						{
@@ -626,8 +626,8 @@ function decode()
 						pktOk = false;
 					}
 
-					pktObjects.push(new PktObject("FAMILY CODE", PKT_COLOR_ROMCODE_TITLE, pktFamilyCodeStr, 0, 0, PKT_COLOR_DATA, familyCode.start, familyCode.end));
-					pktObjects.push(new PktObject("SERIAL CODE", PKT_COLOR_ROMCODE_TITLE, pktSerialStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 2].end));
+					pktObjects.push(new PktObject("FAMILY", PKT_COLOR_ROMCODE_TITLE, pktFamilyCodeStr, 0, 0, PKT_COLOR_DATA, familyCode.start, familyCode.end));
+					pktObjects.push(new PktObject("SERIAL", PKT_COLOR_ROMCODE_TITLE, pktSerialStr, 0, 0, PKT_COLOR_DATA, romCode[0].start, romCode[romCode.length - 2].end));
 
 					if (crcOk)
 					{
@@ -1430,12 +1430,12 @@ function pkt_add_packet (ok)
 	{
 		obj = pktObjects[i];
 
-		if (obj.title.localeCompare("ROM COMMAND") == 0) 
+		if (obj.title.localeCompare("ROM CMD") == 0) 
 		{
 			desc += obj.data;
 		}
 
-		if (obj.title.localeCompare("FAMILY CODE") == 0) 
+		if (obj.title.localeCompare("FAMILY") == 0) 
 		{
 			desc += "FAMILY:" + obj.data + " ";
 		}
@@ -1453,7 +1453,7 @@ function pkt_add_packet (ok)
 
 	if (ok)
 	{
-		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, get_ch_color(uiCh), PKT_COLOR_DATA);
 	}
 	else
 	{
@@ -1526,7 +1526,7 @@ function pkt_add_packet (ok)
 */
 function int_to_str_hex (num) 
 {
-	var temp = "0x";
+	var temp = "";
 
 	if (num < 0x10)
 	{
