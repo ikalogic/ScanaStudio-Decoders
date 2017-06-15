@@ -11,7 +11,8 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.62: Better progress reporting, better demo mode generator, better packet view
+	V1.65: Completely reworked PacketView.
+	V1.62: Better progress reporting, better demo mode generator, better PacketView
 	V1.61: Upgrade PacketView
 	V1.60: Fixed bug in SPI decoder and improve display
 	V1.59: Fixed bug in SPI decoder when CS is not valide
@@ -64,14 +65,12 @@ function get_dec_name()
 	return "SPI";
 }
 
-
 /* The decoder version 
 */
 function get_dec_ver()
 {
-	return "1.62";
+	return "1.65";
 }
-
 
 /* Author 
 */
@@ -88,6 +87,7 @@ function get_dec_auth()
 
 var	GET_CS 	 = 0;
 var	GET_DATA = 10;
+var	END_FRAME = 20;
 var OPT_IGNORE_NONE = 0;
 var OPT_IGNORE_MOSI = 1;
 var OPT_IGNORE_MISO = 2;
@@ -105,7 +105,6 @@ var gen_bit_rate;
 var spi_trig_steps = [];
 var b;
 
-// constants
 var MSB_FIRST = 0;
 var LSB_FIRST = 1;
 var CPOL_ACTIVE_HIGH = 0;
@@ -121,6 +120,28 @@ function SpiTrigStep (mosi, miso, clk, cs)
 	this.miso = miso;
 	this.clk  = clk;
 	this.cs   = cs;
+};
+
+var SPI_OBJECT_TYPE =
+{
+	MOSI : 0x01,
+	MISO : 0x02,
+};
+
+function SpiObject (type, value, start, end)
+{
+	this.type = type;
+	this.value = value;
+	this.start = start;
+	this.end = end;
+};
+
+function PktObject (mosiArr, misoArr, start, end)
+{
+	this.mosiArr = mosiArr;
+	this.misoArr = misoArr;
+	this.start = start;
+	this.end = end;
 };
 
 /*
@@ -277,8 +298,8 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "(CPHA = 0) Data samples on leading edge", true );
 		ui_add_item_to_txt_combo( "(CPHA = 1) Data samples on trailing edge" );
 	ui_add_txt_combo( "cspol", "Chip Select" );
-		ui_add_item_to_txt_combo( "is active low", true );
-		ui_add_item_to_txt_combo( "is active high" );
+		ui_add_item_to_txt_combo( "Active low", true );
+		ui_add_item_to_txt_combo( "Active high" );
 	ui_add_txt_combo( "opt", "MOSI/MISO options" );
 		ui_add_item_to_txt_combo( "None", true );
 		ui_add_item_to_txt_combo( "Ignore MOSI line" );
@@ -292,24 +313,27 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "Only first 5000 data words", true );
 		ui_add_item_to_txt_combo( "Only first 10000 data words" );
 		ui_add_item_to_txt_combo( "Everything" );
+	ui_add_separator();
+	ui_add_info_label( "PacketView Options", true );
+	ui_add_txt_combo( "pkt_view_mode", "View mode:" );
+		ui_add_item_to_txt_combo( "Group data of the same transaction", true );
+		ui_add_item_to_txt_combo( "Simple" );
 }
-
 
 /* This is the function that will be called from ScanaStudio
    to update the decoded items
 */
 function decode()
 {
-
 	get_ui_vals();
 
-	nbits = nbits + 1;		// readjust the number of bits variable
+	nbits = nbits + 1;														// Readjust the number of bits variable
 
 	if (n_to_decode == 0) n_to_decode = 500;
 	if (n_to_decode == 1) n_to_decode = 1000;
 	if (n_to_decode == 2) n_to_decode = 5000;
 	if (n_to_decode == 3) n_to_decode = 10000;
-	if (n_to_decode == 4) n_to_decode = n_samples;		// decode all the samples
+	if (n_to_decode == 4) n_to_decode = n_samples;							// Decode all the samples
 
 	if ((cpol == 0) && (cpha == 0)) clk_active = 1;
 	if ((cpol == 0) && (cpha == 1)) clk_active = 0;
@@ -318,7 +342,7 @@ function decode()
 
 	if (opt != OPT_IGNORE_MISO) 
 	{
-		trs_get_first(ch_miso);		// this initialize the iterator for that channel
+		trs_get_first(ch_miso);												// This initialize the iterator for that channel
 	}
 
 	if (opt != OPT_IGNORE_MOSI) 
@@ -326,343 +350,331 @@ function decode()
 		trs_get_first(ch_mosi);
 	}
 
-	var delta_affichage;
+	var disp_margin = 0;
 	var t = trs_get_first(ch_cs);
-	var t_end =  new transition(0,0);
+	var t_end =  new transition(0, 0);
 	var t_clk = trs_get_first(ch_clk);
 	var t_clk_prev = t_clk;
 	var bits_mosi = new Array();
 	var bits_miso = new Array();
-	var pkt_show_info = true;
 	var skip_first_cs_falling_edge = false;
-	var PKT_COLOR_DATA_MOSI = get_ch_light_color(ch_mosi);
-	var PKT_COLOR_DATA_MISO = get_ch_light_color(ch_miso);
 	var delta_clk;
-	
-	if ((t.sample > 0) && (t.val != cspol)) 	// if the CS starts low, no need to search for the falling edge
+
+	var pktObj = new PktObject();
+	pktObj.mosiArr = [];
+	pktObj.misoArr = [];
+
+	if ((t.sample > 0) && (t.val != cspol)) 								// If the CS starts low, no need to search for the falling edge
 	{
 		skip_first_cs_falling_edge = true;
 	}
 
 	while (trs_is_not_last(ch_clk) && (trs_is_not_last(ch_cs) || (opt_cs == 1)) && (stop == false))
 	{
-		if (abort_requested() == true)
+		if (abort_requested())
 		{
-			pkt_end();
-			return false;
+			stop = true;
 		}
 
-		switch (state)
-		{
-			case GET_CS:
-
-				if (opt_cs != 0) 	// if we want to ignore the CS line
+		if (state == GET_CS)
+		{			
+			if (opt_cs != 0) 												// If we want to ignore the CS line
+			{
+				t_end.sample = n_samples;
+				state = GET_DATA;
+				t = t_clk;
+				break;
+			}
+			else
+			{
+				if (skip_first_cs_falling_edge)
 				{
-					pkt_start("SPI");
-					pkt_show_info = true;
-					t_end.sample = n_samples;
-					state = GET_DATA;
-					t = t_clk;
-					pkt_show_info = false;
-					break;
+					skip_first_cs_falling_edge = false;
+	
+					t_end.sample = t.sample;
+					t_end.val = t.val;
+					t.sample = 0;
+					t.val = cspol;
+	
+					dec_item_new(ch_cs, t.sample, t_end.sample);
+					dec_item_add_pre_text("Warning: The leading edge of CS (Chip Select) line is missing!");
+					dec_item_add_pre_text("Warning: CS leading edge is missing!");
+					dec_item_add_pre_text("Warning: CS!");
+					dec_item_add_pre_text("W: CS!");
+					dec_item_add_pre_text("!CS!");
+					dec_item_add_pre_text("!");
+					dec_item_add_comment ("Leading edge edge of CS line is missing!");
 				}
 				else
 				{
-					pkt_end();
-					if (skip_first_cs_falling_edge)
+					while ((t.val != cspol) && trs_is_not_last(ch_cs))		// Search for a new packet (an active CS state)
 					{
-						skip_first_cs_falling_edge = false;
-		
-						t_end.sample = t.sample;
-						t_end.val = t.val;
-						t.sample = 0;
-						t.val = cspol;
-		
-						dec_item_new(ch_cs, t.sample, t_end.sample);
-						dec_item_add_pre_text("Warning: The leading edge of CS (Chip Select) line is missing!");
-						dec_item_add_pre_text("Warning: CS leading edge is missing!");
-						dec_item_add_pre_text("Warning: CS!");
-						dec_item_add_pre_text("W: CS!");
-						dec_item_add_pre_text("!CS!");
-						dec_item_add_pre_text("!");
-						dec_item_add_comment ("Leading edge edge of CS line is missing!");
+						t = trs_get_next(ch_cs);
 					}
-					else
-					{
-						while ((t.val != cspol) && trs_is_not_last(ch_cs))		// search for a new packet (an active CS state)
-						{
-							t = trs_get_next(ch_cs);
-						}
-		
-						t_end = trs_get_next(ch_cs);
-					}
+
+					t_end = trs_get_next(ch_cs);
 				}
 
-				while (t_clk.sample < t.sample)	// go to the clock transition just after the start of the Chip Select signal
-				{
-					if (trs_is_not_last(ch_clk))
-						t_clk = trs_get_next(ch_clk);
-					else
-					{
-						pkt_end();
-						abort_requested();
-						break;
-					}
-				}
-				
+				pktObj.mosiArr = [];
+				pktObj.misoArr = [];
+				pktObj.start = t.sample;
+				pktObj.end = t_end.sample;
+			}
+
+			while (t_clk.sample < t.sample)									// Go to the clock transition just after the start of the Chip Select signal
+			{
 				if (trs_is_not_last(ch_clk))
 				{
-					pkt_start("SPI");
-					pkt_show_info = true;
-					state = GET_DATA;
+					t_clk = trs_get_next(ch_clk);
 				}
-			break;
-
-			case GET_DATA:
-
-				var data_mosi = 0;
-				var data_miso = 0;
-				bits_mosi.length = 0;
-				bits_miso.length = 0;
-				delta_clk = t_clk.sample - t_clk_prev.sample;
-				
-				while ((bits_mosi.length < (nbits)) && (trs_is_not_last(ch_clk))) 	// Read data bits for a whole transfer
+				else
 				{
-					if (t_clk.val == clk_active)
+					break;
+				}
+			}
+
+			if (trs_is_not_last(ch_clk))
+			{
+				state = GET_DATA;
+			}
+		}
+		else if (state == GET_DATA)
+		{
+			var data_mosi = 0;
+			var data_miso = 0;
+
+			bits_mosi.length = 0;
+			bits_miso.length = 0;
+			delta_clk = t_clk.sample - t_clk_prev.sample;
+
+			while ((bits_mosi.length < nbits) && (trs_is_not_last(ch_clk))) 	// Read data bits for a whole transfer
+			{
+				if (t_clk.val == clk_active)
+				{
+					if (bits_mosi.length == 0)
 					{
-						if (bits_mosi.length == 0)
-						{
-							s_start = t_clk.sample - get_bit_margin();
-						}
-						
-						if (bits_mosi.length == nbits-1)
-						{
-							delta_affichage = t_clk.sample - s_start;
-							delta_affichage /= nbits*1.8;
-						}
-
-						if (opt != OPT_IGNORE_MOSI)
-						{
-							var bit_mosi = sample_val(ch_mosi, t_clk.sample);
-							dec_item_add_sample_point(ch_mosi, t_clk.sample, bit_mosi);
-						}
-
-						if (opt != OPT_IGNORE_MISO) 
-						{
-							var bit_miso = sample_val(ch_miso, t_clk.sample);
-							dec_item_add_sample_point(ch_miso, t_clk.sample, bit_miso);
-						}
-
-						bits_miso.push(bit_miso);
-						bits_mosi.push(bit_mosi);
+						s_start = t_clk.sample - get_bit_margin();
 					}
 
-					t_clk_prev = t_clk;
-					if (trs_is_not_last(ch_clk))
-						t_clk = trs_get_next(ch_clk);
-					else
+					if (bits_mosi.length == nbits - 1)
 					{
-						pkt_end();
-						abort_requested();
-						break;
+						disp_margin = t_clk.sample - s_start;
+						disp_margin /= nbits * 1.8;
 					}
-					
-					if(t_clk.sample > t_end.sample) 						// if we are out of the CS limits
+
+					if (opt != OPT_IGNORE_MOSI)
 					{
-						state = GET_CS;
-						break;
+						var bit_mosi = sample_val(ch_mosi, t_clk.sample);
+						dec_item_add_sample_point(ch_mosi, t_clk.sample, bit_mosi);
 					}
-					
-					if(opt_cs==1)											//if we don't look at CS, we'll look at periodicity on sclk 
+
+					if (opt != OPT_IGNORE_MISO) 
 					{
-						if (delta_clk>= 1.5*(t_clk.sample - t_clk_prev.sample))
+						var bit_miso = sample_val(ch_miso, t_clk.sample);
+						dec_item_add_sample_point(ch_miso, t_clk.sample, bit_miso);
+					}
+
+					bits_miso.push(bit_miso);
+					bits_mosi.push(bit_mosi);
+				}
+
+				t_clk_prev = t_clk;
+
+				if (trs_is_not_last(ch_clk))
+				{
+					t_clk = trs_get_next(ch_clk);
+				}
+				else
+				{
+					break;
+				}
+
+				if (t_clk.sample > t_end.sample) 									// If we are out of the CS limits
+				{
+					state = END_FRAME;
+					break;
+				}
+
+				if (opt_cs == 1)													// If we don't look at CS, we'll look at periodicity on sclk 
+				{
+					if (delta_clk >= 1.5 * (t_clk.sample - t_clk_prev.sample))
+					{
+						t_clk_prev = t_clk;
+
+						if (trs_is_not_last(ch_clk))
 						{
-							t_clk_prev = t_clk;
-							if (trs_is_not_last(ch_clk))
-								t_clk = trs_get_next(ch_clk);
-							else
-							{
-								pkt_end();
-								abort_requested();
-								break;
-							}
-							
-							if (delta_clk>= 1.5*(t_clk.sample - t_clk_prev.sample))		//a long state occured on sclk
-							{
-								t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
-								t_clk = trs_get_prev(ch_clk);
-								t_clk_prev = t_clk;
-								if (trs_is_not_last(ch_clk))
-									t_clk = trs_get_next(ch_clk);
-								else
-								{
-									pkt_end();
-									abort_requested();
-									break;
-								}
-								delta_clk = t_clk.sample - t_clk_prev.sample
-								state = GET_CS;
-								break;
-							}
+							t_clk = trs_get_next(ch_clk);
 						}
 						else
-							delta_clk = t_clk.sample - t_clk_prev.sample;
+						{
+							break;
+						}
+
+						if (delta_clk >= 1.5 * (t_clk.sample - t_clk_prev.sample))	// A long state occured on sclk
+						{
+							t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
+							t_clk = trs_get_prev(ch_clk);
+							t_clk_prev = t_clk;
+
+							if (trs_is_not_last(ch_clk))
+							{
+								t_clk = trs_get_next(ch_clk);
+							}
+							else
+							{
+								break;
+							}
+
+							delta_clk = t_clk.sample - t_clk_prev.sample
+							state = END_FRAME;							
+							break;
+						}
 					}
+					else
+					{
+						delta_clk = t_clk.sample - t_clk_prev.sample;
+					}
+				}
+			}
+
+			if ((bits_mosi.length < (nbits)) && (bits_miso.length < (nbits)))		// Invalid cs signal, skip it
+			{
+				t_clk = trs_get_prev(ch_clk); 										// Back the clock up to sync correctly
+				state = END_FRAME;
+				t = t_end;
+				break;
+			}
+
+			if (order == 0)
+			{
+				if (opt != OPT_IGNORE_MISO)
+				{
+					for (b = 0; b < bits_mosi.length; b++)
+					{
+						data_miso = (data_miso * 2) + bits_miso[b];
+					}
+				}
+				if (opt != OPT_IGNORE_MOSI)
+				{
+					for (b = 0; b < bits_mosi.length; b++)
+					{
+						data_mosi = (data_mosi * 2) + bits_mosi[b];
+					}
+				}
+			}
+			else
+			{
+				if (opt != OPT_IGNORE_MISO)
+				{
+					for (b = bits_mosi.length - 1; b >= 0; b--)
+					{
+						data_miso = (data_miso * 2) + bits_miso[b];
+					}
+				}
+				if (opt != OPT_IGNORE_MOSI)
+				{
+					for (b = bits_mosi.length - 1; b >= 0; b--)
+					{
+						data_mosi = (data_mosi * 2) + bits_mosi[b];
+					}
+				}
+			}
+
+			s_end = t_clk_prev.sample + get_bit_margin();
+
+			if (opt == OPT_IGNORE_MOSI)
+			{
+				dec_item_new(ch_miso, (s_start - disp_margin), (s_end + disp_margin));
+				dec_item_add_data(data_miso);
+
+				pktObj.misoArr.push(new SpiObject(SPI_OBJECT_TYPE.MISO, data_miso, (s_start - disp_margin), (s_end + disp_margin)));
+			}
+			else if (opt == OPT_IGNORE_MISO)
+			{
+				dec_item_new(ch_mosi, (s_start - disp_margin), (s_end + disp_margin));
+				dec_item_add_data(data_mosi);
+
+				pktObj.mosiArr.push(new SpiObject(SPI_OBJECT_TYPE.MOSI, data_mosi, (s_start - disp_margin), (s_end + disp_margin)));
+			}
+			else if (opt == OPT_IGNORE_NONE)
+			{
+				dec_item_new(ch_mosi, (s_start - disp_margin), (s_end + disp_margin));
+				dec_item_add_data(data_mosi);
+
+				dec_item_new(ch_miso, (s_start - disp_margin), (s_end + disp_margin));
+				dec_item_add_data(data_miso);
+
+				pktObj.misoArr.push(new SpiObject(SPI_OBJECT_TYPE.MISO, data_miso, (s_start - disp_margin), (s_end + disp_margin)));
+				pktObj.mosiArr.push(new SpiObject(SPI_OBJECT_TYPE.MOSI, data_mosi, (s_start - disp_margin), (s_end + disp_margin)));
+			}
+
+			var byte_mosi, byte_miso;
+
+			for (var i = 0; i < (nbits / 8); i++)
+			{
+				if (opt != OPT_IGNORE_MOSI)
+				{
+					byte_mosi = (data_mosi & 0xFF);
+					hex_add_byte(ch_mosi, -1, -1, byte_mosi);
+					data_mosi = data_mosi << 8;
 				}
 				
-				if (!trs_is_not_last(ch_clk))
+				if (opt != OPT_IGNORE_MISO)
 				{
-					pkt_end();
-					abort_requested();
-					break;
+					byte_miso = (data_miso & 0xFF);
+					hex_add_byte(ch_miso, -1, -1, byte_miso);
+					data_miso = data_miso << 8;
 				}
+			}
 
-				if ((bits_mosi.length < (nbits)) && (bits_miso.length < (nbits)))		// Invalid cs signal, skip it
-				{
-					t_clk = trs_get_prev(ch_clk); 							// Back the clock up to sync correctly
-					state = GET_CS;
-					pkt_end();
-					t = t_end;
+			if ((n_words / n_to_decode) > (t_clk.sample / n_samples))
+			{
+				set_progress(100 * n_words / n_to_decode);
+			}
+			else
+			{
+				set_progress(100 * t_clk.sample / n_samples);
+			}
 
-					break;
-				}
+			t = t_end;
 
-				if (order == 0)
-				{
-					if (opt != OPT_IGNORE_MISO)
-					{
-						for (b = 0; b < bits_mosi.length; b++)
-						{
-							data_miso = (data_miso * 2) + bits_miso[b];
-						}
-					}
-					if (opt != OPT_IGNORE_MOSI)
-					{
-						for (b = 0; b < bits_mosi.length; b++)
-						{
-							data_mosi = (data_mosi * 2) + bits_mosi[b];
-						}
-					}
-				}
-				else
-				{
-					if (opt != OPT_IGNORE_MISO)
-					{
-						for (b = bits_mosi.length - 1; b >= 0; b--)
-						{
-							data_miso = (data_miso * 2) + bits_miso[b];
-						}
-					}
-					if (opt != OPT_IGNORE_MOSI)
-					{
-						for (b = bits_mosi.length - 1; b >= 0; b--)
-						{
-							data_mosi = (data_mosi * 2) + bits_mosi[b];
-						}
-					}
-				}
+			if (trs_is_not_last(ch_clk))
+			{
+				t_clk = trs_get_next(ch_clk);
+			}
+			else
+			{
+				break;
+			}
 
-				s_end = t_clk_prev.sample + get_bit_margin();
+			if (t_clk.sample >= t_end.sample)
+			{
+				state = END_FRAME;
+			}
+			else
+			{
+				state = GET_DATA;
+			}
 
-				var data_mosi_str = int_to_str_hex(data_mosi);
-				var data_miso_str = int_to_str_hex(data_miso);
+			n_words++;
 
-				if (pkt_show_info)
-				{
-					pkt_show_info = false;
-					pkt_add_item(-1,-1,"SPI Frame","Data",dark_colors.orange,light_colors.orange,true);
-					pkt_start();
-					//pkt_add_item(0, n_samples, "MOSI", "MISO", PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
-				}
-
-				switch (opt)
-				{
-					case OPT_IGNORE_MOSI:
-
-							dec_item_new(ch_miso, s_start-delta_affichage, s_end+delta_affichage);
-							dec_item_add_data(data_miso);
-
-							pkt_add_item(-1, -1, "MISO", data_miso_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
-					break;
-
-					case OPT_IGNORE_MISO:
-
-							dec_item_new(ch_mosi, s_start-delta_affichage, s_end+delta_affichage);
-							dec_item_add_data(data_mosi);
-
-							pkt_add_item(-1, -1, "MOSI", data_mosi_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
-					break;
-
-					case OPT_IGNORE_NONE:
-
-							dec_item_new(ch_mosi, s_start-delta_affichage, s_end+delta_affichage);
-							dec_item_add_data(data_mosi);
-							dec_item_new(ch_miso, s_start-delta_affichage, s_end+delta_affichage);
-							dec_item_add_data(data_miso);
-
-							pkt_add_item(-1, -1, "MISO", data_miso_str, get_ch_color(ch_miso), PKT_COLOR_DATA_MISO, true);
-							pkt_add_item(-1, -1, "MOSI", data_mosi_str, get_ch_color(ch_mosi), PKT_COLOR_DATA_MOSI, true);
-							//pkt_add_item(-1, -1, data_mosi_str, data_miso_str, PKT_COLOR_DATA_MOSI, PKT_COLOR_DATA_MISO, true);
-					break;
-				}
-
-				var byte_mosi, byte_miso;
-
-				for (var i = 0; i < (nbits / 8); i++)
-				{
-					if (opt != OPT_IGNORE_MOSI)
-					{
-						byte_mosi = (data_mosi & 0xFF);
-						hex_add_byte(ch_mosi, -1, -1, byte_mosi);
-						data_mosi = data_mosi << 8;
-					}
-					
-					if (opt != OPT_IGNORE_MISO)
-					{
-						byte_miso = (data_miso & 0xFF);
-						hex_add_byte(ch_miso, -1, -1, byte_miso);
-						data_miso = data_miso << 8;
-					}
-				}
-
-				if ((n_words / n_to_decode) > (t_clk.sample / n_samples))
-				{
-					set_progress(100 * n_words / n_to_decode);
-				}
-				else
-				{
-					set_progress(100 * t_clk.sample / n_samples);
-				}
-
-				t = t_end;
-				if (trs_is_not_last(ch_clk))
-					t_clk = trs_get_next(ch_clk);
-				else
-				{
-					pkt_end();
-					abort_requested();
-					break;
-				}
-
-				if (t_clk.sample >= t_end.sample)
-				{
-					state = GET_CS;
-					pkt_end();
-				}
-				else
-				{
-					state = GET_DATA;
-				}
-
-				n_words++;
-
-				if (n_words > n_to_decode)
-				{
-					stop = true;
-				}
-
-			break;
+			if (n_words > n_to_decode)
+			{
+				stop = true;
+			}
 		}
+		else if (state == END_FRAME)
+		{			
+			pkt_add_packet(pktObj);
+			pktObj.start = false
+
+			state = GET_CS;
+		}
+	}
+
+	if (pktObj.start != false)
+	{
+		pkt_add_packet(pktObj);
 	}
 }
 
@@ -763,25 +775,23 @@ function build_demo_signals()
 	var inter_transaction_silence;
 	var scanastudio_version_maj = Number(get_scanastudio_version().split(".")[0]) + (get_scanastudio_version().split(".")[1]/1000);
 	var scanastudio_version_minor = get_scanastudio_version().split(".")[2];
-	
-	gen_bit_rate = 1000000; // bit rate expressed in Hz
+
+	gen_bit_rate = 1000000; 					// Bitrate in Hz
 
 	ini_spi_generator();
 	inter_transaction_silence = n_samples / (20 * samples_per_bit);
 
 	gen_add_delay(samples_per_us * 5, cs_idle);
-	
+
 	while (get_samples_acc(ch_clk) < n_samples)
 	{
-	
-		
-		if (scanastudio_version_maj > 2.4) //SCANASTUDIO 2.5 introduced the ability to report progress from within the samples generator.	
+		if (scanastudio_version_maj > 2.4) 		// SCANASTUDIO 2.5 introduced the ability to report progress from within the samples generator	
 		{
 			set_progress(get_samples_acc(ch_clk) * 100 / n_samples  );
 		}
-		
+
 		gen_cs(true);
-		
+
 		for (var i = 0; i < 10; i++)
 		{
 			gen_add_word(demo_cnt, i + offset);
@@ -803,7 +813,6 @@ function build_demo_signals()
 		}
 	}
 }
-
 
 /*
 */
@@ -841,7 +850,6 @@ function ini_spi_generator()
 	}
 }
 
-
 /*
 */
 function gen_cs (st_sp)
@@ -858,18 +866,16 @@ function gen_cs (st_sp)
 	else
 	{
 		add_samples(ch_cs, cs_idle, samples_per_bit);
-			cs_state = cs_idle;
+		cs_state = cs_idle;
 	}
 }
-
 
 /*
 */
 function spi_n_bits(b)
 {
-	return b-1;
+	return b - 1;
 }
-
 
 /*
 */
@@ -877,7 +883,7 @@ function gen_add_word (w_mosi, w_miso)
 {
 	var bmosi;
 	var bmiso;
-	
+
 	if (order == 1)
 	{
 		for (i = 0; i < (nbits + 1); i++)
@@ -898,7 +904,6 @@ function gen_add_word (w_mosi, w_miso)
 	}
 	
 }
-
 
 /*
 */
@@ -929,7 +934,6 @@ function gen_add_bit (b_mosi, b_miso)
 		add_samples(ch_cs, cs_active, samples_per_bit);
 	}
 }
-
 
 /*
 */
@@ -967,7 +971,6 @@ function trig_gui()
 		trig_ui_add_item_to_combo("MOSI", true);
 		trig_ui_add_item_to_combo("MISO", false);
 }
-
 
 /*
 */
@@ -1063,12 +1066,10 @@ function trig_seq_gen()
 					if (trig_data_line == 0)	// trig_data_line: 0 - MOSI, 1 - MISO
 					{
 						spi_step.mosi = ((trig_byte >> i) & 0x1).toString();
-						//spi_step.miso = "X";
 					}
 					else
 					{
 						spi_step.miso = ((trig_byte >> i) & 0x1).toString();
-						//spi_step.mosi = "X";
 					}
 				}
 
@@ -1079,17 +1080,15 @@ function trig_seq_gen()
 		{
 			for (i = 0; i <= nbits; i++)		// nbits: 1 - 128 bits in data byte
 			{
-			    if (alt_specific_byte)//( (alt_specific_byte) && (typeof byte_pos !== 'undefined') )
+			    if (alt_specific_byte)
 				{
 					if (trig_data_line == 0)	// trig_data_line: 0 - MOSI, 1 - MISO
 					{
 						spi_step.mosi = ((trig_byte >> i) & 0x1).toString();
-						//spi_step.miso = "X";
 					}
 					else
 					{
 						spi_step.miso = ((trig_byte >> i) & 0x1).toString();
-						//spi_step.mosi = "X";
 					}
 				}
 
@@ -1108,7 +1107,6 @@ function trig_seq_gen()
 	flexitrig_set_summary_text(summary_text);
 	// flexitrig_print_steps();
 }
-
 
 /*
 */
@@ -1140,20 +1138,167 @@ function trig_build_step (step_desc)
 
 /*
 */
-function int_to_str_hex (num)
+function pkt_add_packet (pktObj)
 {
-	var temp = "0x";
+	var totalWords = (pktObj.mosiArr.length + pktObj.misoArr.length) / 2;
 
-	if (nbits <= 8)        temp += ("00" + num.toString(16).toUpperCase()).substr(-2);
-	else if (nbits <= 16)  temp += ("0000" + num.toString(16).toUpperCase()).substr(-4);
-	else if (nbits <= 24)  temp += ("000000" + num.toString(16).toUpperCase()).substr(-6);
-	else if (nbits <= 32)  temp += ("00000000" + num.toString(16).toUpperCase()).substr(-8);
-	else if (nbits <= 64)  temp += ("0000000000000000" + num.toString(16).toUpperCase()).substr(-16);
-	else if (nbits <= 128) temp += ("00000000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-32);
+	if (totalWords <= 0)
+	{
+		return false;
+	}
 
-	return temp;
+	var desc = "" + totalWords + " WORD";
+
+	if (totalWords > 1)
+	{
+		desc += "S"
+	}
+
+	pkt_start("SPI");
+	pkt_add_item(pktObj.start, pktObj.end, "SPI Frame", desc, dark_colors.orange, light_colors.orange);
+	pkt_start("NEW FRAME");
+
+	if (pkt_view_mode)
+	{
+		var words = 0;
+
+		while (totalWords > words)
+		{
+			var word = "";
+			
+			if (pktObj.mosiArr.length > 0)
+			{
+				word = int_to_str_hex(pktObj.mosiArr[words].value);
+				pkt_add_item(pktObj.mosiArr[words].start, pktObj.mosiArr[words].end, "MOSI", word, get_ch_color(ch_mosi), get_ch_light_color(ch_mosi));
+			}
+			
+			if (pktObj.misoArr.length > 0)
+			{
+				word = int_to_str_hex(pktObj.misoArr[words].value);
+				pkt_add_item(pktObj.misoArr[words].start, pktObj.misoArr[words].end, "MISO", word, get_ch_color(ch_miso), get_ch_light_color(ch_miso));
+			}
+			
+			words++;
+		}
+	}
+	else
+	{
+		pkt_add_data("MOSI", get_ch_color(ch_mosi), pktObj.mosiArr, get_ch_light_color(ch_mosi));	
+		pkt_add_data("MISO", get_ch_color(ch_miso), pktObj.misoArr, get_ch_light_color(ch_miso));
+	}
+
+	pkt_end();
+	pkt_end();
+
+	return true;
 }
 
+/*
+*/
+function pkt_add_data (title, titleColor, dataArr, dataColor)
+{
+	if (dataArr.length <= 0)
+	{
+		return false;
+	}
+
+	var bytesPerLine = 8;
+	var charsPerLine = bytesPerLine * 3;				// 2 chars per bytes + 1 space between two
+	var charsPerWord = (nbits / 4) + 1;					// 4 bits per character + 1 space at the end
+	var wordsPerLine = charsPerLine / charsPerWord;
+	var linesNum = Math.ceil((dataArr.length / wordsPerLine));
+	var wordsTotal = 0
+	var wordsInLine = 0;
+	var lineStart = false; 
+	var lineEnd = 0;
+	var lineNum = 0;
+	var line = "";
+
+	while (dataArr.length > wordsTotal)
+	{
+		wordsInLine = 0;
+		lineStart = false;
+		line = "";
+
+		while ((dataArr.length > wordsTotal) && (wordsInLine < wordsPerLine))
+		{
+			if (lineStart == false)
+			{
+				lineStart = dataArr[wordsTotal].start;
+			}
+
+			lineEnd = dataArr[wordsTotal].end;
+			line += int_to_str_hex(dataArr[wordsTotal].value) + " ";
+
+			wordsInLine++;
+			wordsTotal++;
+		}
+
+		var desc = "";
+		var firstWordPos = (wordsTotal - wordsInLine);
+		var lastWordPos = (wordsTotal - 1);
+
+		if (lineNum <= 0)
+		{
+			desc += title + " ";
+		}
+
+		if (firstWordPos == lastWordPos)
+		{
+			desc += "[" + lastWordPos + "]";
+		}
+		else
+		{
+			desc += "[" + firstWordPos + ":" + lastWordPos + "]";
+		}
+
+		pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor);
+		lineNum++;
+	}
+
+	return true;
+}
+
+/*
+*/
+function int_to_str_hex (num)
+{
+	var str = "";
+
+	if      (nbits <= 8)   str = ("00" + num.toString(16).toUpperCase()).substr(-2);
+	else if (nbits <= 12)  str = ("000" + num.toString(16).toUpperCase()).substr(-3);
+	else if (nbits <= 16)  str = ("0000" + num.toString(16).toUpperCase()).substr(-4);
+	else if (nbits <= 20)  str = ("00000" + num.toString(16).toUpperCase()).substr(-5);
+	else if (nbits <= 24)  str = ("000000" + num.toString(16).toUpperCase()).substr(-6);
+	else if (nbits <= 28)  str = ("0000000" + num.toString(16).toUpperCase()).substr(-7);
+	else if (nbits <= 32)  str = ("00000000" + num.toString(16).toUpperCase()).substr(-8);
+	else if (nbits <= 36)  str = ("000000000" + num.toString(16).toUpperCase()).substr(-9);
+	else if (nbits <= 40)  str = ("0000000000" + num.toString(16).toUpperCase()).substr(-10);
+	else if (nbits <= 44)  str = ("00000000000" + num.toString(16).toUpperCase()).substr(-11);
+	else if (nbits <= 48)  str = ("000000000000" + num.toString(16).toUpperCase()).substr(-12);
+	else if (nbits <= 52)  str = ("0000000000000" + num.toString(16).toUpperCase()).substr(-13);
+	else if (nbits <= 56)  str = ("00000000000000" + num.toString(16).toUpperCase()).substr(-14);
+	else if (nbits <= 60)  str = ("000000000000000" + num.toString(16).toUpperCase()).substr(-15);
+	else if (nbits <= 64)  str = ("0000000000000000" + num.toString(16).toUpperCase()).substr(-16);
+	else if (nbits <= 68)  str = ("00000000000000000" + num.toString(16).toUpperCase()).substr(-17);
+	else if (nbits <= 72)  str = ("000000000000000000" + num.toString(16).toUpperCase()).substr(-18);
+	else if (nbits <= 76)  str = ("0000000000000000000" + num.toString(16).toUpperCase()).substr(-19);
+	else if (nbits <= 80)  str = ("00000000000000000000" + num.toString(16).toUpperCase()).substr(-20);
+	else if (nbits <= 84)  str = ("000000000000000000000" + num.toString(16).toUpperCase()).substr(-21);
+	else if (nbits <= 88)  str = ("0000000000000000000000" + num.toString(16).toUpperCase()).substr(-22);
+	else if (nbits <= 92)  str = ("00000000000000000000000" + num.toString(16).toUpperCase()).substr(-23);
+	else if (nbits <= 96)  str = ("000000000000000000000000" + num.toString(16).toUpperCase()).substr(-24);
+	else if (nbits <= 100) str = ("0000000000000000000000000" + num.toString(16).toUpperCase()).substr(-25);
+	else if (nbits <= 104) str = ("00000000000000000000000000" + num.toString(16).toUpperCase()).substr(-26);
+	else if (nbits <= 108) str = ("000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-27);
+	else if (nbits <= 112) str = ("0000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-28);
+	else if (nbits <= 116) str = ("00000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-29);
+	else if (nbits <= 120) str = ("000000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-30);
+	else if (nbits <= 124) str = ("0000000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-31);
+	else if (nbits <= 128) str = ("00000000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-32);
+
+	return str;
+}
 
 /*
 */
@@ -1167,7 +1312,6 @@ function get_ch_light_color (k)
 
     return chColor;
 }
-
 
 /* ScanaStudio 2.3 compatibility function
 */
@@ -1183,7 +1327,6 @@ function get_srate()
 	}
 }
 
-
 /*
 */
 function get_bit_margin()
@@ -1191,15 +1334,4 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
-
-
-
-
-
-
-
-
-
-
-
 
