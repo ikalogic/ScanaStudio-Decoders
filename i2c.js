@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.70: Reworked PacketView.
 	V1.69: Show packet frames event if there is no data available.
 	V1.68: More stable I2C trigger.
 	V1.67: Fixed 10-bit address error.
@@ -75,7 +76,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.69";
+	return "1.70";
 }
 
 
@@ -231,7 +232,6 @@ function gui()
 		ui_add_item_to_txt_combo("Everything", false);
 }
 
-
 /* This is the function that will be called from ScanaStudio
    to update the decoded items
 */
@@ -246,7 +246,7 @@ function decode()
 	PKT_COLOR_DATA        = get_ch_light_color(chSda);
 	PKT_COLOR_DATA_TITLE  = dark_colors.gray;
 	PKT_COLOR_START_TITLE = dark_colors.orange;
-	PKT_COLOR_ADR_TITLE   = dark_colors.yellow;
+	PKT_COLOR_ADR_TITLE   = dark_colors.orange;
 	PKT_COLOR_ACK_TITLE   = dark_colors.green;
 	PKT_COLOR_INVALID     = dark_colors.red;
 	PKT_COLOR_STOP_TITLE  = dark_colors.blue;
@@ -500,14 +500,14 @@ function decode()
 
 						addrStr = int_to_str_hex(slaveAdr1);
 
-						var ackStr = "";
+						var ackStr = "(ACK)";
 						var pktColor = PKT_COLOR_DATA;
 
 						if (ackValue == 1)
 						{
 							pktOk = false;
 							pktColor = PKT_COLOR_INVALID;
-							ackStr = " (N)";
+							ackStr = " (NACK)";
 						}
 						else if (ackValue != 0)
 						{
@@ -581,7 +581,6 @@ function decode()
 
 	return true;
 }
-
 
 /* Find all I2C bus data then put all in one storage place (global array) 
    for future bus analysing in main function - decode()
@@ -809,7 +808,6 @@ function decode_signal()
 	return true;
 }
 
-
 /*
 */
 function display_ack (ack)
@@ -843,7 +841,6 @@ function display_ack (ack)
 		dec_item_add_comment("WARNING: NO ACKNOWLEDGE");
 	}
 }
-
 
 /*
 */
@@ -892,7 +889,6 @@ function decode_invalid_data()
 		dec_item_add_pre_text("INVALID");
 	}
 }
-
 
 /* Test if there is a I2C signal
 */
@@ -1093,7 +1089,6 @@ function ini_i2c_generator()
 	last_sda_lvl = 1;
 }
 
-
 /*
 */
 function gen_add_delay(s)
@@ -1101,7 +1096,6 @@ function gen_add_delay(s)
 	add_samples(chScl, last_scl_lvl, s);
 	add_samples(chSda, last_sda_lvl, s);
 }
-
 
 /*
 */
@@ -1204,7 +1198,6 @@ function trig_gui()
 		trig_ui_add_free_text("trig_add", "Slave Address: ");
 		trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", false);
 }
-
 
 /*
 */
@@ -1327,7 +1320,6 @@ function trig_seq_gen()
 	}
 }
 
-
 /*
 */
 function trig_build_step (i2c_s)
@@ -1364,7 +1356,7 @@ function trig_build_step (i2c_s)
 */
 function int_to_str_hex (num) 
 {
-	var temp = "0x";
+	var temp = "";
 
 	if (num < 0x10)
 	{
@@ -1390,7 +1382,6 @@ function get_ch_light_color (k)
 	return chColor;
 }
 
-
 /*
 */
 function pkt_add_packet (ok)
@@ -1415,12 +1406,12 @@ function pkt_add_packet (ok)
 			if (obj.data.indexOf("WRITE TO") > -1)
 			{
 				addrStr = obj.data.replace("WRITE TO:", "WR");
-				addrStr = addrStr.replace("(N)", "");
+				addrStr = addrStr.replace("(NACK)", "");
 			}
 			else
 			{
 				addrStr = obj.data.replace("READ FROM:", "RD");
-				addrStr = addrStr.replace("(N)", "");
+				addrStr = addrStr.replace("(NACK)", "");
 			}
 
 			desc += addrStr;
@@ -1428,7 +1419,12 @@ function pkt_add_packet (ok)
 
 		if (obj.title.localeCompare("DATA") == 0)
 		{
-			desc += " DATA[" + obj.dataLen + "]";
+			desc += " DATA " + obj.dataLen + " BYTE";
+
+			if (obj.dataLen > 1)
+			{
+				desc += "S";
+			}
 		}
 	}
 
@@ -1453,7 +1449,7 @@ function pkt_add_packet (ok)
 
 	if (ok)
 	{
-		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, get_ch_color(chSda), PKT_COLOR_DATA);
 	}
 	else
 	{
@@ -1493,11 +1489,11 @@ function pkt_add_packet (ok)
 
 							if (ackValue == 1)
 							{
-								dataLine = dataLine + "(N) ";
+								dataLine += "(N) ";
 							}
 							else if (ackValue != 0)
 							{
-								dataLine = dataLine + "(!) ";
+								dataLine += "(!) ";
 							}
 						}
 
@@ -1523,7 +1519,7 @@ function pkt_add_packet (ok)
 				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
 			}
 		}
-		else
+		else if (obj.title.localeCompare("ADDRESS") == 0)
 		{
 			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
 		}
@@ -1535,7 +1531,6 @@ function pkt_add_packet (ok)
 	pktObjects.length = 0;
 	pktObjects = [];
 }
-
 
 /* Get next transition with falling edge
 */
@@ -1553,7 +1548,6 @@ function get_next_falling_edge (ch, trSt)
 	return tr;
 }
 
-
 /*	Get next transition with rising edge
 */
 function get_next_rising_edge (ch, trSt)
@@ -1569,7 +1563,6 @@ function get_next_rising_edge (ch, trSt)
 
 	return tr;
 }
-
 
 /*
 */
@@ -1603,7 +1596,6 @@ function get_avg_thigh (trSt)
 	return avgtHigh;
 }
 
-
 /* ScanaStudio 2.3 compatibility function
 */
 function get_srate()
@@ -1618,14 +1610,12 @@ function get_srate()
 	}
 }
 
-
 /*  Get number of samples for the specified duration in microseconds
 */
 function get_num_samples_for_us (us)
 {
 	return ((us * get_srate()) / 1000000);
 }
-
 
 /* Get time difference in microseconds between two transitions
 */
@@ -1644,7 +1634,6 @@ function get_tr_diff_us (tr1, tr2)
 
 	return diff
 }
-
 
 /*
 */
@@ -1671,10 +1660,3 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
-
-
-
-
-
-
-
