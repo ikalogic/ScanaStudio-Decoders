@@ -1203,16 +1203,17 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 	}
 
 	var bytesPerLine = 8;
-	var charsPerLine = bytesPerLine * 3;				// 2 chars per bytes + 1 space between two
-	var charsPerWord = (nbits / 4) + 1;					// 4 bits per character + 1 space at the end
-	var wordsPerLine = charsPerLine / charsPerWord;
-	var linesNum = Math.ceil((dataArr.length / wordsPerLine));
-	var wordsTotal = 0
+	var charsPerLine = Math.round(bytesPerLine * 3);			// 2 chars per bytes + 1 space between two
+	var charsPerWord = Math.round((nbits / 4) + 1);				// 4 bits per character + 1 space at the end
+	var wordsPerLine = Math.ceil(charsPerLine / charsPerWord);
+	var linesNum     = Math.ceil((dataArr.length / wordsPerLine));
+
+	var wordsTotal  = 0
 	var wordsInLine = 0;
-	var lineStart = false; 
-	var lineEnd = 0;
-	var lineNum = 0;
-	var line = "";
+	var lineStart   = false; 
+	var lineEnd     = 0;
+	var lineNum     = 0;
+	var line        = "";
 
 	while (dataArr.length > wordsTotal)
 	{
