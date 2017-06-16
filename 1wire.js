@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.30: Reworked PacketView.
 	V1.28: Improved error handling.
 	V1.27: Added ScanaStudio 2.3xx compatibility.
 	V1.26: New Packet View layout.
@@ -56,14 +57,12 @@ function get_dec_name()
 	return "1-Wire";
 }
 
-
 /* The decoder version 
 */
 function get_dec_ver()
 {
-	return "1.28";
+	return "1.30";
 }
-
 
 /* Author
 */
@@ -310,7 +309,6 @@ function gui()
 	ui_add_item_to_txt_combo( "Everything" );
 }
 
-
 /* This is the function that will be called from ScanaStudio 
    to update the decoded items
 */
@@ -324,9 +322,9 @@ function decode()
 
 	PKT_COLOR_DATA          = get_ch_light_color(uiCh);
 	PKT_COLOR_DATA_TITLE    = dark_colors.gray;
-	PKT_COLOR_RESET_TITLE   = dark_colors.orange;
+	PKT_COLOR_RESET_TITLE   = dark_colors.green;
 	PKT_COLOR_PRES_TITLE    = dark_colors.violet;
-	PKT_COLOR_ROMCMD_TITLE  = dark_colors.green;
+	PKT_COLOR_ROMCMD_TITLE  = dark_colors.orange;
 	PKT_COLOR_ROMCODE_TITLE = dark_colors.blue;
 	PKT_COLOR_UNKNW_TITLE   = dark_colors.black;
 	PKT_COLOR_OTHER_TITLE   = dark_colors.yellow;
@@ -564,7 +562,7 @@ function decode()
 						if (familyCode.value == device.code)
 						{
 							pktFamilyCode = device.str;
-							dec_item_add_pre_text(device.str + "(");
+							dec_item_add_pre_text(device.str + " (");
 							dec_item_add_post_text(")");
 						}
 					}
@@ -575,7 +573,7 @@ function decode()
 
 					if (pktFamilyCode != "")
 					{
-						pktFamilyCodeStr = pktFamilyCode + "(" + int_to_str_hex(familyCode.value) + ")";
+						pktFamilyCodeStr = pktFamilyCode + " (" + int_to_str_hex(familyCode.value) + ")";
 					}
 					else
 					{
@@ -615,12 +613,12 @@ function decode()
 
 					if (deviceCrc.value == calcCrc)
 					{
-						pktCrcStr += " OK";
+						pktCrcStr += " (OK)";
 						dec_item_add_post_text(" OK");
 					}
 					else
 					{
-						pktCrcStr += " WRONG";
+						pktCrcStr += " (WRONG)";
 						dec_item_add_post_text(" WRONG");
 						crcOk = false;
 						pktOk = false;
@@ -640,7 +638,7 @@ function decode()
 				}
 				else if (romCode.length < 8)
 				{
-					var errStr = "ROM CODE INCOMPLETE. ONLY " + romCode.length + " BYTES OF 8";
+					var errStr = "INCOMPLETE";
 
 					dec_item_new(uiCh, romCode[0].start, romCode[romCode.length - 1].end);
 					dec_item_add_pre_text(errStr);
@@ -674,7 +672,7 @@ function decode()
 				dec_item_new(uiCh, firstByte.start, lastByte.end);
 				dec_item_add_pre_text("SEARCH ROM SEQUENCE");
 
-				pktObjects.push(new PktObject("SEARCH ROM SEQUENCE", PKT_COLOR_OTHER_TITLE, ((owByteCnt * 8) + " bits"), 0, 0, PKT_COLOR_DATA, firstByte.start, lastByte.end));
+				pktObjects.push(new PktObject("SRCH SEQ", PKT_COLOR_OTHER_TITLE, ((owByteCnt * 8) + " bits"), 0, 0, PKT_COLOR_DATA, firstByte.start, lastByte.end));
 
 				state = STATE.RESET;
 
@@ -769,7 +767,6 @@ function decode()
 	return true;
 }
 
-
 /* Get a byte from 1-Wire bus
 */
 function get_ow_byte (ch)
@@ -845,7 +842,6 @@ function get_ow_byte (ch)
 
 	return new OWObject(OWOBJECT_TYPE.BYTE, byteValue, byteStart, byteEnd, byteErr, isLast);
 }
-
 
 /* Find all 1-Wire bus data then put all in one storage place (global array) 
    for future bus analysing in main function - decode()
@@ -986,7 +982,6 @@ function decode_signal (ch)
 
 	return true;
 }
-
 
 /* Test of 1-Wire bus speed
 */
@@ -1130,7 +1125,6 @@ function generator_template()
 	gen_byte(get_crc8_from_array(rom_code));
 }
 
-
 /*
 */
 function gen_init()
@@ -1152,7 +1146,6 @@ function gen_init()
 	}
 }
 
-
 /*
 */
 function gen_reset()
@@ -1160,7 +1153,6 @@ function gen_reset()
 	add_samples(uiCh, 0, samples_per_us * (oWDelays.RSTL_STD + 10));
 	add_samples(uiCh, 1, samples_per_us * (oWDelays.PDH_MAX / 2));
 }
-
 
 /*
 */
@@ -1177,7 +1169,6 @@ function gen_presence (force_present)
 
 	add_samples(uiCh, 1, samples_per_us * 10);	
 }
-
 
 /*
 */
@@ -1203,7 +1194,6 @@ function gen_byte (code)
 
     add_samples(uiCh, 1, samples_per_us * 100); 	// add delay between bytes
 }
-
 
 /*
 */
@@ -1298,7 +1288,6 @@ function trig_gui()
 		trig_ui_add_free_text("trig_rom_cmd","ROM Command:");
 }
 
-
 /*
 */
 function trig_seq_gen()
@@ -1352,7 +1341,6 @@ function trig_seq_gen()
 	// flexitrig_print_steps();
 }
 
-
 /*
 */
 function build_trig_byte (data)
@@ -1382,7 +1370,6 @@ function build_trig_byte (data)
 		}
 	}
 }
-
 
 /*
 */
@@ -1432,19 +1419,22 @@ function pkt_add_packet (ok)
 
 		if (obj.title.localeCompare("ROM CMD") == 0) 
 		{
-			desc += obj.data;
+			desc += obj.data.replace("ROM", "");
 		}
 
 		if (obj.title.localeCompare("FAMILY") == 0) 
 		{
-			desc += "FAMILY:" + obj.data + " ";
+			var substr = obj.data.substring(obj.data.lastIndexOf("(") + 1, obj.data.lastIndexOf(")"));
+			desc += substr + " ";
 		}
 
 		if (obj.title.localeCompare("DATA") == 0) 
-		{
-			desc += "DATA[" + obj.dataObjArr.length + "]";
+		{			
+			desc += " DATA[" + obj.dataObjArr.length + "]";
 		}
 	}
+
+	desc = desc.replace(/  +/g, ' ');
 
 	var pktStart = pktObjects[0].start;
 	var pktEnd = pktObjects[pktObjects.length - 1].end;
@@ -1510,7 +1500,13 @@ function pkt_add_packet (ok)
 		}
 		else
 		{
-			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			if (obj.title.localeCompare("RESET") != 0)
+			{
+				if ((obj.title.localeCompare("PRESENCE")) != 0 || (obj.data.localeCompare("PRESENCE MISSING") == 0))
+				{
+					pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+				}
+			}
 		}
 	}
 
@@ -1520,7 +1516,6 @@ function pkt_add_packet (ok)
 	pktObjects.length = 0;
 	pktObjects = [];
 }
-
 
 /*
 */
@@ -1538,7 +1533,6 @@ function int_to_str_hex (num)
 	return temp;
 }
 
-
 /*
 */
 function get_ch_light_color (k)
@@ -1551,7 +1545,6 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
-
 
 /* ScanaStudio 2.3 compatibility function
 */
@@ -1567,14 +1560,12 @@ function get_srate()
 	}
 }
 
-
 /*
 */
 function us_to_s (us)
 {
 	return (us * 1e-6);
 }
-
 
 /* Get time difference in microseconds between two transitions
 */
@@ -1583,14 +1574,12 @@ function get_timediff_us (tr1, tr2)
 	return (((tr2.sample - tr1.sample) * 1000000) / get_srate());
 }
 
-
 /*  Get number of samples for the specified duration in microseconds
 */
 function get_num_samples_for_us (us)
 {
 	return ((us * get_srate()) / 1000000);
 }
-
 
 /*  CRC8 algorithm for one byte
 */
@@ -1618,7 +1607,6 @@ function compute_crc8 (data, seed)
     return seed;
 }
 
-
 /*	Get 8-byte crc
 */
 function get_crc8 (romCode)
@@ -1645,8 +1633,6 @@ function get_crc8_from_array (a)
 	return crc;
 }
 
-
-
 /* Get next transition with falling edge
 */
 function get_next_falling_edge (ch, trStart)
@@ -1663,7 +1649,6 @@ function get_next_falling_edge (ch, trStart)
 	return tr;
 }
 
-
 /*	Get next transition with rising edge
 */
 function get_next_rising_edge (ch, trStart)
@@ -1679,7 +1664,3 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
-
-
-
-
