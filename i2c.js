@@ -505,20 +505,20 @@ function decode()
 							addrStr = int_to_str_hex(slaveAdr1);
 						}
 
-						var ackStr = " (A)";
+						var ackStr = "(A)";
 						var pktColor = PKT_COLOR_DATA;
 
 						if (ackValue == 1)
 						{
 							pktOk = false;
 							pktColor = PKT_COLOR_INVALID;
-							ackStr = " (N)";
+							ackStr = "(N)";
 						}
 						else if (ackValue != 0)
 						{
 							pktOk = false;
 							pktColor = PKT_COLOR_INVALID;
-							ackStr = " (!)";
+							ackStr = "(!)";
 						}
 
 						pktObjects.push(new PktObject("ADDRESS", PKT_COLOR_ADR_TITLE, (slaveAdrStrShort + addrStr + ackStr), 0, 0, pktColor, condSt, condEnd));
@@ -1413,12 +1413,7 @@ function pkt_add_packet (ok)
 
 		if (obj.title.localeCompare("DATA") == 0)
 		{
-			desc += " DATA " + obj.dataLen + " BYTE";
-
-			if (obj.dataLen != 1)
-			{
-				desc += "S";
-			}
+			desc += " DATA[" + obj.dataLen + "]";;
 		}
 	}
 
