@@ -220,11 +220,11 @@ function gui()
 	ui_add_ch_selector("chScl", "(SCL) Serial Clock", "SCL");
 
 	ui_add_txt_combo("adrShow", "Show slave address as");
-		ui_add_item_to_txt_combo("address and separate R/W flag", true);
-		ui_add_item_to_txt_combo("address including R/W flag");
+		ui_add_item_to_txt_combo("Address and separate R/W flag", true);
+		ui_add_item_to_txt_combo("Address including R/W flag");
 
 	ui_add_separator();
-	ui_add_info_label("<b>Hex view options:</b>");
+	ui_add_info_label("Hex view options:", true);
 	
 	ui_add_txt_combo("hexView", "Include in HEX view:");
 		ui_add_item_to_txt_combo("DATA fields only", true);
@@ -498,16 +498,21 @@ function decode()
 							ackValue = i2cObject.ack.value;
 						}
 
-						addrStr = int_to_str_hex(slaveAdr1);
+						addrStr = "";
 
-						var ackStr = "(ACK)";
+						if (slaveAdr1 != I2C_ADDRESS.GENERAL_CALL && slaveAdr1 != I2C_ADDRESS.CBUS)
+						{
+							addrStr = int_to_str_hex(slaveAdr1);
+						}
+
+						var ackStr = " (A)";
 						var pktColor = PKT_COLOR_DATA;
 
 						if (ackValue == 1)
 						{
 							pktOk = false;
 							pktColor = PKT_COLOR_INVALID;
-							ackStr = " (NACK)";
+							ackStr = " (N)";
 						}
 						else if (ackValue != 0)
 						{
@@ -516,7 +521,7 @@ function decode()
 							ackStr = " (!)";
 						}
 
-						pktObjects.push(new PktObject("ADDRESS", PKT_COLOR_ADR_TITLE, (slaveAdrStr + addrStr + ackStr), 0, 0, pktColor, condSt, condEnd));
+						pktObjects.push(new PktObject("ADDRESS", PKT_COLOR_ADR_TITLE, (slaveAdrStrShort + addrStr + ackStr), 0, 0, pktColor, condSt, condEnd));
 					}
 					else		// Display normal data
 					{
@@ -1388,7 +1393,6 @@ function pkt_add_packet (ok)
 {	
 	var obj;
 	var desc = "";
-	var addrStr = "";
 	var objCnt = 0;
 	var pktDataPerLine = 7;
 
@@ -1403,25 +1407,15 @@ function pkt_add_packet (ok)
 
 		if (obj.title.localeCompare("ADDRESS") == 0)
 		{
-			if (obj.data.indexOf("WRITE TO") > -1)
-			{
-				addrStr = obj.data.replace("WRITE TO:", "WR");
-				addrStr = addrStr.replace("(NACK)", "");
-			}
-			else
-			{
-				addrStr = obj.data.replace("READ FROM:", "RD");
-				addrStr = addrStr.replace("(NACK)", "");
-			}
-
-			desc += addrStr;
+			obj.data = obj.data.replace(/  +/g, ' ');
+			desc += obj.data;
 		}
 
 		if (obj.title.localeCompare("DATA") == 0)
 		{
 			desc += " DATA " + obj.dataLen + " BYTE";
 
-			if (obj.dataLen > 1)
+			if (obj.dataLen != 1)
 			{
 				desc += "S";
 			}
