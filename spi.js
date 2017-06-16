@@ -1264,41 +1264,17 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 */
 function int_to_str_hex (num)
 {
-	var str = "";
+	var result = "";
+	var prefix = ""
+	var nibbles = (nbits / 4);
 
-	if      (nbits <= 8)   str = ("00" + num.toString(16).toUpperCase()).substr(-2);
-	else if (nbits <= 12)  str = ("000" + num.toString(16).toUpperCase()).substr(-3);
-	else if (nbits <= 16)  str = ("0000" + num.toString(16).toUpperCase()).substr(-4);
-	else if (nbits <= 20)  str = ("00000" + num.toString(16).toUpperCase()).substr(-5);
-	else if (nbits <= 24)  str = ("000000" + num.toString(16).toUpperCase()).substr(-6);
-	else if (nbits <= 28)  str = ("0000000" + num.toString(16).toUpperCase()).substr(-7);
-	else if (nbits <= 32)  str = ("00000000" + num.toString(16).toUpperCase()).substr(-8);
-	else if (nbits <= 36)  str = ("000000000" + num.toString(16).toUpperCase()).substr(-9);
-	else if (nbits <= 40)  str = ("0000000000" + num.toString(16).toUpperCase()).substr(-10);
-	else if (nbits <= 44)  str = ("00000000000" + num.toString(16).toUpperCase()).substr(-11);
-	else if (nbits <= 48)  str = ("000000000000" + num.toString(16).toUpperCase()).substr(-12);
-	else if (nbits <= 52)  str = ("0000000000000" + num.toString(16).toUpperCase()).substr(-13);
-	else if (nbits <= 56)  str = ("00000000000000" + num.toString(16).toUpperCase()).substr(-14);
-	else if (nbits <= 60)  str = ("000000000000000" + num.toString(16).toUpperCase()).substr(-15);
-	else if (nbits <= 64)  str = ("0000000000000000" + num.toString(16).toUpperCase()).substr(-16);
-	else if (nbits <= 68)  str = ("00000000000000000" + num.toString(16).toUpperCase()).substr(-17);
-	else if (nbits <= 72)  str = ("000000000000000000" + num.toString(16).toUpperCase()).substr(-18);
-	else if (nbits <= 76)  str = ("0000000000000000000" + num.toString(16).toUpperCase()).substr(-19);
-	else if (nbits <= 80)  str = ("00000000000000000000" + num.toString(16).toUpperCase()).substr(-20);
-	else if (nbits <= 84)  str = ("000000000000000000000" + num.toString(16).toUpperCase()).substr(-21);
-	else if (nbits <= 88)  str = ("0000000000000000000000" + num.toString(16).toUpperCase()).substr(-22);
-	else if (nbits <= 92)  str = ("00000000000000000000000" + num.toString(16).toUpperCase()).substr(-23);
-	else if (nbits <= 96)  str = ("000000000000000000000000" + num.toString(16).toUpperCase()).substr(-24);
-	else if (nbits <= 100) str = ("0000000000000000000000000" + num.toString(16).toUpperCase()).substr(-25);
-	else if (nbits <= 104) str = ("00000000000000000000000000" + num.toString(16).toUpperCase()).substr(-26);
-	else if (nbits <= 108) str = ("000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-27);
-	else if (nbits <= 112) str = ("0000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-28);
-	else if (nbits <= 116) str = ("00000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-29);
-	else if (nbits <= 120) str = ("000000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-30);
-	else if (nbits <= 124) str = ("0000000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-31);
-	else if (nbits <= 128) str = ("00000000000000000000000000000000" + num.toString(16).toUpperCase()).substr(-32);
+	for (i = 0; i < nibbles; i++)
+	{
+		prefix += "0";
+	}
 
-	return str;
+	result = (prefix + num.toString(16).toUpperCase()).substr((-1 * nibbles));
+	return result;
 }
 
 /*
