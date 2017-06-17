@@ -317,7 +317,7 @@ function gui()  //graphical user interface
 	ui_add_info_label( "PacketView Options", true );
 	ui_add_txt_combo( "pkt_view_mode", "View mode:" );
 		ui_add_item_to_txt_combo( "Group data of the same transaction", true );
-		ui_add_item_to_txt_combo( "Simple" );
+		ui_add_item_to_txt_combo( "Present each byte separately" ); 
 }
 
 /* This is the function that will be called from ScanaStudio
