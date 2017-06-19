@@ -229,9 +229,9 @@ function decode()
 		{
 			return;
 		}
-		
+
 		//debug("t.sample(START) = " + t.sample);
-		
+
 		bit_sampler_ini(ch, spb / 2, spb);
 		bit_sampler_next(ch);
 
@@ -239,17 +239,17 @@ function decode()
 		{
 			break;
 		}
-		
+
 		pkt_start("UART (CH " + (ch+1) + ")");
 		dec_item_new(ch, t.sample,t.sample + spb - m); 		// add the start bit item
 		dec_item_add_pre_text("Start");	
 		dec_item_add_pre_text("S");
 		dec_item_add_comment("Start");
 
-		pkt_add_item(-1, -1, "START", " ", PKT_COLOR_START_TITLE, PKT_COLOR_DATA, true);
+		// pkt_add_item(-1, -1, "START", " ", PKT_COLOR_START_TITLE, PKT_COLOR_DATA, true);
 
 		dec_item_new(ch, t.sample + spb + m, t.sample + (spb * (nbits + 1)) - m);
-		
+
 		if (invert > 0) 	// if signals are inverted (1) or data only is inverted (2)
 		{
 			par = 1;
@@ -321,11 +321,11 @@ function decode()
 		
 		if (parity > 0)		// add parity bit
 		{
-			
 			par = par ^ bit_sampler_next(ch);
+
 			dec_item_new(ch, t.sample + (spb * (nbits + 1)) + m, t.sample + (spb * (nbits + 2)) - m);
 
-			if (	((parity == 1 ) && (par == 1))	||	((parity == 2 ) && (par == 0))	)
+			if (((parity == 1 ) && (par == 1))	||	((parity == 2 ) && (par == 0))	)
 			{
 				dec_item_add_pre_text("Parity OK");
 				dec_item_add_pre_text("Par. OK");
@@ -361,7 +361,7 @@ function decode()
 			dec_item_add_pre_text("P");
 			dec_item_add_comment("Stop");
 
-			pkt_add_item(-1, -1, "STOP", " ", PKT_COLOR_STOP_TITLE, PKT_COLOR_DATA, true);
+			// pkt_add_item(-1, -1, "STOP", " ", PKT_COLOR_STOP_TITLE, PKT_COLOR_DATA, true);
 		}
 		else
 		{
