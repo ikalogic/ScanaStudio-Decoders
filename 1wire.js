@@ -1443,7 +1443,7 @@ function pkt_add_packet (ok)
 
 	if (ok)
 	{
-		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, get_ch_color(uiCh), PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
 	}
 	else
 	{

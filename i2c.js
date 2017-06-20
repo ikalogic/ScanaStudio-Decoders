@@ -256,7 +256,6 @@ function decode()
 
 	if (errSig == I2C_ERR_CODES.ERR_SIGNAL)
 	{
-		add_to_err_log("Error. Selected channels doesn't have any valid I2C signal");
 		return false;
 	}
 	else if (errSig == I2C_ERR_CODES.NO_SIGNAL)
@@ -1438,7 +1437,7 @@ function pkt_add_packet (ok)
 
 	if (ok)
 	{
-		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, get_ch_color(chSda), PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
 	}
 	else
 	{

@@ -1155,7 +1155,7 @@ function pkt_add_packet (pktObj)
 	}
 
 	pkt_start("SPI");
-	pkt_add_item(pktObj.start, pktObj.end, "SPI Frame", desc, get_ch_color(ch_clk), get_ch_light_color(ch_clk));
+	pkt_add_item(pktObj.start, pktObj.end, "SPI Frame", desc, dark_colors.gray, get_ch_light_color(ch_clk));
 	pkt_start("NEW FRAME");
 
 	if (pkt_view_mode)
