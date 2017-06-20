@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.35: Reworked PacketView.
 	V1.33: Added protocol version choice.
 	V1.32: Performance optimizations. Corrected a bug in the way decoded data is displayed.
 	V1.31: Fixed bug with first BREAK field detection.
@@ -57,7 +58,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.33";
+	return "1.35";
 }
 
 
@@ -163,6 +164,7 @@ var tBit, tBfs, tEbs, tLbs, tBs;
 var tHeaderNom, tRespNom, tFrameNom;
 var tSyncDelimMax, tHeaderMax, tRespMax, tFrameMax;
 
+var PKT_COLOR_HEADER;
 var PKT_COLOR_DATA;
 var PKT_COLOR_INVALID;
 var PKT_COLOR_WAKE_TITLE;
@@ -189,16 +191,14 @@ function gui()
 		ui_add_item_to_txt_combo("LIN 1.x");
 		ui_add_item_to_txt_combo("LIN 2.x", true);
 
-	ui_add_info_label("<br>");
 	ui_add_separator();
-	ui_add_info_label("<br><b>Hex view options:</b>");
+	ui_add_info_label("Hex view options:", 1);
 
 	ui_add_txt_combo("hexView", "Include in HEX view:");
 	ui_add_item_to_txt_combo("DATA fields only", true);
 	ui_add_item_to_txt_combo("DATA and ID fields only", false);
 	ui_add_item_to_txt_combo("Everything", false);
 }
-
 
 /* This is the function that will be called from ScanaStudio
    to update the decoded items
@@ -225,7 +225,6 @@ function decode()
 
 	if (errSig == ERR_CODES.ERR_SIGNAL)
 	{
-		add_to_err_log("Error. Selected channel doesn't have any valid LIN signal");
 		return false;
 	}
 	else if (errSig == ERR_CODES.NO_SIGNAL)
@@ -275,7 +274,7 @@ function decode()
 						dec_item_add_pre_text("BAD BR");
 						dec_item_add_comment("INVALID BREAK");
 
-						pktObjects.push(new PktObject("INVALID BREAK", PKT_COLOR_INVALID, "", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
+						pktObjects.push(new PktObject("BREAK", PKT_COLOR_INVALID, "INVALID", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
 						pktOk = false;
 					}
 			break;
@@ -311,7 +310,7 @@ function decode()
 						dec_item_add_pre_text("INVALID SYNC");
 						dec_item_add_comment("INVALID SYNC");
 
-						pktObjects.push(new PktObject("INVALID SYNC", PKT_COLOR_INVALID, "", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
+						pktObjects.push(new PktObject("SYNC", PKT_COLOR_INVALID, "INVALID", 0, 0, PKT_COLOR_DATA, linObject.start, linObject.end));
 						pktOk = false;
 					}
 			break;
@@ -413,8 +412,14 @@ function decode()
 					}
 
 					if (dataArr.length > 1)
-					{
-						var dataPktArr = dataArr;
+					{						
+						var dataPktArr = [];
+
+						for (var i = 0; i < dataArr.length; i++)
+						{
+							dataPktArr.push(dataArr[i]);
+						}
+
 						pktObjects.push(new PktObject("DATA", PKT_COLOR_DATA_TITLE, pktDataStr.trim(), (dataPktArr.length - 2), dataPktArr, PKT_COLOR_DATA, dataArr[1].start, dataPktArr[dataPktArr.length - 2].end));
 
 						// Check and display Checksum
@@ -475,7 +480,6 @@ function decode()
 		pkt_add_packet(false);
 	}
 }
-
 
 /*
 */
@@ -654,7 +658,6 @@ function decode_signal()
 	return true;
 }
 
-
 /*
 */
 function get_first_break_start()
@@ -741,7 +744,6 @@ function get_first_break_start()
 		}
 	}
 }
-
 
 /*
 */
@@ -831,7 +833,6 @@ function build_demo_signals()
 	}
 }
 
-
 /*
 */
 function demo_gen_frame (data_offset)
@@ -857,7 +858,6 @@ function demo_gen_frame (data_offset)
 	demo_gen_crc(demoDataArr);
 }
 
-
 /*
 */
 function demo_gen_ident (id)
@@ -876,7 +876,6 @@ function demo_gen_ident (id)
 
 	return id;
 }
-
 
 /*
 */
@@ -906,7 +905,6 @@ function demo_gen_crc (demoData)
 	checksum = (0xFF - checksum);
 	demo_gen_byte(checksum);
 }
-
 
 /*
 */
@@ -959,7 +957,6 @@ function trig_gui()
 		trig_ui_add_label("lab3", "<br>Type decimal value (65) or Hex value (0x41) with or without the parity part <br>");
 		trig_ui_add_free_text("trig_ident", "Trigger Identifier: ");
 }
-
 
 /*
 */
@@ -1047,7 +1044,6 @@ function trig_seq_gen()
 	// flexitrig_print_steps();
 }
 
-
 /*
 */
 function trig_build_step (step_desc)
@@ -1134,7 +1130,6 @@ function compute_checksum (dataArr)
 	}
 }
 
-
 /* Verify parity of frame identifier bits
 */
 function check_parity (id)
@@ -1160,7 +1155,6 @@ function check_parity (id)
 	return false;
 }
 
-
 /*
 */
 function get_parity (id)
@@ -1181,7 +1175,6 @@ function get_parity (id)
 	return parity;
 }
 
-
 /*
 */
 function pkt_add_packet (ok)
@@ -1189,7 +1182,7 @@ function pkt_add_packet (ok)
 	var obj;
 	var desc = "";
 	var objCnt = 0;
-	var pktDataPerLine = 100;
+	var pktDataPerLine = 8;
 
 	if (pktObjects.length < 1)
 	{
@@ -1207,7 +1200,7 @@ function pkt_add_packet (ok)
 
 		if (obj.title.localeCompare("PID") == 0)
 		{
-			desc += "ID:" + obj.dataObjArr + " ";
+			desc += "ID " + obj.dataObjArr + " ";
 		}
 
 		if (obj.title.localeCompare("DATA") == 0)
@@ -1247,7 +1240,7 @@ function pkt_add_packet (ok)
 
 				while (obj.dataObjArr.length > dataCnt)
 				{
-					if (lineCnt <= pktDataPerLine)
+					if (lineCnt < pktDataPerLine)
 					{
 						if (!lineStart)
 						{
@@ -1278,7 +1271,19 @@ function pkt_add_packet (ok)
 				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
 			}
 		}
-		else
+		else if ((obj.title.localeCompare("BREAK") == 0) && (obj.data == "INVALID"))
+		{
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+		}
+		else if ((obj.title.localeCompare("SYNC") == 0) && (obj.data == "INVALID"))
+		{
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+		}
+		else if (obj.title.localeCompare("PID") == 0)
+		{
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+		}
+		else if (obj.title.localeCompare("CHECKSUM") == 0)
 		{
 			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
 		}
@@ -1291,12 +1296,11 @@ function pkt_add_packet (ok)
 	pktObjects = [];
 }
 
-
 /*
 */
 function int_to_str_hex (num) 
 {
-	var temp = "0x";
+	var temp = "";
 
 	if (num < 0x10)
 	{
@@ -1307,7 +1311,6 @@ function int_to_str_hex (num)
 
 	return temp;
 }
-
 
 /*
 */
@@ -1322,7 +1325,6 @@ function get_ch_light_color (k)
 	return chColor;
 }
 
-
 /*
 */
 function get_curr_baudrate()
@@ -1332,7 +1334,6 @@ function get_curr_baudrate()
 
 	return baudrate.toPrecision(4);
 }
-
 
 /* Update all timing variables with new tBit value
 */
@@ -1353,7 +1354,6 @@ function update_t_variales()
 	tFrameMax = (tHeaderMax + tRespMax);
 }
 
-
 /*
 */
 function check_noise (tr1, tr2)
@@ -1368,7 +1368,6 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
-
 
 /* Get next transition
 */
@@ -1399,7 +1398,6 @@ function get_next_edge (ch, trSt)
 	return tr;
 }
 
-
 /* Get next transition with falling edge
 */
 function get_next_falling_edge (ch, trSt)
@@ -1418,7 +1416,6 @@ function get_next_falling_edge (ch, trSt)
 
 	return tr;
 }
-
 
 /*	Get next transition with rising edge
 */
@@ -1449,7 +1446,6 @@ function get_next_rising_edge (ch, trSt)
 	return tr;
 }
 
-
 /* ScanaStudio 2.3 compatibility function
 */
 function get_srate()
@@ -1464,14 +1460,12 @@ function get_srate()
 	}
 }
 
-
 /* Get time difference in microseconds between two transitions
 */
 function get_trsdiff_us (tr1, tr2)
 {
 	return (((tr2.sample - tr1.sample) * 1000000) / get_srate());
 }
-
 
 /* Get time difference in microseconds between two samples
 */
@@ -1480,14 +1474,12 @@ function get_sample_diff_us (sp1, sp2)
 	return (((sp2 - sp1) * 1000000) / get_srate());
 }
 
-
 /* Get time difference in samples between two transitions
 */
 function get_trsdiff_samples (tr1, tr2)
 {
 	return (tr2.sample - tr1.sample);
 }
-
 
 /*  Get number of samples for the specified duration in microseconds
 */
