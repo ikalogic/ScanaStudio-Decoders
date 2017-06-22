@@ -15,6 +15,7 @@ The following commented block allows some related information to be displayed on
 
 <RELEASE_NOTES>
 
+	V1.10: Reworked PacketView.
 	V1.08: New Packet View layout.
 	V1.07: Decoding bytes after Start Code fixed. Thanks to Paul Hughes.
 	V1.06: Now the decoding can be aborted
@@ -50,7 +51,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.08";
+	return "1.10";
 }
 
 
@@ -70,11 +71,11 @@ function gui()
 	ui_add_ch_selector("ch", "Channel to decode", "DMX-512");
 
 	ui_add_separator();
-	ui_add_info_label("<b>Packet View options:</b>");
+	ui_add_info_label("Packet View options:", 1);
 
 	ui_add_txt_combo("packetViewOpt", "Show in Packet View:");
-		ui_add_item_to_txt_combo("Data value only", true);
-		ui_add_item_to_txt_combo("Data index and value", false);
+		ui_add_item_to_txt_combo("Data value only", 1);
+		ui_add_item_to_txt_combo("Data index and value", 0);
 }
 
 /*
@@ -140,7 +141,6 @@ var PKT_COLOR_INVALID;
 var PKT_COLOR_DATA_TITLE;
 var PKT_COLOR_MAB_TITLE;
 var PKT_COLOR_BREAK_TITLE;
-var PKT_COLOR_STOP_TITLE;
 var PKT_COLOR_START_TITLE;
 
 var dmxObjectsArr, breakObjectsArr, mabObjectsArr;
@@ -172,7 +172,6 @@ function decode()
 	PKT_COLOR_MAB_TITLE   = dark_colors.yellow;
 	PKT_COLOR_BREAK_TITLE = dark_colors.orange;
 	PKT_COLOR_START_TITLE = dark_colors.green;
-	PKT_COLOR_STOP_TITLE  = dark_colors.blue;
 
 	var errSig = test_signal();
 
@@ -495,7 +494,7 @@ function pkt_add_packet (ok)
 	var obj;
 	var desc = "";
 	var objCnt = 0;
-	var pktDataPerLine = 7;
+	var pktDataPerLine = 8;
 
 	if (packetViewOpt > 0)
 	{
@@ -513,7 +512,7 @@ function pkt_add_packet (ok)
 
 		if (obj.title.localeCompare("START CODE") == 0) 
 		{
-			desc += "SC: " + obj.data;
+			desc += "START " + obj.data;
 		}
 
 		if (obj.title.localeCompare("DATA") == 0)
@@ -553,7 +552,7 @@ function pkt_add_packet (ok)
 
 				while (obj.dataObjArr.length > dataCnt)
 				{
-					if (lineCnt <= pktDataPerLine)
+					if (lineCnt < pktDataPerLine)
 					{
 						if (!lineStart)
 						{
@@ -584,7 +583,7 @@ function pkt_add_packet (ok)
 				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
 			}
 		}
-		else
+		else if (obj.title.localeCompare("START CODE") == 0)
 		{
 			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
 		}
@@ -617,7 +616,7 @@ function util_check_scanastudio_support()
 */
 function util_dec2hex (num) 
 {
-	var temp = "0x";
+	var temp = "";
 
 	if (num < 0x10)
 	{
