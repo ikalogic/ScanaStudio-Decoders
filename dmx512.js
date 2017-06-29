@@ -145,7 +145,6 @@ var PKT_COLOR_START_TITLE;
 
 var dmxObjectsArr, breakObjectsArr, mabObjectsArr;
 var pktObjects;
-var noBreak = true;
 
 /*
 *************************************************************************************
@@ -198,10 +197,10 @@ function decode()
 	pktObj.start = false;
 	pktObj.dataLen = 0;
 
-	dmxObjectsArr = [];
+	dmxObjectsArr   = [];
 	breakObjectsArr = [];
-	mabObjectsArr = [];
-	pktObjects = [];
+	mabObjectsArr   = [];
+	pktObjects      = [];
 
 	decode_signal();
 
@@ -325,7 +324,6 @@ function decode()
 	}
 }
 
-
 /*
 */
 function decode_signal()
@@ -333,7 +331,11 @@ function decode_signal()
 	var bitStep = (sample_rate / DMX512_BAUD_RATE);
 	var byteCnt, breakStart, endOfFrame, breakObj;
 
-	find_all_breaks();										// Get all BREAK fields on channel
+	if (!find_all_breaks(DMX_DELAY.BREAK_MIN))				// Get all BREAK fields on channel
+	{
+		return false;
+	}
+
 	var tr = trs_get_first(ch);
 
 	if (breakObjectsArr.length > 0)
@@ -437,11 +439,11 @@ function decode_signal()
 	return true;
 }
 
-
 /*
 */
-function find_all_breaks()
+function find_all_breaks (break_duration)
 {
+	var found_breaks = false;
 	var tr = trs_get_first(ch);
 
 	while (trs_is_not_last(ch) != false)				// For all transitons on this channel
@@ -449,14 +451,17 @@ function find_all_breaks()
 		tr = util_get_next_falling(ch, tr);				// Find start of BREAK field first
 		var breakStart = tr;
 
-		if (trs_is_not_last(ch) != true) return false;
+		if (trs_is_not_last(ch) != true) 
+		{
+			return found_breaks;
+		}
 
 		tr = util_get_next_rising(ch, tr);
 
 		var breakEnd = tr;
 		var breakDuration = util_get_diff_us(breakStart.sample, breakEnd.sample);
 
-		if (breakDuration >= DMX_DELAY.BREAK_MIN)		// A BREAK condition must be a low 88-200us pulse
+		if (breakDuration >= break_duration)			// A valid BREAK condition must be a low 88-200us pulse
 		{
 			if ((breakStart.sample < n_samples - 1) && (breakEnd.sample < n_samples - 1))
 			{
@@ -464,15 +469,14 @@ function find_all_breaks()
 
 				tr = util_get_next_falling(ch, tr);		// End of Mark After Break
 				mabObjectsArr.push(new DmxObject(DMXOBJECT_TYPE.MAB, true, "", breakEnd.sample, tr.sample, 0));
-
-				noBreak = false;
+				
+				found_breaks = true;
 			}
 		}
 	}
 
-	return true;
+	return found_breaks;
 }
-
 
 /*
 */
@@ -596,7 +600,6 @@ function pkt_add_packet (ok)
 	pktObjects = [];
 }
 
-
 /*
 */
 function util_check_scanastudio_support()
@@ -610,7 +613,6 @@ function util_check_scanastudio_support()
         return false;
     }
 }
-
 
 /* Decimal integer to hexadecimal string
 */
@@ -628,7 +630,6 @@ function util_dec2hex (num)
 	return temp;
 }
 
-
 /* Get channel color
 */
 function util_get_ch_color (k)
@@ -642,7 +643,6 @@ function util_get_ch_color (k)
 	return chColor;
 }
 
-
 /* Get time difference in microseconds between two transitions
 */
 function util_get_diff_us (tr1, tr2)
@@ -650,14 +650,12 @@ function util_get_diff_us (tr1, tr2)
 	return (((tr2 - tr1) * 1000000) / sample_rate);
 }
 
-
 /*  Get number of samples for the specified duration in microseconds
 */
 function util_get_sample_us (us)
 {
 	return ((us * sample_rate) / 1000000);
 }
-
 
 /*	Get transition of next falling edge
 */
@@ -674,7 +672,6 @@ function util_get_next_falling (ch, trStart)
 
 	return tr;
 }
-
 
 /*	Get transition of next rising edge
 */
