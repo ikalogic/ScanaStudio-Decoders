@@ -13,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.04: Fix decode freezing issue 
 	V1.03: Fix some bugs
 	V1.02: Prevented incompatible workspaces from using the decoder
 	V1.01: Now the decoding can be aborted
@@ -36,12 +37,14 @@ function get_dec_name()
 	return "JTAG";
 }
 
+
 /* The decoder version 
 */
 function get_dec_ver()
 {
-	return "1.03";
+	return "1.04";
 }
+
 
 /* Author 
 */
@@ -50,16 +53,17 @@ function get_dec_auth()
 	return "IKALOGIC";
 }
 
+
 /* Graphical user interface for this decoder 
 */
-function gui()  //graphical user interface
+function gui()
 {
 	ui_clear();  // clean up the User interface before drawing a new one.
-	
+
 	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
 	{
 		// Prevented incompatible workspaces from using the decoder
-		if( get_device_max_channels() < 4 )
+		if (get_device_max_channels() < 4)
 		{
 			ui_add_info_label("This device (or workspace configuration) do not have enough channels for this decoder to operate properly");
 			return;
@@ -70,7 +74,7 @@ function gui()  //graphical user interface
 		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
 		return;
 	}
-	
+
 	ui_add_ch_selector( "ch_tms", "TMS", "TMS" );
 	ui_add_ch_selector( "ch_tck", "TCK", "TCK" );
 	ui_add_ch_selector( "ch_tdi", "TDI", "TDI" );
@@ -82,12 +86,13 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "LSB first", true );
 		ui_add_item_to_txt_combo( "MSB first" );
 	ui_add_separator();
-	ui_add_info_label( "<b>Data organisation</b>" );
+	ui_add_info_label( "Data organisation", true );
 	ui_add_txt_combo( "length_data", "Bits per data word: " );
 		ui_add_item_to_txt_combo( "8 bits", true );
 		ui_add_item_to_txt_combo( "16 bits" );
 		ui_add_item_to_txt_combo( "32 bits" );
 }
+
 
 var TAP_Controller =
 {
@@ -136,9 +141,9 @@ var PKT_COLOR_PAUSE_TITLE;
 var PKT_COLOR_EXIT2_TITLE;
 var PKT_COLOR_UPDATE;
 
-	
+
 function decode()
-{
+{	
 	var TAP_state = TAP_Controller.Test_Reset;
 	var TCK_Transition;
 	var TDI_transition;
@@ -154,13 +159,13 @@ function decode()
     }
 
 	get_ui_vals();                // Update the content of user interface variables
-	
-	if(length_data == 0)
+
+	if (length_data == 0)
 	{
 		length_data = 8;
 		length_hex = 0x10;
 	}
-	else if(length_data == 1)
+	else if (length_data == 1)
 	{
 		length_data = 16;
 		length_hex = 0x1000;
@@ -170,7 +175,7 @@ function decode()
 		length_data = 32;
 		length_hex = 0x10000000;
 	}
-	
+
 	PKT_COLOR_DATA = light_colors.gray;
 	PKT_COLOR_DATA_DO_TITLE = light_colors.green;
 	PKT_COLOR_DATA_DI_TITLE = light_colors.orange;
@@ -184,8 +189,8 @@ function decode()
 	PKT_COLOR_PAUSE_TITLE = dark_colors.pink;
 	PKT_COLOR_EXIT2_TITLE = dark_colors.yellow;
 	PKT_COLOR_UPDATE = dark_colors.black;
-	
-	if(trs_is_not_last(ch_tck))
+
+	if (trs_is_not_last(ch_tck))
 	{
 		TCK_Transition = trs_get_first(ch_tck);
 		TCK_Transition = trs_get_next(ch_tck);	
@@ -206,34 +211,38 @@ function decode()
 		trs_now = TCK_Transition.sample;
 	}
 	else
-		return false;
-		
-	while(trs_is_not_last(ch_tck))
 	{
-		if (abort_requested() == true)
+		return false;
+	}
+
+	while (trs_is_not_last(ch_tck))
+	{
+		if (abort_requested())
 		{
 			return false;
 		}
 
-		if(TAP_state != TAP_Controller.Shift)
+		if (TAP_state != TAP_Controller.Shift)
 		{
 			TCK_Transition = trs_get_next(ch_tck);
 
-			if((TCK_Transition.sample-trs_now)>(spb*2))
+			if ((TCK_Transition.sample - trs_now) > (spb * 2))
+			{
 				trs_now = TCK_Transition.sample;
+			}
 
 			TCK_Transition = trs_get_next(ch_tck);
-			trs_next = TCK_Transition.sample+spb;		
-	
+			trs_next = TCK_Transition.sample + spb;		
 			TMS_Transition = trs_go_before(ch_tms,TCK_Transition.sample);
 		}
 
 		switch (TAP_state)
 		{
 			case TAP_Controller.Test_Reset:
+
 				pkt_end();
 				pkt_start("JTAG");
-				
+
 				if(TMS_Transition.val == 0)
 				{
 					pkt_add_item(-1,-1,"TEST RESET","",PKT_COLOR_TEST_RESET_TITLE ,PKT_COLOR_DATA ,true);
@@ -241,14 +250,16 @@ function decode()
 					text = "RUN TEST IDLE";
 					small_text = "RUN TEST";
 					very_small_text = "RUN";
-				}	
+				}
+
 			break;
-			
+
 			case TAP_Controller.Run_Test:
+
 				pkt_end();
 				pkt_start("JTAG");
 				
-				if(TMS_Transition.val == 1)
+				if (TMS_Transition.val == 1)
 				{
 					pkt_add_item(-1,-1,"RUN TEST","",PKT_COLOR_RUN_TEST_TITLE ,PKT_COLOR_DATA ,true);
 					TAP_state = TAP_Controller.DR_Scan;
@@ -256,13 +267,15 @@ function decode()
 					small_text = "SCAN DR"
 					very_small_text = "DR";
 				}
+
 			break;
-			
+
 			case TAP_Controller.DR_Scan:
-				pkt_add_item(-1,-1,"DR SCAN","",PKT_COLOR_DR_SCAN_TITLE ,PKT_COLOR_DATA ,true);
+
+				pkt_add_item(-1, -1, "DR SCAN", "", PKT_COLOR_DR_SCAN_TITLE, PKT_COLOR_DATA, true);
 				Scan_type = TAP_Controller.DR_Scan;
 
-				if(TMS_Transition.val == 1)
+				if (TMS_Transition.val == 1)
 				{
 					TAP_state = TAP_Controller.IR_Scan;
 					text = "SELECT IR";
@@ -275,14 +288,16 @@ function decode()
 					text = "CAPTURE IR/DR";
 					small_text = "CAPTURE";
 					very_small_text = "CAPT";
-				}	
+				}
+
 			break;
-			
+
 			case TAP_Controller.IR_Scan:
-				pkt_add_item(-1,-1,"IR SCAN","",PKT_COLOR_IR_SCAN_TITLE ,PKT_COLOR_DATA ,true);
+
+				pkt_add_item(-1, -1, "IR SCAN", "", PKT_COLOR_IR_SCAN_TITLE, PKT_COLOR_DATA, true);
 				Scan_type = TAP_Controller.IR_Scan;
 
-				if(TMS_Transition.val == 1)
+				if (TMS_Transition.val == 1)
 				{
 					TAP_state = TAP_Controller.Test_Reset;
 					text = "TEST RESET";
@@ -296,18 +311,19 @@ function decode()
 					small_text = "CAPTURE";
 					very_small_text = "CAPT";
 				}
-			break;
-			
-			case TAP_Controller.Capture:
-				pkt_add_item(-1,-1,"CAPTURE","",PKT_COLOR_CAPTURE_TITLE,PKT_COLOR_DATA ,true);
 
-				if(TMS_Transition.val == 1)
+			break;
+
+			case TAP_Controller.Capture:
+
+				pkt_add_item(-1, -1, "CAPTURE", "", PKT_COLOR_CAPTURE_TITLE, PKT_COLOR_DATA, true);
+
+				if (TMS_Transition.val == 1)
 				{
 					TAP_state = TAP_Controller.Exit1;
 					text = "EXIT1 IR/DR";
 					small_text = "EXIT1";
 					very_small_text = "EXT1";
-					
 				}
 				else
 				{
@@ -316,14 +332,19 @@ function decode()
 					small_text = "SHIFT";
 					very_small_text = "SHF";
 				}
-			break;
-			
-			case TAP_Controller.Shift:
-				pkt_add_item(-1,-1,"SHIFT","",PKT_COLOR_SHIFT_TITLE ,PKT_COLOR_DATA ,true);
 
-				Decode_Data();
-				if(TMS_Transition.sample >= TCK_Transition.sample)
+			break;
+
+			case TAP_Controller.Shift:
+
+				pkt_add_item(-1 ,-1, "SHIFT", "", PKT_COLOR_SHIFT_TITLE, PKT_COLOR_DATA, true);
+				decode_signal();
+
+				if (TMS_Transition.sample >= TCK_Transition.sample)
+				{
 					TCK_Transition = trs_go_after(ch_tck,TMS_Transition.sample);
+				}
+
 				trs_now = TCK_Transition.sample;
 				TCK_Transition = trs_get_next(ch_tck);
 				trs_next = TCK_Transition.sample+spb;
@@ -331,12 +352,14 @@ function decode()
 				text = "EXIT1 IR/DR";
 				small_text = "EXIT1";
 				very_small_text = "EXT1";
+
 			break;
 			
 			case TAP_Controller.Exit1:
-				pkt_add_item(-1,-1,"EXIT 1","",PKT_COLOR_EXIT1_TITLE ,PKT_COLOR_DATA ,true);
 
-				if(TMS_Transition.val == 1)
+				pkt_add_item(-1, -1, "EXIT 1", "", PKT_COLOR_EXIT1_TITLE, PKT_COLOR_DATA, true);
+
+				if (TMS_Transition.val == 1)
 				{
 					TAP_state = TAP_Controller.Update;
 					text = "UPDATE IR/DR";
@@ -350,24 +373,28 @@ function decode()
 					small_text = "PAUSE";
 					very_small_text = "P";
 				}
-			break;
-			
-			case TAP_Controller.Pause:
-				pkt_add_item(-1,-1,"PAUSE","",PKT_COLOR_PAUSE_TITLE ,PKT_COLOR_DATA ,true);
 
-				if(TMS_Transition.val == 1)
+			break;
+
+			case TAP_Controller.Pause:
+
+				pkt_add_item(-1, -1, "PAUSE", "", PKT_COLOR_PAUSE_TITLE, PKT_COLOR_DATA, true);
+
+				if (TMS_Transition.val == 1)
 				{
 					TAP_state = TAP_Controller.Exit2;
 					text = "EXIT2 IR/DR";
 					small_text = "EXIT2";
 					very_small_text = "EXT2";
 				}
-			break;
-			
-			case TAP_Controller.Exit2:
-				pkt_add_item(-1,-1,"EXIT 2","",PKT_COLOR_EXIT2_TITLE ,PKT_COLOR_DATA ,true);
 
-				if(TMS_Transition.val == 1)
+			break;
+
+			case TAP_Controller.Exit2:
+
+				pkt_add_item(-1, -1, "EXIT 2", "", PKT_COLOR_EXIT2_TITLE, PKT_COLOR_DATA, true);
+
+				if (TMS_Transition.val == 1)
 				{
 					TAP_state = TAP_Controller.Update;
 					text = "UPDATE IR/DR";
@@ -381,12 +408,14 @@ function decode()
 					small_text = "SHIFT";
 					very_small_text = "SHF";
 				}
+
 			break;
-			
+
 			case TAP_Controller.Update:
+
 				pkt_add_item(-1,-1,"UPDATE","",PKT_COLOR_UPDATE ,PKT_COLOR_DATA ,true);
 
-				if(TMS_Transition.val == 1)
+				if (TMS_Transition.val == 1)
 				{
 					TAP_state = TAP_Controller.DR_Scan;
 					text = "SELECT DR";
@@ -400,28 +429,33 @@ function decode()
 					small_text = "RUN TEST";
 					very_small_text = "RUN";
 				}
+
 			break;
 		}
-		
-		if(trs_is_not_last(ch_tck) && ((trs_next-trs_now)<(spb*4)))
-		{	
+
+		if (trs_is_not_last(ch_tck) && ((trs_next-trs_now) < (spb * 4)))
+		{
 			if(TAP_state == TAP_Controller.Shift)
+			{
 				start_shift = trs_now;
+			}
+
 			dec_item_new(ch_tms,trs_now,trs_next);
 			dec_item_add_pre_text(text);
 			dec_item_add_pre_text(small_text);
 			dec_item_add_pre_text(very_small_text);
 		}
+
 		if (trs_next >= trs_now)
+		{
 			trs_now = trs_next;
-		
+		}
+
 		set_progress(100 * trs_now / n_samples);
 	}
 }
 
 
-/*
-*/
 function check_scanastudio_support()
 {
     if (typeof(pkt_start) != "undefined")
@@ -434,135 +468,153 @@ function check_scanastudio_support()
     }
 }
 
-function Decode_Data()
+
+function decode_signal()
 {
 	var first_data = true;
 	var sample_data_start = 0;
 	var sample_data_end = 0;
 	var tmp_sample = trs_go_after(ch_tck,start_shift+1*spb);
-	while(tmp_sample.val == 1)
+
+	while (tmp_sample.val == 1)
 	{
-	    if (abort_requested() == true)
-		{
-			return false;
-		}
-		tmp_sample = trs_get_next(ch_tck);
-	}
-	//var nav = trs_go_after(ch_tck,start_shift+3*spb);
-	var nav=tmp_sample;
-	nav = trs_get_next(ch_tck);
-	var data_recovery = true;
-	var cnt = 0;
-	
-	var end_item = 0;
-	
-	cnt_text = 0;
-	TMS_Transition = trs_go_before(ch_tms,nav.sample);
-	sample_data_start = tmp_sample.sample-3*spb/2;
-	start_pkt_data = tmp_sample.sample;
-	
-	if (typeof(TDO_Transition)!=typeof(transition))
-		TDO_Transition = new transition(0,0);
-	
-	while(data_recovery == true)
-	{
-	    if (abort_requested() == true)
+	    if (abort_requested())
 		{
 			return false;
 		}
 
-		if(TMS_Transition.val == 0)
+		tmp_sample = trs_get_next(ch_tck);
+	}
+
+	var nav = tmp_sample;
+	nav = trs_get_next(ch_tck);
+	var data_recovery = true;
+	var cnt = 0;
+	var end_item = 0;
+
+	cnt_text = 0;
+	TMS_Transition = trs_go_before(ch_tms,nav.sample);
+	sample_data_start = tmp_sample.sample - 3 * spb / 2;
+	start_pkt_data = tmp_sample.sample;
+
+	if (typeof(TDO_Transition) != typeof(transition))
+	{
+		TDO_Transition = new transition(0, 0);
+	}
+
+	while (data_recovery && trs_is_not_last(ch_tck))
+	{
+	    if (abort_requested())
 		{
-			TDO_Transition = trs_go_before(ch_tdo,nav.sample);
-			TDI_transition = trs_go_before(ch_tdi,nav.sample);
-			
+			return false;
+		}
+
+		if (TMS_Transition.val == 0)
+		{			
+			TDO_Transition = trs_go_before(ch_tdo, nav.sample);
+			TDI_transition = trs_go_before(ch_tdi, nav.sample);
+
 			tab_data_tdo[cnt] = TDO_Transition.val;
 			tab_data_tdi[cnt] = TDI_transition.val;
-			
-			if(first_data == true)
+
+			if (first_data == true)
 			{
-				if(TDO_Transition.sample == 0)
+				if (TDO_Transition.sample == 0)
 				{
-					tab_data_tdo[cnt] = 1;
+					tab_data_tdo[cnt]  = 1;
 					TDO_Transition.val = 1;
 				}
-				if(TDI_transition.sample == 0)
+
+				if (TDI_transition.sample == 0)
 				{
-					tab_data_tdi[cnt] = 1;
+					tab_data_tdi[cnt]  = 1;
 					TDI_transition.val = 1;
 				}
 					
 				first_data = false;
 			}
-			
-			if(TDO_Transition.val == 0)
-				dec_item_add_sample_point(ch_tdo,nav.sample,0);
+
+			if (TDO_Transition.val == 0)
+			{
+				dec_item_add_sample_point(ch_tdo, nav.sample, 0);
+			}
 			else
-				dec_item_add_sample_point(ch_tdo,nav.sample,1);
-				
-			if(TDI_transition.val == 0)
-				dec_item_add_sample_point(ch_tdi,nav.sample,0);	
+			{
+				dec_item_add_sample_point(ch_tdo, nav.sample, 1);
+			}
+
+			if (TDI_transition.val == 0)
+			{
+				dec_item_add_sample_point(ch_tdi, nav.sample, 0);	
+			}
 			else
-				dec_item_add_sample_point(ch_tdi,nav.sample,1);
-		
-			
+			{
+				dec_item_add_sample_point(ch_tdi, nav.sample, 1);
+			}
+
 			cnt++;
-			if(cnt%length_data == 0)
+
+			if (cnt % length_data == 0)
 			{
 				Text_data();
+
 				tmp_sample = trs_go_after(ch_tck,nav.sample+spb);
 				nav = trs_go_before(ch_tck,nav.sample);
 				sample_data_end = tmp_sample.sample;
-				dec_item_new(ch_tdo,sample_data_start+(spb/2),sample_data_end+(spb/2));
-				dec_item_add_pre_text("DO = 0x"+data_tdo);
-				hex_add_byte(ch_tdo,-1,-1,data_hex_do);
-				
-				dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
-				dec_item_add_pre_text("DI = 0x"+data_tdi);
-				hex_add_byte(ch_tdi,-1,-1,data_hex_di);
-				
-				
+
+				dec_item_new(ch_tdo,sample_data_start+(spb / 2), sample_data_end + (spb / 2));
+				dec_item_add_pre_text("DO = 0x" + data_tdo);
+				hex_add_byte(ch_tdo, -1, -1, data_hex_do);
+
+				dec_item_new(ch_tdi, sample_data_start + (spb / 2), sample_data_end + (spb / 2));
+				dec_item_add_pre_text("DI = 0x" + data_tdi);
+				hex_add_byte(ch_tdi, -1, -1, data_hex_di);
+
 				tmp_sample = trs_get_next(ch_tck);
 				nav = trs_get_prev(ch_tck);
 				sample_data_end = tmp_sample.sample
 				cnt_text++;
 				sample_data_start = tmp_sample.sample;
 			}
-			
-			
+
 			nav = trs_get_next(ch_tck);
 			nav = trs_get_next(ch_tck);
-			TMS_Transition = trs_go_before(ch_tms,nav.sample);
+			TMS_Transition = trs_go_before(ch_tms, nav.sample);
 		}
 		else
 		{
-			
-			//if(Scan_type == TAP_Controller.DR_Scan)
-			//{
-				TDO_Transition = trs_go_before(ch_tdo,nav.sample);
-				tab_data_tdo[cnt] = TDO_Transition.val;
-				if(TDO_Transition.val == 0)
-					dec_item_add_sample_point(ch_tdo,nav.sample,0);	
-				else
-					dec_item_add_sample_point(ch_tdo,nav.sample,1);
-			//}
-		
-			TDI_transition = trs_go_before(ch_tdi,nav.sample);
-			tab_data_tdi[cnt] = TDI_transition.val;
-			if(TDI_transition.val == 0)
-				dec_item_add_sample_point(ch_tdi,nav.sample,0);	
+			TDO_Transition = trs_go_before(ch_tdo, nav.sample);
+			tab_data_tdo[cnt] = TDO_Transition.val;
+
+			if (TDO_Transition.val == 0)
+			{
+				dec_item_add_sample_point(ch_tdo, nav.sample, 0);
+			}
 			else
-				dec_item_add_sample_point(ch_tdi,nav.sample,1);
-				
-				
-			tmp_sample = trs_go_after(ch_tck,nav.sample+spb);
+			{
+				dec_item_add_sample_point(ch_tdo, nav.sample, 1);
+			}
+
+			TDI_transition = trs_go_before(ch_tdi, nav.sample);
+			tab_data_tdi[cnt] = TDI_transition.val;
+
+			if (TDI_transition.val == 0)
+			{
+				dec_item_add_sample_point(ch_tdi, nav.sample, 0);
+			}
+			else
+			{
+				dec_item_add_sample_point(ch_tdi, nav.sample, 1);
+			}
+
+			tmp_sample = trs_go_after(ch_tck, nav.sample+spb);
 			sample_data_end = tmp_sample.sample;
 
 			data_recovery = false;
 		}
 	}
-	
-	if(Scan_type == TAP_Controller.IR_Scan)
+
+	if (Scan_type == TAP_Controller.IR_Scan)
 	{
 		tmp_sample = trs_get_prev(ch_tck);
 		nav = trs_get_next(ch_tck);
@@ -572,23 +624,22 @@ function Decode_Data()
 		nav = trs_get_prev(ch_tck);
 		tmp_sample = trs_get_next(ch_tck);
 	}
-	
-	sample_data_end = tmp_sample.sample;
 
+	sample_data_end = tmp_sample.sample;
 	Text_data();
 
-	if(cnt != 0)
-	{
-		dec_item_new(ch_tdo,sample_data_start+(spb/2),sample_data_end+(spb/2));
-		dec_item_add_pre_text("DO = 0x"+data_tdo);
-		dec_item_add_pre_text("0x"+data_tdo);
-		hex_add_byte(ch_tdo,-1,-1,data_hex_do);
-		
-		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
-		dec_item_add_pre_text("DI = 0x"+data_tdi);
-		dec_item_add_pre_text("0x"+data_tdi);
-		hex_add_byte(ch_tdi,-1,-1,data_hex_di);
-		
+	if (cnt != 0)
+	{		
+		dec_item_new(ch_tdo, sample_data_start + (spb / 2), sample_data_end + (spb / 2));
+		dec_item_add_pre_text("DO = 0x" + data_tdo);
+		dec_item_add_pre_text("0x" + data_tdo);
+		hex_add_byte(ch_tdo, -1, -1, data_hex_do);
+
+		dec_item_new(ch_tdi, sample_data_start + (spb / 2),sample_data_end + (spb / 2));
+		dec_item_add_pre_text("DI = 0x" + data_tdi);
+		dec_item_add_pre_text("0x" + data_tdi);
+		hex_add_byte(ch_tdi, -1, -1, data_hex_di);
+
 		tmp_sample = trs_get_next(ch_tck);
 		nav = trs_get_prev(ch_tck);
 		sample_data_end = tmp_sample.sample
@@ -596,58 +647,58 @@ function Decode_Data()
 	}
 	else
 	{
-		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
-		dec_item_add_pre_text("DO = "+TDO_Transition.val);
+		dec_item_new(ch_tdi,sample_data_start + (spb / 2),sample_data_end + (spb / 2));
+		dec_item_add_pre_text("DO = " + TDO_Transition.val);
 		dec_item_add_pre_text(TDO_Transition.val);
-		
-		dec_item_new(ch_tdi,sample_data_start+(spb/2),sample_data_end+(spb/2));
-		dec_item_add_pre_text("DI = "+TDI_transition.val);	
+
+		dec_item_new(ch_tdi,sample_data_start + (spb / 2), sample_data_end + (spb / 2));
+		dec_item_add_pre_text("DI = " + TDI_transition.val);	
 		dec_item_add_pre_text(TDI_transition.val);	
-		
+
 		tmp_sample = trs_get_next(ch_tck);
 		nav = trs_get_prev(ch_tck);
 		sample_data_end = tmp_sample.sample;
 		end_pkt_data = tmp_sample.sample;
 	}	
-	
+
 	pkt_data_do();	
 	pkt_data_di();
-		
+
 	tab_data_tdi.length = 0;
 	tab_data_tdo.length = 0;
 }
 
 
-/*
-*/
 function int_to_str_hex (num) 
 {
 	var temp = "";
 	var test_hex = length_hex;
 
-	if(Scan_type == TAP_Controller.DR_Scan)
+	if (Scan_type == TAP_Controller.DR_Scan)
 	{
-		while(test_hex >= 0x10)
+		while (test_hex >= 0x10)
 		{
-			if(num < test_hex)
+			if (num < test_hex)
+			{
 				temp += "0";
-				
+			}
+
 			test_hex >>= 4;
 		}		
 	}
 	else
 	{
-		if(num<0x10)
+		if (num < 0x10)
+		{
 			temp += "0";
+		}
 	}
 
 	temp += num.toString(16).toUpperCase();
-
 	return temp;
 }
 
-/*
-*/
+
 function Text_data()
 {
 	var i;
@@ -655,215 +706,205 @@ function Text_data()
 	var tmp_do = 0;
 	var place = 0;
 	var invert = false;
-	
-	if(Scan_type == TAP_Controller.DR_Scan)
+
+	if (Scan_type == TAP_Controller.DR_Scan)
 	{
-		if(order_DR == 1)
+		if (order_DR == 1)
 		{
-			place= length_data-1;
+			place = length_data - 1;
 			invert = true;
 		}	
 	}
 	else
 	{
-		if(order_IR == 1)
+		if (order_IR == 1)
 		{
-			place= length_data-1;
+			place= length_data - 1;
 			invert = true;
 		}
 	}
-	
-	
+
 	data_tdo = "";
 	data_tdi = "";
 
-	for(i=0; i<length_data; i++)
+	for (i = 0; i < length_data; i++)
 	{
-		if(i<tab_data_tdo.length)
+		if (i < tab_data_tdo.length)
 		{
-			tmp_do += tab_data_tdo[i+(cnt_text*length_data)]<<place;
+			tmp_do += tab_data_tdo[i + (cnt_text * length_data)] << place;
 		}
 		else
 		{
 			tmp_do += 0<<place;
 		}
-		
-		if(i<tab_data_tdi.length)
+
+		if (i < tab_data_tdi.length)
 		{
-			tmp_di += tab_data_tdi[i+(cnt_text*length_data)]<<place;
+			tmp_di += tab_data_tdi[i + (cnt_text * length_data)] << place;
 		}
 		else
 		{
-			tmp_di += 0<<place;
+			tmp_di += 0 << place;
 		}
-		if(invert == false)
+
+		if (invert == false)
+		{
 			place++;
+		}
 		else
+		{
 			place--;
+		}
 	}
-	
+
 	data_hex_do = tmp_do;
 	data_hex_di = tmp_di;
 
 	data_tdo = int_to_str_hex(tmp_do);
 	data_tdi = int_to_str_hex(tmp_di);
-	
+
 	tab_data_do_hex[cnt_text] = "0x"+data_tdo;
 	tab_data_di_hex[cnt_text] = "0x"+data_tdi;
 }
 
-/*
-*/
+
 function pkt_data_do()
 {	
 	var data_do = "";
 	var n,p,x;
 	var ligne = 0;
 	var data_tmp;
-	
-	data_do = tab_data_do_hex[0];
 
-	pkt_add_item(start_pkt_data,end_pkt_data,"D0",data_do+"...",PKT_COLOR_DATA_DO_TITLE,PKT_COLOR_DATA,true);
-	
-	
+	data_do = tab_data_do_hex[0];
+	pkt_add_item(start_pkt_data, end_pkt_data, "D0", data_do + "...", PKT_COLOR_DATA_DO_TITLE, PKT_COLOR_DATA, true);
 	data_do = "";
-	
+
 	if (tab_data_do_hex.length % 8)
 	{
-		x = Math.floor(tab_data_do_hex.length/8)+1;
+		x = Math.floor(tab_data_do_hex.length / 8) + 1;
 	}
 	else
 	{
-		x = tab_data_do_hex.length/8;
+		x = tab_data_do_hex.length / 8;
 	}
-	
-	for(p=0; p<x; p++)
+
+	for (p = 0; p < x; p++)
 	{
-		for(n=0; n<8; n++)
+		for (n = 0; n < 8; n++)
 		{
-			if(n+ligne<(cnt_text+1))
-				data_do += tab_data_do_hex[n+ligne]+" ";
-		}
-		
-		data_do += "| ";
-		
-		for(n=0; n<8; n++)
-		{
-			if(n+ligne<(cnt_text+1))
+			if (n + ligne < (cnt_text + 1))
 			{
-				if((tab_data_do_hex[n+ligne]>0x1F)&&(tab_data_do_hex[n+ligne] < 0x7F))
+				data_do += tab_data_do_hex[n + ligne] + " ";
+			}
+		}
+
+		data_do += "| ";
+
+		for (n = 0; n < 8; n++)
+		{
+			if (n + ligne < (cnt_text + 1))
+			{
+				if ((tab_data_do_hex[n + ligne] > 0x1F) && (tab_data_do_hex[n + ligne] < 0x7F))
 				{
-					data_tmp = hex_to_ascii(tab_data_do_hex[n+ligne]);
+					data_tmp = hex_to_ascii(tab_data_do_hex[n + ligne]);
 					data_do += data_tmp;
 				}
 				else
-				data_do +=".";
+				{
+					data_do +=".";
+				}
 			}
 			else
+			{
 				data_do +=" ";
-			
+			}
 		}
-		
+
 		data_do += "\n\r";
 		ligne += 8;
-	}	
-			
+	}
+
 	pkt_start("JTAG DO");		
-		pkt_add_item(start_pkt_data,end_pkt_data,"DATA DO",data_do,PKT_COLOR_DATA_DO_TITLE,PKT_COLOR_DATA,true);	
+	pkt_add_item(start_pkt_data, end_pkt_data, "DATA DO", data_do, PKT_COLOR_DATA_DO_TITLE, PKT_COLOR_DATA, true);	
 	pkt_end();
-	
+
 	tab_data_do_hex.length = 0;
 }
 
 
-/*
-*/
 function pkt_data_di()
 {	
 	var data_di = "";
 	var n,p,x;
 	var ligne = 0;
 	var data_tmp;
-	
-	data_di = tab_data_di_hex[0];
 
-	pkt_add_item(start_pkt_data,end_pkt_data,"D0",data_di+"...",PKT_COLOR_DATA_DI_TITLE,PKT_COLOR_DATA,true);
-	
-	
+	data_di = tab_data_di_hex[0];
+	pkt_add_item(start_pkt_data, end_pkt_data, "D0", data_di + "...", PKT_COLOR_DATA_DI_TITLE, PKT_COLOR_DATA, true);
 	data_di = "";
-	
+
 	if (tab_data_di_hex.length % 8)
 	{
-		x = Math.floor(tab_data_di_hex.length/8)+1;
+		x = Math.floor(tab_data_di_hex.length / 8) + 1;
 	}
 	else
 	{
 		x = tab_data_di_hex.length/8;
 	}
-	
-	for(p=0; p<x; p++)
+
+	for (p = 0; p < x; p++)
 	{
-		for(n=0; n<8; n++)
+		for (n = 0; n < 8; n++)
 		{
-			if(n+ligne<(cnt_text+1))
-				data_di += tab_data_di_hex[n+ligne]+" ";
-		}
-		
-		data_di += "| ";
-		
-		for(n=0; n<8; n++)
-		{
-			if(n+ligne<(cnt_text+1))
+			if (n + ligne < (cnt_text + 1))
 			{
-				if((tab_data_di_hex[n+ligne]>0x1F)&&(tab_data_di_hex[n+ligne] < 0x7F))
+				data_di += tab_data_di_hex[n+ligne] + " ";
+			}
+		}
+
+		data_di += "| ";
+
+		for (n = 0; n < 8; n++)
+		{
+			if (n+ligne<(cnt_text+1))
+			{
+				if ((tab_data_di_hex[n+ligne]>0x1F)&&(tab_data_di_hex[n+ligne] < 0x7F))
 				{
 					data_tmp = hex_to_ascii(tab_data_di_hex[n+ligne]);
 					data_di += data_tmp;
 				}
 				else
-				data_di +=".";
+				{
+					data_di +=".";
+				}
 			}
 			else
+			{
 				data_di +=" ";
-			
+			}
 		}
-		
+
 		data_di += "\n\r";
 		ligne += 8;
 	}
-			
+
 	pkt_start("JTAG DI");		
-		pkt_add_item(start_pkt_data,end_pkt_data,"DATA DI",data_di,PKT_COLOR_DATA_DI_TITLE,PKT_COLOR_DATA,true);	
+	pkt_add_item(start_pkt_data,end_pkt_data,"DATA DI",data_di,PKT_COLOR_DATA_DI_TITLE,PKT_COLOR_DATA,true);	
 	pkt_end();
-	
+
 	tab_data_di_hex.length = 0;
 }
 
 
-/*
-*/
-function hex_to_ascii(hexx)
+function hex_to_ascii (hexx)
 {
 	var hex = hexx.toString();
 	var str = "";
-	
-	for(var i = 0; i<hex.length; i +=2)
-		str += String.fromCharCode(parseInt(hex.substr(i,2),16));
-		
+
+	for (var i = 0; i < hex.length; i += 2)
+	{
+		str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+	}
+
 	return str;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
