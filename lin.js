@@ -7,7 +7,7 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-    LIN Protocol Decoder.
+	LIN Protocol Decoder.
 	This is a standard Local Interconnect Network bus decoder supporting 1.x and 2.x
 	protocol versions
 
@@ -15,20 +15,22 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.36: Add light packet capabilities.
 	V1.35: Reworked PacketView.
 	V1.33: Added protocol version choice.
 	V1.32: Performance optimizations. Corrected a bug in the way decoded data is displayed.
 	V1.31: Fixed bug with first BREAK field detection.
-	       Added ScanaStudio 2.3xx compatibility.
-		   New Packet View layout.
+	Added ScanaStudio 2.3xx compatibility.
+	New Packet View layout.
 	V1.30: Added decoder trigger & demo signal builder
 	V1.27: Added LIN WakeUp conditions and baudrate detection.
 	V1.25: Added signal noise handling. Added automatic LIN protocol version detection.
 	V1.22: Variable frame length bug fixed.
-    V1.2:  New BREAK & SYNC validation algorithm. Some minor fixes.
-    V1.15: Added Packet/Hex View support.
+	V1.2:  New BREAK & SYNC validation algorithm. Some minor fixes.
+	V1.15: Added Packet/Hex View support.
 	V1.1:  Timing calculation fix. Stability improvements.
 	V1.0:  Initial release.
+
 </RELEASE_NOTES>
 
 <AUTHOR_URL>
@@ -50,7 +52,7 @@ The following commented block allows some related informations to be displayed o
 */
 function get_dec_name()
 {
-	return "LIN"; 
+	return "LIN";
 }
 
 
@@ -58,7 +60,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.35";
+	return "1.36";
 }
 
 
@@ -1216,11 +1218,11 @@ function pkt_add_packet (ok)
 
 	if (ok)
 	{
-		pkt_add_item(pktStart, pktEnd, "LIN FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "LIN FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true, chLin);
 	}
 	else
 	{
-		pkt_add_item(pktStart, pktEnd, "LIN FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "LIN FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA, true, chLin);
 	}
 
 	pkt_start("NEW FRAME");
@@ -1254,7 +1256,7 @@ function pkt_add_packet (ok)
 					}
 					else
 					{
-						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor, true, chLin);
 						lineStart = false;
 						dataLine = "";
 						lineCnt = 0;
@@ -1263,29 +1265,29 @@ function pkt_add_packet (ok)
 
 				if (lineCnt > 0)
 				{
-					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor, true, chLin);
 				}
 			}
 			else
 			{
-				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, chLin);
 			}
 		}
 		else if ((obj.title.localeCompare("BREAK") == 0) && (obj.data == "INVALID"))
 		{
-			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, chLin);
 		}
 		else if ((obj.title.localeCompare("SYNC") == 0) && (obj.data == "INVALID"))
 		{
-			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, chLin);
 		}
 		else if (obj.title.localeCompare("PID") == 0)
 		{
-			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, chLin);
 		}
 		else if (obj.title.localeCompare("CHECKSUM") == 0)
 		{
-			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, chLin);
 		}
 	}
 
@@ -1487,3 +1489,4 @@ function get_num_samples_for_us (us)
 {
 	return ((us * get_srate()) / 1000000);
 }
+

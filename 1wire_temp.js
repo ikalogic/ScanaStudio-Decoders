@@ -7,16 +7,17 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-    1-Wire Temperature Sensors decoder. Supported sensors: DS1820, DS18B20, DS18S20, DS1822, DS1825, DS1920, DS2438, DS2760, DS28EA00, MAX31820, MAX31826 and MAX318(50/51).
+	1-Wire Temperature Sensors decoder. Supported sensors: DS1820, DS18B20, DS18S20, DS1822, DS1825, DS1920, DS2438, DS2760, DS28EA00, MAX31820, MAX31826 and MAX318(50/51).
 
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
+	V1.26: Add light packet capabilities.
 	V1.25: Fixed DS18B20 temp calculation.
 	V1.21: Now the decoding can be aborted
 	V1.20: Corrected a bug related to CRC calculations (Thanks to Petar Pasti)
-    V1.10: Added Packet/Hex View support.
+	V1.10: Added Packet/Hex View support.
 	V1.0:  Initial release.
 
 </RELEASE_NOTES>
@@ -43,7 +44,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.25";
+	return "1.26";
 }
 
 
@@ -241,7 +242,7 @@ function decode()
                 dec_item_new(uiCh, st, end);
                 dec_item_add_pre_text(Device.str + " ROM CODE: {" + romCode + "}  CRC: " + crc);
                 dec_item_add_pre_text(Device.str + " ROM CODE");
-                pkt_add_item(-1, -1, "ROM CODE", Device.str, PKT_COLOR_ROMCODE_TITLE, PKT_COLOR_DATA);
+                pkt_add_item(-1, -1, "ROM CODE", Device.str, PKT_COLOR_ROMCODE_TITLE, PKT_COLOR_DATA, false, uiCh);
             }
             else
             {
@@ -262,7 +263,7 @@ function decode()
 
                         dec_item_add_pre_text("CMD: CONVERT TEMP");
                         dec_item_add_pre_text("CMD");
-                        pkt_add_item(-1, -1, "COMMAND", "CONVERT TEMP", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                        pkt_add_item(-1, -1, "COMMAND", "CONVERT TEMP", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
 
                     break;
 
@@ -275,13 +276,13 @@ function decode()
                         {
                             dec_item_add_pre_text("CMD: WRITE SCRATCHPAD");
                             dec_item_add_pre_text("CMD: WRITE");
-                            pkt_add_item(-1, -1, "COMMAND", "WRITE SCRATCHPAD", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                            pkt_add_item(-1, -1, "COMMAND", "WRITE SCRATCHPAD", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
                         }
                         else if (+owData.data == DEV_CMD.RD_SCRATCH || +owData.data == DEV_CMD.DS2760_RD_DATA)
                         {
                             dec_item_add_pre_text("CMD: READ SCRATCHPAD");
                             dec_item_add_pre_text("CMD: READ");
-                            pkt_add_item(-1, -1, "COMMAND", "READ SCRATCHPAD", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                            pkt_add_item(-1, -1, "COMMAND", "READ SCRATCHPAD", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
                         }
 
                         dec_item_add_pre_text("CMD");
@@ -302,7 +303,7 @@ function decode()
                         dec_item_add_pre_text("CMD: COPY SCRATCHPAD");
                         dec_item_add_pre_text("CMD: COPY SCRATCH");
                         dec_item_add_pre_text("CMD");
-                        pkt_add_item(-1, -1, "COMMAND", "COPY SCRATCHPAD", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                        pkt_add_item(-1, -1, "COMMAND", "COPY SCRATCHPAD", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
 
                     break;
 
@@ -311,7 +312,7 @@ function decode()
                         dec_item_add_pre_text("CMD: RECALL E2");
                         dec_item_add_pre_text("CMD: RECALL");
                         dec_item_add_pre_text("CMD");
-                        pkt_add_item(-1, -1, "COMMAND", "RECALL E2", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                        pkt_add_item(-1, -1, "COMMAND", "RECALL E2", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
 
                     break;
 
@@ -320,7 +321,7 @@ function decode()
                         dec_item_add_pre_text("CMD: READ POWER");
                         dec_item_add_pre_text("CMD: READ PWR");
                         dec_item_add_pre_text("CMD");
-                        pkt_add_item(-1, -1, "COMMAND", "READ POWER", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                        pkt_add_item(-1, -1, "COMMAND", "READ POWER", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
 
                     break;
 
@@ -328,7 +329,7 @@ function decode()
 
                         dec_item_add_pre_text("CMD: LOCK");
                         dec_item_add_pre_text("CMD");
-                        pkt_add_item(-1, -1, "COMMAND", "LOCK", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                        pkt_add_item(-1, -1, "COMMAND", "LOCK", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
 
                     break;
 
@@ -337,7 +338,7 @@ function decode()
                         dec_item_add_pre_text("CMD: UNKNOWN");
                         dec_item_add_pre_text("UNKNOWN");
                         dec_item_add_pre_text("UNK");
-                        pkt_add_item(-1, -1, "COMMAND", "UNKNOWN", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA);
+                        pkt_add_item(-1, -1, "COMMAND", "UNKNOWN", PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, false, uiCh);
 
                     break;
                 }
@@ -526,7 +527,7 @@ function decode_grp1()
         dec_item_new(uiCh, st, end);
         dec_item_add_pre_text(strComplete);
         dec_item_add_pre_text(strShort);
-        pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+        pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, false, uiCh);
     }
 }
 
@@ -643,7 +644,7 @@ function decode_grp2()
         dec_item_new(uiCh, st, end);
         dec_item_add_pre_text(strComplete);
         dec_item_add_pre_text(strShort);
-        pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+        pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, false, uiCh);
     }
 }
 
@@ -753,7 +754,7 @@ function decode_grp3()
         dec_item_new(uiCh, st, end);
         dec_item_add_pre_text(strComplete);
         dec_item_add_pre_text(strShort);
-        pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+        pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, false, uiCh);
     }
 }
 
@@ -815,7 +816,7 @@ function decode_grp4()
                 dec_item_new(uiCh, st, end);
                 dec_item_add_pre_text(strComplete);
                 dec_item_add_pre_text(strShort);
-                pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+                pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, false, uiCh);
             }
         }
     }
@@ -863,7 +864,7 @@ function decode_grp5()
                 dec_item_new(uiCh, st, end);
                 dec_item_add_pre_text(strComplete);
                 dec_item_add_pre_text(strShort);
-                pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+                pkt_add_item(-1, -1, "TEMP DATA", strComplete, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, false, uiCh);
             }
         }
     }
@@ -928,7 +929,7 @@ function get_formatted_temp (sign, temp)
                     sign = "";
                 }
 
-                tempStr = sign + temp + "Â°C";
+                tempStr = sign + temp + "°C";
                 break;
 
         case 1: var fahTemp = ((temp * (9 / 5)) + 32);
@@ -943,7 +944,7 @@ function get_formatted_temp (sign, temp)
                     sign = "";
                 }
 
-                tempStr = sign + fahTemp + "Â°F";
+                tempStr = sign + fahTemp + "°F";
                 break;
 
         case 2: tempStr = (temp + 273.15) + "K";
@@ -994,3 +995,4 @@ function get_scratchpad_crc8 (buf)
     
     return crc;
 }
+

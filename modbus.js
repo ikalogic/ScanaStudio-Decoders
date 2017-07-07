@@ -13,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.22:  Add light packet capabilities
 	V1.21:  Add recognition of byte in PacketView
 	V1.2:   Add inverting capability
 	V1.1:   Add generator, demo and trigger capability
@@ -52,7 +53,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.21";
+	return "1.22";
 }
 
 /* Author 
@@ -186,7 +187,7 @@ function decode_RTU()
 	              	dec_item_add_pre_text("S ");//Minimum zoom
 					
 					pkt_start("Modbus RTU");
-					pkt_add_item(buffer[i].start_s - 12*spb, buffer[i].start_s - 2*spb, "Start", "", dark_colors.blue, channel_color);
+					pkt_add_item(buffer[i].start_s - 12*spb, buffer[i].start_s - 2*spb, "Start", "", dark_colors.blue, channel_color, true, CH_SELECTOR);
 				}
 				else
 				{
@@ -210,7 +211,7 @@ function decode_RTU()
               	dec_item_add_pre_text("@ ");//Minimum zoom
 				dec_item_add_data(buffer[i].data[0]);
 				
-				pkt_add_item(-1, -1, "Address", buffer[i].data[0], dark_colors.green, channel_color);
+				pkt_add_item(-1, -1, "Address", buffer[i].data[0], dark_colors.green, channel_color, true, CH_SELECTOR);
 				
 				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
 				
@@ -270,14 +271,14 @@ function decode_RTU()
 										case 0:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Starting Address Hi : ");
-											pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
 										case 1:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 											dec_item_add_pre_text("Coil Address Lo : ");
-											pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
@@ -286,12 +287,12 @@ function decode_RTU()
 											if(fct==0x01)
 											{
 							              		dec_item_add_pre_text("Quantity of Coils Hi : ");
-												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Quantity of inputs Hi : ");
-												pkt_add_item(-1, -1, "Quantity of inputs Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of inputs Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -301,12 +302,12 @@ function decode_RTU()
 											if(fct==0x01)
 											{
 							              		dec_item_add_pre_text("Quantity of Coils Lo : ");
-												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Quantity of inputs Lo : ");
-												pkt_add_item(-1, -1, "Quantity of inputs Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of inputs Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -315,7 +316,7 @@ function decode_RTU()
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Data : ");
 											dec_item_add_data(buffer[k].data[0]);
-											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											break;
 									}
 									
@@ -344,7 +345,7 @@ function decode_RTU()
 										case 0:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Byte Count : ");
-											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
@@ -352,7 +353,7 @@ function decode_RTU()
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Data : ");
 											dec_item_add_data(buffer[k].data[0]);
-											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											break;
 									}
 									
@@ -385,28 +386,28 @@ function decode_RTU()
 										case 0:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Starting Address Hi : ");
-											pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
 										case 1:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 											dec_item_add_pre_text("Starting Address Lo : ");
-											pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
 										case 2:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Quantity of Registers Hi : ");
-											pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
 										case 3:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Quantity of Registers Lo : ");
-											pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
@@ -414,7 +415,7 @@ function decode_RTU()
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Data : ");
 											dec_item_add_data(buffer[k].data[0]);
-											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											break;
 									}
 									
@@ -443,7 +444,7 @@ function decode_RTU()
 										case 0:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Byte Count : ");
-											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
@@ -452,12 +453,12 @@ function decode_RTU()
 											if(k%2)
 											{
 							              		dec_item_add_pre_text("Data Hi : ");
-												pkt_add_item(-1, -1, "Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Data Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Data Lo : ");
-												pkt_add_item(-1, -1, "Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Data Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -482,12 +483,12 @@ function decode_RTU()
 										if (fct==0x05)
 										{
 						              		dec_item_add_pre_text("Coil Address Hi : ");
-											pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 										}
 										else
 										{
 						              		dec_item_add_pre_text("Register Address Hi : ");
-											pkt_add_item(-1, -1, "Register Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Register Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 										}
 										dec_item_add_data(buffer[k].data[0]);
 										break;
@@ -497,12 +498,12 @@ function decode_RTU()
 										if (fct==0x05)
 										{
 						              		dec_item_add_pre_text("Coil Address Lo : ");
-											pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 										}
 										else
 										{
 						              		dec_item_add_pre_text("Register Address Lo : ");
-											pkt_add_item(-1, -1, "Register Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Register Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 										}
 										dec_item_add_data(buffer[k].data[0]);
 										break;
@@ -510,14 +511,14 @@ function decode_RTU()
 									case 2:
 										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 						              	dec_item_add_pre_text("Write Data Hi : ");
-										pkt_add_item(-1, -1, "Write Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+										pkt_add_item(-1, -1, "Write Data Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 										dec_item_add_data(buffer[k].data[0]);
 										break;
 										
 									case 3:
 										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 						              	dec_item_add_pre_text("Write Data Lo : ");
-										pkt_add_item(-1, -1, "Write Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+										pkt_add_item(-1, -1, "Write Data Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 										dec_item_add_data(buffer[k].data[0]);
 										break;
 										
@@ -525,7 +526,7 @@ function decode_RTU()
 										dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 						              	dec_item_add_pre_text("Data : ");
 										dec_item_add_data(buffer[k].data[0]);
-										pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+										pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 										break;
 								}
 								
@@ -559,12 +560,12 @@ function decode_RTU()
 											if (fct==0x10)
 											{
 								              	dec_item_add_pre_text("Starting Address Hi : ");
-												pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 								              	dec_item_add_pre_text("Coil Address Hi : ");
-												pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -574,12 +575,12 @@ function decode_RTU()
 											if (fct==0x10)
 											{
 								              	dec_item_add_pre_text("Starting Address Lo : ");
-												pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 								              	dec_item_add_pre_text("Coil Address Lo : ");
-												pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -589,12 +590,12 @@ function decode_RTU()
 											if(fct==0x0F)
 											{
 							              		dec_item_add_pre_text("Quantity of Coils Hi : ");
-												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Quantity of Registers Hi : ");
-												pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -604,12 +605,12 @@ function decode_RTU()
 											if(fct==0x0F)
 											{
 							              		dec_item_add_pre_text("Quantity of Coils Lo : ");
-												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Quantity of Registers Lo : ");
-												pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -618,7 +619,7 @@ function decode_RTU()
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Data : ");
 											dec_item_add_data(buffer[k].data[0]);
-											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											break;
 									}
 									
@@ -649,12 +650,12 @@ function decode_RTU()
 											if (fct==0x10)
 											{
 								              	dec_item_add_pre_text("Starting Address Hi : ");
-												pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 								              	dec_item_add_pre_text("Coil Address Hi : ");
-												pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Coil Address Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -664,12 +665,12 @@ function decode_RTU()
 											if (fct==0x10)
 											{
 								              	dec_item_add_pre_text("Starting Address Lo : ");
-												pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 								              	dec_item_add_pre_text("Coil Address Lo : ");
-												pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Coil Address Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -679,12 +680,12 @@ function decode_RTU()
 											if(fct==0x0F)
 											{
 							              		dec_item_add_pre_text("Quantity of Coils Hi : ");
-												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Coils Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Quantity of Registers Hi : ");
-												pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Registers Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -694,12 +695,12 @@ function decode_RTU()
 											if(fct==0x0F)
 											{
 							              		dec_item_add_pre_text("Quantity of Coils Lo : ");
-												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Coils Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Quantity of Registers Lo : ");
-												pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Registers Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(buffer[k].data[0]);
 											break;
@@ -707,7 +708,7 @@ function decode_RTU()
 										case 4:
 											dec_item_new(CH_SELECTOR,buffer[k].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Byte Count : ");
-											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Byte Count", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(buffer[k].data[0]);
 											break;
 											
@@ -718,12 +719,12 @@ function decode_RTU()
 												if(fct==0x10)
 												{
 								              		dec_item_add_pre_text("Data Hi : ");
-													pkt_add_item(-1, -1, "Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Data Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 								              		dec_item_add_pre_text("Write Data Hi : ");
-													pkt_add_item(-1, -1, "Write Data Hi", buffer[k].data[0], light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Write Data Hi", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 											}
 											else
@@ -731,12 +732,12 @@ function decode_RTU()
 												if(fct==0x10)
 												{
 								              		dec_item_add_pre_text("Data Lo : ");
-													pkt_add_item(-1, -1, "Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Data Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 								              		dec_item_add_pre_text("Write Data Lo : ");
-													pkt_add_item(-1, -1, "Write Data Lo", buffer[k].data[0], light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Write Data Lo", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 											}
 											dec_item_add_data(buffer[k].data[0]);
@@ -771,7 +772,7 @@ function decode_RTU()
 								
 								trame[trame.length] = buffer[k].data[0];
 								
-								pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color);
+								pkt_add_item(-1, -1, "Data", buffer[k].data[0], light_colors.yellow, channel_color, true, CH_SELECTOR);
 								
 								hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
 							}
@@ -793,16 +794,16 @@ function decode_RTU()
 					if (crc==crc_red)
 					{
 						dec_item_add_post_text(" OK");
-						pkt_add_item(-1, -1, "CRC OK", int_to_str_hex(crc_red), light_colors.orange, channel_color);
+						pkt_add_item(-1, -1, "CRC OK", int_to_str_hex(crc_red), light_colors.orange, channel_color, true, CH_SELECTOR);
 					}
 					else
 					{
 	              		dec_item_add_post_text(" WRONG ! Should be " + int_to_str_hex(crc));
 	              		dec_item_add_post_text(" ! " + int_to_str_hex(crc));
 	              		dec_item_add_post_text("!");
-						pkt_add_item(-1, -1, "CRC WRONG !", int_to_str_hex(crc_red), dark_colors.red, channel_color);
+						pkt_add_item(-1, -1, "CRC WRONG !", int_to_str_hex(crc_red), dark_colors.red, channel_color, true, CH_SELECTOR);
 						pkt_start("CRC ERROR");
-						pkt_add_item(-1,-1, "Should be :", int_to_str_hex(crc), dark_colors.orange, channel_color);
+						pkt_add_item(-1,-1, "Should be :", int_to_str_hex(crc), dark_colors.orange, channel_color, true, CH_SELECTOR);
 						pkt_end();
 					}
 				
@@ -812,7 +813,7 @@ function decode_RTU()
 	              	dec_item_add_pre_text("EOF");
 	              	dec_item_add_pre_text("E");
 		
-					pkt_add_item(-1,-1, "End of Frame", "", light_colors.blue, channel_color);
+					pkt_add_item(-1,-1, "End of Frame", "", light_colors.blue, channel_color, true, CH_SELECTOR);
 		
 					state = 0;
 					pkt_end();
@@ -893,7 +894,7 @@ function decode_ASCII()
 	            	state = 1;
 		
 					pkt_start("Modbus ASCII");
-					pkt_add_item(-1, -1, "Start", ":", dark_colors.blue, channel_color);
+					pkt_add_item(-1, -1, "Start", ":", dark_colors.blue, channel_color, true, CH_SELECTOR);
 					
 					hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
 	         	}
@@ -918,7 +919,7 @@ function decode_ASCII()
               	dec_item_add_pre_text("@ ");//Minimum zoom
 				dec_item_add_data(val);
 				
-				pkt_add_item(-1, -1, "Address", val, dark_colors.green, channel_color);
+				pkt_add_item(-1, -1, "Address", val, dark_colors.green, channel_color, true, CH_SELECTOR);
 				
 				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i].data[0]);
 				hex_add_byte(CH_SELECTOR, -1, -1, buffer[i+1].data[0]);
@@ -1005,14 +1006,14 @@ function decode_ASCII()
 											case 2:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Starting Address Hi : ");
-												pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
 											case 4:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							              		dec_item_add_pre_text("Starting Address Lo : ");
-												pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
@@ -1021,12 +1022,12 @@ function decode_ASCII()
 												if (fct==0x01)
 												{
 													dec_item_add_pre_text("Quantity of Coils Hi	: ");
-													pkt_add_item(-1, -1, "Quantity of Coils Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Coils Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 													dec_item_add_pre_text("Quantity of inputs Hi : ");
-													pkt_add_item(-1, -1, "Quantity of inputs Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of inputs Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1036,12 +1037,12 @@ function decode_ASCII()
 												if (fct==0x01)
 												{
 													dec_item_add_pre_text("Quantity of Coils Lo	: ");
-													pkt_add_item(-1, -1, "Quantity of Coils Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Coils Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 													dec_item_add_pre_text("Quantity of inputs Lo : ");
-													pkt_add_item(-1, -1, "Quantity of inputs Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of inputs Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1050,7 +1051,7 @@ function decode_ASCII()
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Data : ");
 												dec_item_add_data(val);
-												pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												break;
 										}
 									}
@@ -1096,14 +1097,14 @@ function decode_ASCII()
 											case 2:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Byte Count : ");
-												pkt_add_item(-1, -1, "Byte Count", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Byte Count", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
 											default :
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Data : ");
-												pkt_add_item(-1, -1, "Data", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Data", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 										}
@@ -1154,28 +1155,28 @@ function decode_ASCII()
 											case 2:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Starting Address Hi : ");
-												pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
 											case 4:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							              		dec_item_add_pre_text("Starting Address Lo : ");
-												pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
 											case 6:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							              		dec_item_add_pre_text("Quantity of Registers Hi	: ");
-												pkt_add_item(-1, -1, "Quantity of Registers Hi", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Registers Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
 											case 8:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							              		dec_item_add_pre_text("Quantity of Registers Lo	: ");
-												pkt_add_item(-1, -1, "Quantity of Registers Lo", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Quantity of Registers Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
@@ -1183,7 +1184,7 @@ function decode_ASCII()
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Data : ");
 												dec_item_add_data(val);
-												pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												break;
 										}
 									}
@@ -1229,7 +1230,7 @@ function decode_ASCII()
 											case 2:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Byte Count : ");
-												pkt_add_item(-1, -1, "Byte Count", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Byte Count", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
@@ -1238,12 +1239,12 @@ function decode_ASCII()
 												if((p/2)%2)
 												{
 								              		dec_item_add_pre_text("Data Lo : ");
-													pkt_add_item(-1, -1, "Data Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Data Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 								              		dec_item_add_pre_text("Data Hi : ");
-													pkt_add_item(-1, -1, "Data Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Data Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1286,12 +1287,12 @@ function decode_ASCII()
 											if (fct==0x05)
 											{
 							              		dec_item_add_pre_text("Coil Address Hi : ");
-												pkt_add_item(-1, -1, "Coil Address Hi", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Coil Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Register Address Hi : ");
-												pkt_add_item(-1, -1, "Register Address Hi", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Register Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(val);
 											break;
@@ -1301,12 +1302,12 @@ function decode_ASCII()
 											if (fct==0x05)
 											{
 							              		dec_item_add_pre_text("Coil Address Lo : ");
-												pkt_add_item(-1, -1, "Coil Address Lo", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Coil Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											else
 											{
 							              		dec_item_add_pre_text("Register Address Lo : ");
-												pkt_add_item(-1, -1, "Register Address Lo", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Register Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 											}
 											dec_item_add_data(val);
 											break;
@@ -1314,14 +1315,14 @@ function decode_ASCII()
 										case 6:
 											dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Write Data Hi : ");
-											pkt_add_item(-1, -1, "Write Data Hi", str, light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Write Data Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(val);
 											break;
 											
 										case 8:
 											dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Write Data Lo : ");
-											pkt_add_item(-1, -1, "Write Data Lo", str, light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Write Data Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 											dec_item_add_data(val);
 											break;
 											
@@ -1329,7 +1330,7 @@ function decode_ASCII()
 											dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 							              	dec_item_add_pre_text("Data : ");
 											dec_item_add_data(val);
-											pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color);
+											pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color, true, CH_SELECTOR);
 											break;
 									}
 								}
@@ -1380,12 +1381,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 									              	dec_item_add_pre_text("Starting Address Hi : ");
-													pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 									              	dec_item_add_pre_text("Coil Address Hi : ");
-													pkt_add_item(-1, -1, "Coil Address Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Coil Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1395,12 +1396,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 									              	dec_item_add_pre_text("Starting Address Lo : ");
-													pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 									              	dec_item_add_pre_text("Coil Address Lo : ");
-													pkt_add_item(-1, -1, "Coil Address Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Coil Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1410,12 +1411,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 								              		dec_item_add_pre_text("Quantity of Registers Hi	: ");
-													pkt_add_item(-1, -1, "Quantity of Registers Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Registers Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 								              		dec_item_add_pre_text("Quantity of Coils Hi	: ");
-													pkt_add_item(-1, -1, "Quantity of Coils Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Coils Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1425,12 +1426,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 								              		dec_item_add_pre_text("Quantity of Registers Lo	: ");
-													pkt_add_item(-1, -1, "Quantity of Registers Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Registers Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 								              		dec_item_add_pre_text("Quantity of Coils Lo	: ");
-													pkt_add_item(-1, -1, "Quantity of Coils Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Coils Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1439,7 +1440,7 @@ function decode_ASCII()
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Data : ");
 												dec_item_add_data(val);
-												pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												break;
 										}
 									}
@@ -1487,12 +1488,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 									              	dec_item_add_pre_text("Starting Address Hi : ");
-													pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Starting Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 									              	dec_item_add_pre_text("Coil Address Hi : ");
-													pkt_add_item(-1, -1, "Coil Address Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Coil Address Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1502,12 +1503,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 									              	dec_item_add_pre_text("Starting Address Lo : ");
-													pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Starting Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 									              	dec_item_add_pre_text("Coil Address Lo : ");
-													pkt_add_item(-1, -1, "Coil Address Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Coil Address Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1517,12 +1518,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 								              		dec_item_add_pre_text("Quantity of Registers Hi	: ");
-													pkt_add_item(-1, -1, "Quantity of Registers Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Registers Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 								              		dec_item_add_pre_text("Quantity of Coils Hi	: ");
-													pkt_add_item(-1, -1, "Quantity of Coils Hi", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Coils Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1532,12 +1533,12 @@ function decode_ASCII()
 												if (fct==0x10)
 												{
 								              		dec_item_add_pre_text("Quantity of Registers Lo	: ");
-													pkt_add_item(-1, -1, "Quantity of Registers Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Registers Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												else
 												{
 								              		dec_item_add_pre_text("Quantity of Coils Lo	: ");
-													pkt_add_item(-1, -1, "Quantity of Coils Lo", str, light_colors.yellow, channel_color);
+													pkt_add_item(-1, -1, "Quantity of Coils Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												}
 												dec_item_add_data(val);
 												break;
@@ -1545,7 +1546,7 @@ function decode_ASCII()
 											case 10:
 												dec_item_new(CH_SELECTOR,buffer[k-1].start_s,buffer[k].end_s);
 								              	dec_item_add_pre_text("Byte Count : ");
-												pkt_add_item(-1, -1, "Byte Count", str, light_colors.yellow, channel_color);
+												pkt_add_item(-1, -1, "Byte Count", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 												dec_item_add_data(val);
 												break;
 												
@@ -1556,12 +1557,12 @@ function decode_ASCII()
 													if(fct==0x10)
 													{
 									              		dec_item_add_pre_text("Data Lo : ");
-														pkt_add_item(-1, -1, "Data Lo", str, light_colors.yellow, channel_color);
+														pkt_add_item(-1, -1, "Data Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 													}
 													else
 													{
 									              		dec_item_add_pre_text("Write Data Lo : ");
-														pkt_add_item(-1, -1, "Write Data Lo", str, light_colors.yellow, channel_color);
+														pkt_add_item(-1, -1, "Write Data Lo", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 													}
 												}
 												else
@@ -1569,12 +1570,12 @@ function decode_ASCII()
 													if(fct==0x10)
 													{
 									              		dec_item_add_pre_text("Data Hi : ");
-														pkt_add_item(-1, -1, "Data Hi", str, light_colors.yellow, channel_color);
+														pkt_add_item(-1, -1, "Data Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 													}
 													else
 													{
 									              		dec_item_add_pre_text("Write Data Hi : ");
-														pkt_add_item(-1, -1, "Write Data Hi", str, light_colors.yellow, channel_color);
+														pkt_add_item(-1, -1, "Write Data Hi", str, light_colors.yellow, channel_color, true, CH_SELECTOR);
 													}
 												}
 												dec_item_add_data(val);
@@ -1613,7 +1614,7 @@ function decode_ASCII()
 									
 									hex_add_byte(CH_SELECTOR, -1, -1, buffer[k].data[0]);
 									
-									pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color);
+									pkt_add_item(-1, -1, "Data", val, light_colors.yellow, channel_color, true, CH_SELECTOR);
 								}
 								else
 								{
@@ -1638,7 +1639,7 @@ function decode_ASCII()
 						dec_item_add_pre_text("ERROR");
 						dec_item_add_pre_text("E!");
 						
-						pkt_add_item(-1, -1, "ERROR", "#############", dark_colors.black, channel_color);
+						pkt_add_item(-1, -1, "ERROR", "#############", dark_colors.black, channel_color, true, CH_SELECTOR);
 						
 						state = 0;
 						pkt_end();
@@ -1674,16 +1675,16 @@ function decode_ASCII()
 						if (lrc==lrc_red)
 						{
 							dec_item_add_post_text(" OK");
-							pkt_add_item(-1, -1, "LRC OK", int_to_str_hex(lrc_red), light_colors.orange, channel_color);
+							pkt_add_item(-1, -1, "LRC OK", int_to_str_hex(lrc_red), light_colors.orange, channel_color, true, CH_SELECTOR);
 						}
 						else
 						{
 		              		dec_item_add_post_text(" WRONG ! Should be " + int_to_str_hex(lrc));
 		              		dec_item_add_post_text(" ! " + int_to_str_hex(lrc));
 		              		dec_item_add_post_text("!");
-							pkt_add_item(-1, -1, "LRC WRONG !", int_to_str_hex(lrc_red), dark_colors.red, channel_color);
+							pkt_add_item(-1, -1, "LRC WRONG !", int_to_str_hex(lrc_red), dark_colors.red, channel_color, true, CH_SELECTOR);
 							pkt_start("LRC ERROR");
-							pkt_add_item(-1,-1, "Should be :", int_to_str_hex(lrc), dark_colors.orange, channel_color);
+							pkt_add_item(-1,-1, "Should be :", int_to_str_hex(lrc), dark_colors.orange, channel_color, true, CH_SELECTOR);
 							pkt_end();
 						}
 					}
@@ -1696,7 +1697,7 @@ function decode_ASCII()
 					dec_item_add_post_text("<CR><LF>");
 					dec_item_add_post_text("<CR><LF>");
 					
-					pkt_add_item(-1, -1, "EOF", "<CR><LF>", light_colors.blue, channel_color);
+					pkt_add_item(-1, -1, "EOF", "<CR><LF>", light_colors.blue, channel_color, true, CH_SELECTOR);
 					
 					hex_add_byte(CH_SELECTOR, -1, -1, "\r\n".charCodeAt(0));
 					hex_add_byte(CH_SELECTOR, -1, -1, "\r\n".charCodeAt(1));
@@ -2371,41 +2372,42 @@ function function_to_str(data, r_a)
 	{
 		case 0x01:
 			dec_item_add_comment("Read Coil Status");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Coil Status " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Coil Status " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		case 0x02:
 			dec_item_add_comment("Read Input Status");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Status " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Status " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		case 0x03:
 			dec_item_add_comment("Read Holding Register");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Holding Register " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Holding Register " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		case 0x04:
 			dec_item_add_comment("Read Input Register");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Register " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Read Input Register " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		case 0x05:
 			dec_item_add_comment("Write Single Coil");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Coil " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Coil " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		case 0x06:
 			dec_item_add_comment("Write Single Register");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Register " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Single Register " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		case 0x0F:
 			dec_item_add_comment("Write Multiple Coils");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Coils " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Coils " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		case 0x10:
 			dec_item_add_comment("Write Multiple Registers");
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Registers " + r_a, light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data) + " Write Multiple Registers " + r_a, light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 		default :
-			pkt_add_item(-1, -1, "Function", int_to_str_hex (data), light_colors.green, channel_color);
+			pkt_add_item(-1, -1, "Function", int_to_str_hex (data), light_colors.green, channel_color, true, CH_SELECTOR);
 			break;
 	}
 }
+
 
 
 

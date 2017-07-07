@@ -11,6 +11,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.66: Add light packet capabilities.
 	V1.65: Completely reworked PacketView.
 	V1.62: Better progress reporting, better demo mode generator, better PacketView
 	V1.61: Upgrade PacketView
@@ -69,7 +70,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.65";
+	return "1.66";
 }
 
 /* Author 
@@ -1155,7 +1156,7 @@ function pkt_add_packet (pktObj)
 	}
 
 	pkt_start("SPI");
-	pkt_add_item(pktObj.start, pktObj.end, "SPI Frame", desc, dark_colors.gray, get_ch_light_color(ch_clk));
+	pkt_add_item(pktObj.start, pktObj.end, "SPI Frame", desc, dark_colors.gray, get_ch_light_color(ch_clk),true,ch_clk);
 	pkt_start("NEW FRAME");
 
 	if (pkt_view_mode)
@@ -1169,13 +1170,13 @@ function pkt_add_packet (pktObj)
 			if (pktObj.mosiArr.length > 0)
 			{
 				word = int_to_str_hex(pktObj.mosiArr[words].value);
-				pkt_add_item(pktObj.mosiArr[words].start, pktObj.mosiArr[words].end, "MOSI", word, get_ch_color(ch_mosi), get_ch_light_color(ch_mosi));
+				pkt_add_item(pktObj.mosiArr[words].start, pktObj.mosiArr[words].end, "MOSI", word, get_ch_color(ch_mosi), get_ch_light_color(ch_mosi),true,ch_mosi);
 			}
 			
 			if (pktObj.misoArr.length > 0)
 			{
 				word = int_to_str_hex(pktObj.misoArr[words].value);
-				pkt_add_item(pktObj.misoArr[words].start, pktObj.misoArr[words].end, "MISO", word, get_ch_color(ch_miso), get_ch_light_color(ch_miso));
+				pkt_add_item(pktObj.misoArr[words].start, pktObj.misoArr[words].end, "MISO", word, get_ch_color(ch_miso), get_ch_light_color(ch_miso),true,ch_miso);
 			}
 			
 			words++;
@@ -1253,7 +1254,10 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 			desc += "[" + firstWordPos + ":" + lastWordPos + "]";
 		}
 
-		pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor);
+		if(title == "MOSI")
+			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
+		else
+			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
 		lineNum++;
 	}
 
@@ -1311,4 +1315,5 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
+
 

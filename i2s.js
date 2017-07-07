@@ -55,6 +55,7 @@ function get_dec_name()
 function get_dec_ver()
 {
 	return "1.28";
+	return "1.27";
 }
 
 
@@ -435,4 +436,5 @@ function get_bit_margin()
 {
 	return ((5 * sample_rate) / 10000000);
 }
+
 

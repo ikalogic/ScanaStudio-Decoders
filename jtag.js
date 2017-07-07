@@ -13,7 +13,8 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.04: Fix decode freezing issue 
+	V1.05: Add light packet capabilities
+	V1.04: Fix decode freezing issue
 	V1.03: Fix some bugs
 	V1.02: Prevented incompatible workspaces from using the decoder
 	V1.01: Now the decoding can be aborted
@@ -42,7 +43,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.04";
+	return "1.05";
 }
 
 
@@ -245,7 +246,7 @@ function decode()
 
 				if(TMS_Transition.val == 0)
 				{
-					pkt_add_item(-1,-1,"TEST RESET","",PKT_COLOR_TEST_RESET_TITLE ,PKT_COLOR_DATA ,true);
+					pkt_add_item(-1,-1,"TEST RESET","",PKT_COLOR_TEST_RESET_TITLE ,PKT_COLOR_DATA ,true, ch_tms);
 					TAP_state = TAP_Controller.Run_Test;
 					text = "RUN TEST IDLE";
 					small_text = "RUN TEST";
@@ -261,7 +262,7 @@ function decode()
 				
 				if (TMS_Transition.val == 1)
 				{
-					pkt_add_item(-1,-1,"RUN TEST","",PKT_COLOR_RUN_TEST_TITLE ,PKT_COLOR_DATA ,true);
+					pkt_add_item(-1,-1,"RUN TEST","",PKT_COLOR_RUN_TEST_TITLE ,PKT_COLOR_DATA ,true, ch_tms);
 					TAP_state = TAP_Controller.DR_Scan;
 					text = "SELECT DR";
 					small_text = "SCAN DR"
@@ -272,7 +273,7 @@ function decode()
 
 			case TAP_Controller.DR_Scan:
 
-				pkt_add_item(-1, -1, "DR SCAN", "", PKT_COLOR_DR_SCAN_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "DR SCAN", "", PKT_COLOR_DR_SCAN_TITLE, PKT_COLOR_DATA, true, ch_tms);
 				Scan_type = TAP_Controller.DR_Scan;
 
 				if (TMS_Transition.val == 1)
@@ -294,7 +295,7 @@ function decode()
 
 			case TAP_Controller.IR_Scan:
 
-				pkt_add_item(-1, -1, "IR SCAN", "", PKT_COLOR_IR_SCAN_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "IR SCAN", "", PKT_COLOR_IR_SCAN_TITLE, PKT_COLOR_DATA, true, ch_tms);
 				Scan_type = TAP_Controller.IR_Scan;
 
 				if (TMS_Transition.val == 1)
@@ -316,7 +317,7 @@ function decode()
 
 			case TAP_Controller.Capture:
 
-				pkt_add_item(-1, -1, "CAPTURE", "", PKT_COLOR_CAPTURE_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "CAPTURE", "", PKT_COLOR_CAPTURE_TITLE, PKT_COLOR_DATA, true, ch_tms);
 
 				if (TMS_Transition.val == 1)
 				{
@@ -337,7 +338,7 @@ function decode()
 
 			case TAP_Controller.Shift:
 
-				pkt_add_item(-1 ,-1, "SHIFT", "", PKT_COLOR_SHIFT_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1 ,-1, "SHIFT", "", PKT_COLOR_SHIFT_TITLE, PKT_COLOR_DATA, true, ch_tms);
 				decode_signal();
 
 				if (TMS_Transition.sample >= TCK_Transition.sample)
@@ -357,7 +358,7 @@ function decode()
 			
 			case TAP_Controller.Exit1:
 
-				pkt_add_item(-1, -1, "EXIT 1", "", PKT_COLOR_EXIT1_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "EXIT 1", "", PKT_COLOR_EXIT1_TITLE, PKT_COLOR_DATA, true, ch_tms);
 
 				if (TMS_Transition.val == 1)
 				{
@@ -378,7 +379,7 @@ function decode()
 
 			case TAP_Controller.Pause:
 
-				pkt_add_item(-1, -1, "PAUSE", "", PKT_COLOR_PAUSE_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "PAUSE", "", PKT_COLOR_PAUSE_TITLE, PKT_COLOR_DATA, true, ch_tms);
 
 				if (TMS_Transition.val == 1)
 				{
@@ -392,7 +393,7 @@ function decode()
 
 			case TAP_Controller.Exit2:
 
-				pkt_add_item(-1, -1, "EXIT 2", "", PKT_COLOR_EXIT2_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "EXIT 2", "", PKT_COLOR_EXIT2_TITLE, PKT_COLOR_DATA, true, ch_tms);
 
 				if (TMS_Transition.val == 1)
 				{
@@ -413,7 +414,7 @@ function decode()
 
 			case TAP_Controller.Update:
 
-				pkt_add_item(-1,-1,"UPDATE","",PKT_COLOR_UPDATE ,PKT_COLOR_DATA ,true);
+				pkt_add_item(-1,-1,"UPDATE","",PKT_COLOR_UPDATE ,PKT_COLOR_DATA ,true, ch_tms);
 
 				if (TMS_Transition.val == 1)
 				{
@@ -776,7 +777,7 @@ function pkt_data_do()
 	var data_tmp;
 
 	data_do = tab_data_do_hex[0];
-	pkt_add_item(start_pkt_data, end_pkt_data, "D0", data_do + "...", PKT_COLOR_DATA_DO_TITLE, PKT_COLOR_DATA, true);
+	pkt_add_item(start_pkt_data, end_pkt_data, "DO", data_do + "...", PKT_COLOR_DATA_DO_TITLE, PKT_COLOR_DATA, true, ch_tdo);
 	data_do = "";
 
 	if (tab_data_do_hex.length % 8)
@@ -825,7 +826,7 @@ function pkt_data_do()
 	}
 
 	pkt_start("JTAG DO");		
-	pkt_add_item(start_pkt_data, end_pkt_data, "DATA DO", data_do, PKT_COLOR_DATA_DO_TITLE, PKT_COLOR_DATA, true);	
+	pkt_add_item(start_pkt_data, end_pkt_data, "DATA DO", data_do, PKT_COLOR_DATA_DO_TITLE, PKT_COLOR_DATA, true, ch_tdo);	
 	pkt_end();
 
 	tab_data_do_hex.length = 0;
@@ -840,7 +841,7 @@ function pkt_data_di()
 	var data_tmp;
 
 	data_di = tab_data_di_hex[0];
-	pkt_add_item(start_pkt_data, end_pkt_data, "D0", data_di + "...", PKT_COLOR_DATA_DI_TITLE, PKT_COLOR_DATA, true);
+	pkt_add_item(start_pkt_data, end_pkt_data, "DI", data_di + "...", PKT_COLOR_DATA_DI_TITLE, PKT_COLOR_DATA, true, ch_tdi);
 	data_di = "";
 
 	if (tab_data_di_hex.length % 8)
@@ -889,7 +890,7 @@ function pkt_data_di()
 	}
 
 	pkt_start("JTAG DI");		
-	pkt_add_item(start_pkt_data,end_pkt_data,"DATA DI",data_di,PKT_COLOR_DATA_DI_TITLE,PKT_COLOR_DATA,true);	
+	pkt_add_item(start_pkt_data,end_pkt_data,"DATA DI",data_di,PKT_COLOR_DATA_DI_TITLE,PKT_COLOR_DATA,true, ch_tdi);	
 	pkt_end();
 
 	tab_data_di_hex.length = 0;
@@ -908,3 +909,4 @@ function hex_to_ascii (hexx)
 
 	return str;
 }
+

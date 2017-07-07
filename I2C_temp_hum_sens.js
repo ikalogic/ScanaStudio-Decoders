@@ -12,6 +12,8 @@ The following commented block allows some related informations to be displayed o
 </DESCRIPTION>
 
 <RELEASE_NOTES>
+
+	V1.34: Add light packet capabilities
 	V1.33: Prevented incompatible workspaces from using the decoder
 	V1.32: Now the decoding can be aborted
 	V1.31: Corrected some spelling mistakes
@@ -42,7 +44,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.33";
+	return "1.34";
 }
 
 /* Author 
@@ -716,9 +718,9 @@ function Text(grp)
 			data_measure = Math.round(data_measure);
 			if(T == true)
 			{
-				dec_item_add_pre_text(data_measure+" °C");
+				dec_item_add_pre_text(data_measure+" ?C");
 				T = false;
-				data = data_measure+" °C";
+				data = data_measure+" ?C";
 				title = "TEMPERATURE";
 			}
 			else if (RH == true)
@@ -753,9 +755,9 @@ function Text(grp)
 				
 				if(T == true)
 				{
-					dec_item_add_post_text(" : "+data_measure+" °C");
+					dec_item_add_post_text(" : "+data_measure+" ?C");
 					T = false;
-					data = data_measure+" °C";
+					data = data_measure+" ?C";
 					title = "TEMPERATURE";
 				}
 				else if (RH == true)
@@ -801,8 +803,8 @@ function Text(grp)
 			registre_packet = false;
 			
 			pkt_start("Registr bits description");
-				pkt_add_item(-1, -1, "Disable OTP Reload", ((data&0x02)>>1), color, PKT_COLOR_DATA, true);
-				pkt_add_item(-1, -1, "Enable on-chip heater", ((data&0x04)>>2), color, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "Disable OTP Reload", ((data&0x02)>>1), color, PKT_COLOR_DATA, true, chSda);
+				pkt_add_item(-1, -1, "Enable on-chip heater", ((data&0x04)>>2), color, PKT_COLOR_DATA, true, chSda);
 				data_status_bat = (data&0x40)>>6;
 				if(data_status_bat == 0)
 				{
@@ -812,7 +814,7 @@ function Text(grp)
 				{
 					data_status_bat += " -> VDD < 2.25V";
 				}
-				pkt_add_item(-1, -1, "Status : End of battery", data_status_bat, color, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "Status : End of battery", data_status_bat, color, PKT_COLOR_DATA, true, chSda);
 				tmp_int = (data&0x80)>>6;
 				data = data&0x01;
 				data |= tmp_int;
@@ -834,12 +836,12 @@ function Text(grp)
 					data += " -> RH:11bit  T:11bit";
 				}
 				
-				pkt_add_item(-1, -1, "Measurement resolution", data, color, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "Measurement resolution", data, color, PKT_COLOR_DATA, true, chSda);
 				pkt_end();	
 		}
 		else if (end_packt == false)
 		{
-			pkt_add_item(-1, -1, title, data, color, PKT_COLOR_DATA, true);
+			pkt_add_item(-1, -1, title, data, color, PKT_COLOR_DATA, true, chSda);
 		}
 		if((end_packt == true) && (last_end_state == false))
 		{
@@ -1073,6 +1075,7 @@ function Calculate_value(value)
 	
 	return result
 }
+
 
 
 
