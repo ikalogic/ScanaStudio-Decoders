@@ -1257,7 +1257,7 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 		if(title == "MOSI")
 			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
 		else
-			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
+			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_miso);
 		lineNum++;
 	}
 
@@ -1315,5 +1315,6 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
+
 
 
