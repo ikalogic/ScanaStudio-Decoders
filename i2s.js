@@ -16,7 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.28: 
+	V1.28: Timing bug fixed
 	V1.27: Prevented incompatible workspaces from using the decoder
 	V1.26: Now the decoding can be aborted
 	V1.25: A few minor fixes. New initial offset control.
@@ -435,4 +435,5 @@ function get_bit_margin()
 {
 	return ((5 * sample_rate) / 10000000);
 }
+
 
