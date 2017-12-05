@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.43: Add light packet capabilities
 	V1.42: Fixed bug related to number of bits in demo signals builder
 	V1.41: Correted bug related to number of bits in signal generator
 	V1.40: Added ScanaStudio 2.3xx compatibility.
@@ -63,7 +64,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.42";
+	return "1.43";
 }
 
 
@@ -246,7 +247,7 @@ function decode()
 		dec_item_add_pre_text("S");
 		dec_item_add_comment("Start");
 
-		// pkt_add_item(-1, -1, "START", " ", PKT_COLOR_START_TITLE, PKT_COLOR_DATA, true);
+		// pkt_add_item(-1, -1, "START", " ", PKT_COLOR_START_TITLE, PKT_COLOR_DATA, true, ch);
 
 		dec_item_new(ch, t.sample + spb + m, t.sample + (spb * (nbits + 1)) - m);
 
@@ -307,7 +308,7 @@ function decode()
 		dec_item_add_data(val);
 		dec_item_add_comment(strHexData);
 
-		pkt_add_item(-1, -1, "DATA", strHexData, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(-1, -1, "DATA", strHexData, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true, ch);
 		
 		if (nbits <= 8)
 		{
@@ -333,7 +334,7 @@ function decode()
 				dec_item_add_pre_text("p");
 				dec_item_add_comment("Parity OK");
 
-				pkt_add_item(-1, -1, "PARITY", "OK", PKT_COLOR_PARITY_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "PARITY", "OK", PKT_COLOR_PARITY_TITLE, PKT_COLOR_DATA, true, ch);
 			}
 			else
 			{
@@ -343,7 +344,7 @@ function decode()
 				dec_item_add_pre_text("!");
 				dec_item_add_comment("Parity ERROR");
 
-				pkt_add_item(-1, -1, "PARITY", "ERROR", PKT_COLOR_PARITY_TITLE, PKT_COLOR_DATA, true);
+				pkt_add_item(-1, -1, "PARITY", "ERROR", PKT_COLOR_PARITY_TITLE, PKT_COLOR_DATA, true, ch);
 			}
 
 			t.sample += (spb * (nbits + 2));
@@ -361,7 +362,7 @@ function decode()
 			dec_item_add_pre_text("P");
 			dec_item_add_comment("Stop");
 
-			// pkt_add_item(-1, -1, "STOP", " ", PKT_COLOR_STOP_TITLE, PKT_COLOR_DATA, true);
+			// pkt_add_item(-1, -1, "STOP", " ", PKT_COLOR_STOP_TITLE, PKT_COLOR_DATA, true, ch);
 		}
 		else
 		{
@@ -371,7 +372,7 @@ function decode()
 			dec_item_add_pre_text("P!");
 			dec_item_add_comment("Stop bit Missing!");
 
-			pkt_add_item(-1, -1, "MISSING STOP", " ", PKT_COLOR_STOP_TITLE, PKT_COLOR_DATA, true);
+			pkt_add_item(-1, -1, "MISSING STOP", " ", PKT_COLOR_STOP_TITLE, PKT_COLOR_DATA, true, ch);
 		}
 
 		pkt_end();
@@ -944,6 +945,8 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
+
 
 
 

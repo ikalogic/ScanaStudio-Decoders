@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.71: Add light packet capabilities.
 	V1.70: Reworked PacketView.
 	V1.69: Show packet frames event if there is no data available.
 	V1.68: More stable I2C trigger.
@@ -76,7 +77,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.70";
+	return "1.71";
 }
 
 
@@ -1437,11 +1438,11 @@ function pkt_add_packet (ok)
 
 	if (ok)
 	{
-		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true, chSda);
 	}
 	else
 	{
-		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "I2C FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA, true, chSda);
 	}
 
 	pkt_start("NEW FRAME");
@@ -1490,7 +1491,7 @@ function pkt_add_packet (ok)
 					}
 					else
 					{
-						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor, true, chSda);
 						lineStart = false;
 						dataLine = "";
 						lineCnt = 0;
@@ -1499,17 +1500,17 @@ function pkt_add_packet (ok)
 
 				if (lineCnt > 0)
 				{
-					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor, true, chSda);
 				}
 			}
 			else
 			{
-				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, chSda);
 			}
 		}
 		else if (obj.title.localeCompare("ADDRESS") == 0)
 		{
-			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+			pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, chSda);
 		}
 	}
 
@@ -1648,3 +1649,4 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
+

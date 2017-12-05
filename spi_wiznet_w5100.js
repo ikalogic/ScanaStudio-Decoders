@@ -19,12 +19,15 @@ The following commented block allows some related informations to be displayed o
 	WARRANTIES OF ANY KIND, either express or implied.
 
 </DESCRIPTION>
+
 <RELEASE_NOTES>
 
+	V1.02: Add light packet capabilities
 	V1.01: Corrected a bug that would cause a crash on unexpected data.
 	V1.00: Initial release.
 
 </RELEASE_NOTES>
+
 <AUTHOR_URL>
 
 	mailto:bart(at)hijwegen(dot)com
@@ -54,7 +57,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.01";
+	return "1.02";
 }
 
 /* Author 
@@ -396,7 +399,7 @@ function decodeReset() {
 					dec_item_add_pre_text("Ign");
 					dec_item_add_pre_text("I");
 					// TODO: make the line below configurable or give a resume (we do not always want to show every reset button bounce)
-					pkt_add_item(t_reset_start.sample, t_reset_end.sample, "Reset", "Ignored HW Reset", PKT_COLOR_HEAD_RESET, PKT_COLOR_DATA_RESET);
+					pkt_add_item(t_reset_start.sample, t_reset_end.sample, "Reset", "Ignored HW Reset", PKT_COLOR_HEAD_RESET, PKT_COLOR_DATA_RESET, true, ch_reset);
 				}
 				pkt_end();
 			}
@@ -523,7 +526,7 @@ function decodeInt() {
 	}
 
 	pkt_start("INT");
-	pkt_add_item(t_int_start.sample, t_int_current.sample, "Interrupt", state, PKT_COLOR_INT_HEADER, PKT_COLOR_INT_DATA, true);
+	pkt_add_item(t_int_start.sample, t_int_current.sample, "Interrupt", state, PKT_COLOR_INT_HEADER, PKT_COLOR_INT_DATA, true, ch_int);
 	pkt_end();
 }
 
@@ -574,10 +577,10 @@ Number.prototype.between = function (first, last) {
 function printData(op_code, data, label) {
 	switch (op_code) {
 		case OP_CODE_READ:
-			pkt_add_item(-1, -1, label, data, PKT_COLOR_OPCODE_READ, PKT_COLOR_DATA_MISO, true);
+			pkt_add_item(-1, -1, label, data, PKT_COLOR_OPCODE_READ, PKT_COLOR_DATA_MISO, true, ch_miso);
 			break;
 		case OP_CODE_WRITE:
-			pkt_add_item(-1, -1, label, data, PKT_COLOR_OPCODE_WRITE, PKT_COLOR_DATA_MOSI, true);
+			pkt_add_item(-1, -1, label, data, PKT_COLOR_OPCODE_WRITE, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 			break;
 	}
 }
@@ -637,7 +640,7 @@ function decodeOpcodeHex(op_code_raw) {
 	if (op_code_raw < 0x10) {temp += "0";}
 
 	temp += op_code_raw.toString(16).toUpperCase();
-	pkt_add_item(-1, -1, "OP-Code", temp, PKT_COLOR_OPCODE_IGNORED, PKT_COLOR_DATA_MOSI, true);
+	pkt_add_item(-1, -1, "OP-Code", temp, PKT_COLOR_OPCODE_IGNORED, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 }
 
 function decodeDataHex(op_code, data) {
@@ -657,7 +660,7 @@ function decodeAddressHex(addr) {
 	if (addr < 0x1000) {temp += "0";}
 
 	temp += addr.toString(16).toUpperCase();
-	pkt_add_item(-1, -1, "ADDRESS", temp, get_ch_color(ch_mosi), PKT_COLOR_DATA_MOSI, true);
+	pkt_add_item(-1, -1, "ADDRESS", temp, get_ch_color(ch_mosi), PKT_COLOR_DATA_MOSI, true, ch_mosi);
 }
 
 function decodeDataDec(op_code, data) {
@@ -684,15 +687,15 @@ function decodeDataBool(op_code, data, bit, label) {
 function decodeOpcode(op_code) {
 	switch (op_code) {
 		case OP_CODE_READ:
-			pkt_add_item(-1, -1, "OP-Code", "READ", PKT_COLOR_OPCODE_READ, PKT_COLOR_DATA_MOSI, true);
+			pkt_add_item(-1, -1, "OP-Code", "READ", PKT_COLOR_OPCODE_READ, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 			break;
 
 		case OP_CODE_WRITE:
-			pkt_add_item(-1, -1, "OP-Code", "WRITE", PKT_COLOR_OPCODE_WRITE, PKT_COLOR_DATA_MOSI, true);
+			pkt_add_item(-1, -1, "OP-Code", "WRITE", PKT_COLOR_OPCODE_WRITE, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 			break;
 
 		case OP_CODE_IGNORED:
-			pkt_add_item(-1, -1, "OP-Code", "IGNORED", PKT_COLOR_OPCODE_IGNORED, PKT_COLOR_DATA_MOSI, true);
+			pkt_add_item(-1, -1, "OP-Code", "IGNORED", PKT_COLOR_OPCODE_IGNORED, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 			break;
 	}
 }
@@ -1114,7 +1117,7 @@ function decodeCommonRegisters(op_code, addr, data) {
 		case 0x002F: reg = "UPORT1"; dec = "HEX";    break;
 	}
 	
-	pkt_add_item(-1, -1, type, reg, PKT_COLOR_COMMON, PKT_COLOR_DATA_MOSI, true);
+	pkt_add_item(-1, -1, type, reg, PKT_COLOR_COMMON, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 	decodeData(op_code, data, dec);
 }
 
@@ -1167,7 +1170,7 @@ function decodeSocketRegisters(op_code, addr, data) {
 		// Reserved 0x42A - 0x04FF, 0x052A - 0x05FF, 0x062A - 0x06FF, 0x072A - 0x07FF
 	}
 	
-	pkt_add_item(-1, -1, type, socket + reg, PKT_COLOR_SOCKET, PKT_COLOR_DATA_MOSI, true);
+	pkt_add_item(-1, -1, type, socket + reg, PKT_COLOR_SOCKET, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 	decodeData(op_code, data, dec);
 }
 
@@ -1186,9 +1189,9 @@ function decodeMemory(op_code, addr, data, type) {
 
 	temp += addr.toString(16).toUpperCase();
 	if (op_code == OP_CODE_READ) {
-		pkt_add_item(-1, -1, type, temp, PKT_COLOR_RX_MEM, PKT_COLOR_DATA_MOSI, true);
+		pkt_add_item(-1, -1, type, temp, PKT_COLOR_RX_MEM, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 	} else {
-		pkt_add_item(-1, -1, type, temp, PKT_COLOR_TX_MEM, PKT_COLOR_DATA_MOSI, true);
+		pkt_add_item(-1, -1, type, temp, PKT_COLOR_TX_MEM, PKT_COLOR_DATA_MOSI, true, ch_mosi);
 	}
 	
 	decodeData(op_code, data, "ASCII");
@@ -1198,6 +1201,7 @@ function decodeReservedMemory(op_code, addr, data) {
 	decodeAddressHex(addr);
 	decodeDataHex(op_code, data);
 }
+
 
 
 

@@ -13,11 +13,12 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V2.01: Add light packet capabilities
 	V2.0:  New version, initial release
 	V1.05: Added USB speed audodetection, Coorected a bug related to low speed USB.
 	V1.04: More fluid progress bar
 	V1.03: Corrected a bug that caused "false" CRC errors.
-	V1.02: Corrected a bug that caused a hanging. 
+	V1.02: Corrected a bug that caused a hanging.
 	V1.01: Now the decoding can be aborted
 	V1.0:  Initial release
 
@@ -48,7 +49,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "2.0";
+	return "2.01";
 }
 
 /* Author 
@@ -250,7 +251,7 @@ function decode()
 					dec_item_add_pre_text("sync: "+int_to_str_hex(final_data));
 					dec_item_add_pre_text("sync");
 					hex_add_byte(ch_moins,-1,-1,final_data);
-					pkt_add_item(transition.sample,transition.sample+spb*8,"SYNC",int_to_str_hex(final_data),dark_colors.red,light_colors.red,1);
+					pkt_add_item(transition.sample,transition.sample+spb*8,"SYNC",int_to_str_hex(final_data),dark_colors.red,light_colors.red, true, ch_moins);
 					current_state=State_packet.PID;					
 				}
 				else transition=trs_go_after(ch_moins,transition.sample); // advancing to the next transition until a SYNC field is found
@@ -285,7 +286,7 @@ function decode()
 					}
 					dec_item_add_pre_text("CRC5 : "+int_to_str_hex(final_data)+" "+crc_ok);
 					dec_item_add_pre_text("CRC5");
-					pkt_add_item(transition.sample + spb*27 , transition.sample + spb*32,"CRC5 : "+crc_ok,int_to_str_hex(final_data),dark_colors.orange,light_colors.orange,1);
+					pkt_add_item(transition.sample + spb*27 , transition.sample + spb*32,"CRC5 : "+crc_ok,int_to_str_hex(final_data),dark_colors.orange,light_colors.orange, true, ch_moins);
 					hex_add_byte(ch_moins,-1,-1,final_data);							
 				}
 				current_state=State_packet.EOP; 
@@ -448,8 +449,8 @@ function detection_PID(start_sample)
 			dec_item_add_pre_text("PID OUT : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("OUT");
 			hex_add_byte(ch_moins,-1,-1,final_data);
-			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID OUT ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange,1);
+			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID OUT ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange, true, ch_moins);
 			after_pid = 1;
 			current_state = State_packet.SUBP;
 		break;
@@ -459,8 +460,8 @@ function detection_PID(start_sample)
 			dec_item_add_pre_text("PID IN : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("IN");
 			hex_add_byte(ch_moins,-1,-1,final_data);
-			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID IN ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange,1);
+			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID IN ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange, true, ch_moins);
 			after_pid = 1;
 			current_state = State_packet.SUBP;
 		break;
@@ -470,8 +471,8 @@ function detection_PID(start_sample)
 			dec_item_add_pre_text("PID SOF : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("SOF");
 			hex_add_byte(ch_moins,-1,-1,final_data);
-			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID SOF ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange,1);
+			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID SOF ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange, true, ch_moins);
 			after_pid = 4;
 			current_state = State_packet.SUBP;
 		break;
@@ -481,8 +482,8 @@ function detection_PID(start_sample)
 			dec_item_add_pre_text("PID SETUP : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("SETUP");
 			hex_add_byte(ch_moins,-1,-1,final_data);
-			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID SETUP ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange,1);
+			pkt_add_item(-1,-1,"TOKEN PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID SETUP ",int_to_str_hex(final_data),dark_colors.orange,light_colors.orange, true, ch_moins);
 			after_pid = 1;
 			current_state = State_packet.SUBP;
 		break;
@@ -491,8 +492,8 @@ function detection_PID(start_sample)
 			dec_item_new(ch_moins, start_sample + spb*8 , start_sample + spb*16);
 			dec_item_add_pre_text("PID DATA0 : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("DATA0");
-			pkt_add_item(-1,-1,"DATA PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID DATA0 ",int_to_str_hex(final_data),dark_colors.blue,light_colors.blue,1);
+			pkt_add_item(-1,-1,"DATA PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID DATA0 ",int_to_str_hex(final_data),dark_colors.blue,light_colors.blue, true, ch_moins);
 			hex_add_byte(ch_moins,-1,-1,final_data);
 			after_pid = 2;
 			current_state = State_packet.SUBP;
@@ -502,8 +503,8 @@ function detection_PID(start_sample)
 			dec_item_new(ch_moins, start_sample + spb*8 , start_sample + spb*16);
 			dec_item_add_pre_text("PID DATA1 : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("DATA1");
-			pkt_add_item(-1,-1,"DATA PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID DATA1 ",int_to_str_hex(final_data),dark_colors.blue,light_colors.blue,1);
+			pkt_add_item(-1,-1,"DATA PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID DATA1 ",int_to_str_hex(final_data),dark_colors.blue,light_colors.blue, true, ch_moins);
 			hex_add_byte(ch_moins,-1,-1,final_data);
 			after_pid = 2;
 			current_state = State_packet.SUBP;
@@ -514,8 +515,8 @@ function detection_PID(start_sample)
 			dec_item_add_pre_text("PID ACK : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("ACK");
 			hex_add_byte(ch_moins,-1,-1,final_data);
-			pkt_add_item(-1,-1,"HANDSHAKE PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID ACK ",int_to_str_hex(final_data),dark_colors.green,light_colors.green,1);			
+			pkt_add_item(-1,-1,"HANDSHAKE PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID ACK ",int_to_str_hex(final_data),dark_colors.green,light_colors.green, true, ch_moins);			
 			after_pid = 3;
 			current_state = State_packet.EOP;
 		break;
@@ -525,8 +526,8 @@ function detection_PID(start_sample)
 			dec_item_add_pre_text("PID NAK : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("NAK");
 			hex_add_byte(ch_moins,-1,-1,final_data);
-			pkt_add_item(-1,-1,"HANDSHAKE PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID NAK ",int_to_str_hex(final_data),dark_colors.green,light_colors.green,1);
+			pkt_add_item(-1,-1,"HANDSHAKE PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID NAK ",int_to_str_hex(final_data),dark_colors.green,light_colors.green, true, ch_moins);
 			after_pid = 3;
 			current_state = State_packet.EOP;
 		break;
@@ -535,8 +536,8 @@ function detection_PID(start_sample)
 			dec_item_new(ch_moins, start_sample + spb*8 , start_sample + spb*16);
 			dec_item_add_pre_text("PID STALL : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("STALL");
-			pkt_add_item(-1,-1,"HANDSHAKE PACKET"," ",light_colors.gray,light_colors.white,1);
-			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID STALL ",int_to_str_hex(final_data),dark_colors.green,light_colors.green,1);
+			pkt_add_item(-1,-1,"HANDSHAKE PACKET"," ",light_colors.gray,light_colors.white, true, ch_moins);
+			pkt_add_item(start_sample+spb*8,start_sample+spb*16,"PID STALL ",int_to_str_hex(final_data),dark_colors.green,light_colors.green, true, ch_moins);
 			hex_add_byte(ch_moins,-1,-1,final_data);
 			after_pid = 3;
 			current_state=State_packet.EOP;
@@ -563,7 +564,7 @@ function detection_after_PID(start_trs)
 			dec_item_new(ch_moins, start_trs.sample + spb*16 , start_trs.sample + spb*23);
 			dec_item_add_pre_text("ADDR : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("ADDR");
-			pkt_add_item(start_trs.sample + spb*16 , start_trs.sample + spb*23,"ADDR",int_to_str_hex(final_data),light_colors.yellow,light_colors.gray,1);
+			pkt_add_item(start_trs.sample + spb*16 , start_trs.sample + spb*23,"ADDR",int_to_str_hex(final_data),light_colors.yellow,light_colors.gray, true, ch_moins);
 			
 			acqui_data(4);	//endp
 			for(d=0;d<4;d++)
@@ -573,7 +574,7 @@ function detection_after_PID(start_trs)
 			dec_item_new(ch_moins, start_trs.sample + spb*23 , start_trs.sample + spb*27);
 			dec_item_add_pre_text("ENDP : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("ENDP");
-			pkt_add_item(start_trs.sample + spb*23 , start_trs.sample + spb*27,"ENDP",int_to_str_hex(final_data),light_colors.yellow,light_colors.gray,1);	
+			pkt_add_item(start_trs.sample + spb*23 , start_trs.sample + spb*27,"ENDP",int_to_str_hex(final_data),light_colors.yellow,light_colors.gray, true, ch_moins);	
 		break;
 		
 		/*For the data packet : detection and storage of bytes until the EOP is found. 
@@ -611,7 +612,7 @@ function detection_after_PID(start_trs)
 			eop = false;
 		
 		//data
-			pkt_add_item( -1,-1,"DATA","",light_colors.blue,light_colors.white,1);
+			pkt_add_item( -1,-1,"DATA","",light_colors.blue,light_colors.white, true, ch_moins);
 			pkt_start("DATA");
 			
 			switch(number_stuffing)
@@ -624,11 +625,11 @@ function detection_after_PID(start_trs)
 						if (item >32 && item<127)
 						{
 							item_ascii = hex_to_ascii(item_hex);
-							pkt_add_item(start_trs.sample+16*spb+d*spb*8,start_trs.sample+spb*24+d*spb*8,"data : "+d , item_hex+" ("+item_ascii+")",light_colors.blue,light_colors.gray,1);
+							pkt_add_item(start_trs.sample+16*spb+d*spb*8,start_trs.sample+spb*24+d*spb*8,"data : "+d , item_hex+" ("+item_ascii+")",light_colors.blue,light_colors.gray, true, ch_moins);
 						}
 						else
 						{
-							pkt_add_item(start_trs.sample+16*spb+d*spb*8,start_trs.sample+spb*24+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray,1);
+							pkt_add_item(start_trs.sample+16*spb+d*spb*8,start_trs.sample+spb*24+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray, true, ch_moins);
 						
 						}
 						dec_item_new(ch_moins, start_trs.sample + 16*spb + d*spb*8 , start_trs.sample + spb*24 + d*spb*8);
@@ -666,7 +667,7 @@ function detection_after_PID(start_trs)
 				dec_item_new(ch_moins, start_trs.sample + spb*(15+8*(num_data-3)) , start_trs.sample + spb *(16+8*(num_data-1)));
 				dec_item_add_pre_text("CRC : "+int_to_str_hex(val_CRC)+" "+crc_ok);
 				dec_item_add_pre_text("CRC");
-				pkt_add_item(start_trs.sample+spb*(15+8*(num_data-3)),start_trs.sample+spb*(16+8*(num_data-1)),"CRC16 : "+crc_ok , int_to_str_hex(val_CRC),dark_colors.blue,light_colors.blue,1);
+				pkt_add_item(start_trs.sample+spb*(15+8*(num_data-3)),start_trs.sample+spb*(16+8*(num_data-1)),"CRC16 : "+crc_ok , int_to_str_hex(val_CRC),dark_colors.blue,light_colors.blue, true, ch_moins);
 				//hex_add_byte(ch_moins,-1,-1,val_CRC);
 			}
 			else
@@ -674,13 +675,13 @@ function detection_after_PID(start_trs)
 				dec_item_new(ch_moins, start_trs.sample + spb*(16+8*(num_data-3)) , start_trs.sample + spb *(16+8*(num_data-1)));
 				dec_item_add_pre_text("CRC : "+int_to_str_hex(val_CRC)+" "+crc_ok);
 				dec_item_add_pre_text("CRC");
-				pkt_add_item(start_trs.sample+spb*(16+8*(num_data-3)),start_trs.sample+spb*(16+8*(num_data-1)),"CRC16 : "+crc_ok , int_to_str_hex(val_CRC),dark_colors.blue,light_colors.blue,1);
+				pkt_add_item(start_trs.sample+spb*(16+8*(num_data-3)),start_trs.sample+spb*(16+8*(num_data-1)),"CRC16 : "+crc_ok , int_to_str_hex(val_CRC),dark_colors.blue,light_colors.blue, true, ch_moins);
 				//hex_add_byte(ch_moins,-1,-1,final_data);
 			}	
 			
 		//eop
 			dec_item_new(ch_moins, start_trs.sample + spb*(16+(num_data-1)*8) , start_trs.sample + spb*(19+(num_data-1)*8));
-			pkt_add_item(start_trs.sample+spb*(16+(num_data-1)*8) , start_trs.sample + spb*(19+(num_data-1)*8),"EOP" , "",dark_colors.black,light_colors.white,1);
+			pkt_add_item(start_trs.sample+spb*(16+(num_data-1)*8) , start_trs.sample + spb*(19+(num_data-1)*8),"EOP" , "",dark_colors.black,light_colors.white, true, ch_moins);
 			dec_item_add_pre_text("EOP ");
 			pkt_end();
 
@@ -701,7 +702,7 @@ function detection_after_PID(start_trs)
 			dec_item_new(ch_moins, start_trs.sample + spb*(16-number_stuffing) , start_trs.sample + spb *(27+number_stuffing));
 			dec_item_add_pre_text("FRAME : "+int_to_str_hex(final_data));
 			dec_item_add_pre_text("FRAME");
-			pkt_add_item(start_trs.sample+spb*(16-number_stuffing) , start_trs.sample + spb*(27+number_stuffing),"FRAME" , "",light_colors.orange,light_colors.gray,1);
+			pkt_add_item(start_trs.sample+spb*(16-number_stuffing) , start_trs.sample + spb*(27+number_stuffing),"FRAME" , "",light_colors.orange,light_colors.gray, true, ch_moins);
 			hex_add_byte(ch_moins,-1,-1,final_data);
 			CRC5 = true;
 		break;
@@ -727,11 +728,11 @@ function write_data(num_data,start_trs,number_stuffing,z)
 			if(item>32 && item<127)
 			{
 				item_ascii = hex_to_ascii(item_hex);
-				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(25-z)+d*spb*8,"data : "+d ,item_hex+" ("+item_ascii+")" ,light_colors.blue,light_colors.gray,1);
+				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(25-z)+d*spb*8,"data : "+d ,item_hex+" ("+item_ascii+")" ,light_colors.blue,light_colors.gray, true, ch_moins);
 			}
 			else
 			{
-				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(25-z)+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray,1);
+				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(25-z)+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray, true, ch_moins);
 			}
 			hex_add_byte(ch_moins,-1,-1,item);
 		}
@@ -743,11 +744,11 @@ function write_data(num_data,start_trs,number_stuffing,z)
 			if(item>32 && item<127)
 			{
 				item_ascii = hex_to_ascii(item_hex);
-				pkt_add_item(start_trs.sample+(16-z+1)*spb+d*spb*8,start_trs.sample+spb*(24-z+1)+d*spb*8,"data : "+d , item_hex+" ("+item_ascii+")",light_colors.blue,light_colors.gray,1);
+				pkt_add_item(start_trs.sample+(16-z+1)*spb+d*spb*8,start_trs.sample+spb*(24-z+1)+d*spb*8,"data : "+d , item_hex+" ("+item_ascii+")",light_colors.blue,light_colors.gray, true, ch_moins);
 			}
 			else
 			{
-				pkt_add_item(start_trs.sample+(16-z+1)*spb+d*spb*8,start_trs.sample+spb*(24-z+1)+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray,1);
+				pkt_add_item(start_trs.sample+(16-z+1)*spb+d*spb*8,start_trs.sample+spb*(24-z+1)+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray, true, ch_moins);
 			}
 			hex_add_byte(ch_moins,-1,-1,item);
 		}
@@ -759,11 +760,11 @@ function write_data(num_data,start_trs,number_stuffing,z)
 			if(item>32 && item<127)
 			{
 				item_ascii = hex_to_ascii(item_hex);
-				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(24-number_stuffing)+d*spb*8,"data : "+d ,item_hex+" ("+item_ascii+")",light_colors.blue,light_colors.gray,1);
+				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(24-number_stuffing)+d*spb*8,"data : "+d ,item_hex+" ("+item_ascii+")",light_colors.blue,light_colors.gray, true, ch_moins);
 			}
 			else
 			{
-				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(24-number_stuffing)+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray,1);
+				pkt_add_item(start_trs.sample+(16-number_stuffing)*spb+d*spb*8,start_trs.sample+spb*(24-number_stuffing)+d*spb*8,"data : "+d , item_hex,light_colors.blue,light_colors.gray, true, ch_moins);
 			}
 			hex_add_byte(ch_moins,-1,-1,item);
 		}
@@ -888,7 +889,7 @@ function detection_eop(start_trs,num)
 					{
 						dec_item_new(ch_moins, start_trs.sample + spb*(32+number_stuffing) , start_trs.sample + spb*(35+number_stuffing));
 						dec_item_add_pre_text("EOP ");
-						pkt_add_item(start_trs.sample + spb*(32+number_stuffing) , start_trs.sample + spb*(35+number_stuffing),"EOP","",dark_colors.black,light_colors.white,1);
+						pkt_add_item(start_trs.sample + spb*(32+number_stuffing) , start_trs.sample + spb*(35+number_stuffing),"EOP","",dark_colors.black,light_colors.white, true, ch_moins);
 						pkt_end();
 						current_state=State_packet.SYNC;
 					}
@@ -932,7 +933,7 @@ function detection_eop(start_trs,num)
 					{
 						dec_item_new(ch_moins, start_trs.sample + spb*16 , start_trs.sample + spb*19);
 						dec_item_add_pre_text("EOP ");
-						pkt_add_item(start_trs.sample + spb*16 , start_trs.sample + spb*19,"EOP"," ",dark_colors.black,light_colors.white,1);
+						pkt_add_item(start_trs.sample + spb*16 , start_trs.sample + spb*19,"EOP"," ",dark_colors.black,light_colors.white, true, ch_moins);
 						pkt_end();
 						current_state=State_packet.SYNC;
 					}
@@ -1499,6 +1500,7 @@ function hex_to_ascii(hexx)
 		
 	return str;
 }
+
 
 
 

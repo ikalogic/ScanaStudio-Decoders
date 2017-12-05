@@ -207,7 +207,7 @@ function decode()
 	decBuf = pre_decode("spi.js", "ch_mosi = " + ch_mosi + ";" + "ch_miso = " + ch_miso + ";" + "ch_clk = " + ch_clk + ";" + 
 						"ch_cs = " + ch_cs + ";" + "nbits = " + 7 + ";" + "order = " + 0 + ";" + "cpol = " + 0 + ";" + 
 						"cpha = " + 0 + ";" + "cspol = " + 0 + ";" + "opt = " + 0 + ";" + "opt_cs = " + 0 + ";" + 
-						"n_to_decode = 4");
+						"n_to_decode = 4;" + "pkt_view_mode = " + 1);
 								
 	objCnt = 0;
 

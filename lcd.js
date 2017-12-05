@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.10: Add light packet capabilities
 	V1.09: Prevented incompatible workspaces from using the decoder
 	V1.08: Now the decoding can be aborted
 	V1.07: New Packet View data displaying.
@@ -39,7 +40,7 @@ The following commented block allows some related informations to be displayed o
 */
 function get_dec_name()
 {
-	return "LCD 4-Bit"; 
+	return "LCD 4-Bit";
 }
 
 
@@ -47,7 +48,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.09";
+	return "1.10";
 }
 
 
@@ -325,7 +326,7 @@ function decode()
 						pkt_start("LCD");
 					}
 
-					pkt_add_item(-1, -1, actionStr + " COMMAND", pktStr, PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, true);
+					pkt_add_item(-1, -1, actionStr + " COMMAND", pktStr, PKT_COLOR_CMD_TITLE, PKT_COLOR_DATA, true, chE);
 			break;
 
 			case LCDOBJECT_TYPE.DATA:
@@ -486,7 +487,7 @@ function add_pkt_data (start, end, dataArr, strLen)
 		strTemp = strTemp.replace(/,/g, "");
 		strTemp += " ...";
 
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true, chE);
 
 		for (var i = pktDataPerLine - 1; i < dataArr.length; i += pktDataPerLine)
 		{
@@ -497,7 +498,7 @@ function add_pkt_data (start, end, dataArr, strLen)
 		strTemp = strTemp.replace(/,/g, "");
 
 		pkt_start("DATA");
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true, chE);
 		pkt_end();
 	}
 	else
@@ -505,7 +506,7 @@ function add_pkt_data (start, end, dataArr, strLen)
 		var strTemp = dataArr.toString();
 		strTemp = strTemp.replace(/,/g, "");
 
-		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+		pkt_add_item(start, end, "DATA", strTemp, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true, chE);
 	}
 }
 
@@ -612,4 +613,5 @@ function get_trsdiff_samples (tr1, tr2)
 {
 	return (tr2.sample - tr1.sample);
 }
+
 

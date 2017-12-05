@@ -16,6 +16,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.31: Add light packet capabilities.
 	V1.30: Reworked PacketView.
 	V1.28: Improved error handling.
 	V1.27: Added ScanaStudio 2.3xx compatibility.
@@ -61,7 +62,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.30";
+	return "1.31";
 }
 
 /* Author
@@ -1443,11 +1444,11 @@ function pkt_add_packet (ok)
 
 	if (ok)
 	{
-		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true, uiCh);
 	}
 	else
 	{
-		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA);
+		pkt_add_item(pktStart, pktEnd, "1-WIRE FRAME", desc, PKT_COLOR_INVALID, PKT_COLOR_DATA, true, uiCh);
 	}
 
 	pkt_start("NEW FRAME");
@@ -1481,7 +1482,7 @@ function pkt_add_packet (ok)
 					}
 					else
 					{
-						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+						pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor, true, uiCh);
 						lineStart = false;
 						dataLine = "";
 						lineCnt = 0;
@@ -1490,12 +1491,12 @@ function pkt_add_packet (ok)
 
 				if (lineCnt > 0)
 				{
-					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor);
+					pkt_add_item(lineStart, lineEnd, obj.title, dataLine, obj.titleColor, obj.dataColor, true, uiCh);
 				}
 			}
 			else
 			{
-				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+				pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, uiCh);
 			}
 		}
 		else
@@ -1504,7 +1505,7 @@ function pkt_add_packet (ok)
 			{
 				if ((obj.title.localeCompare("PRESENCE")) != 0 || (obj.data.localeCompare("PRESENCE MISSING") == 0))
 				{
-					pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor);
+					pkt_add_item(obj.start, obj.end, obj.title, obj.data, obj.titleColor, obj.dataColor, true, uiCh);
 				}
 			}
 		}
@@ -1664,3 +1665,7 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
+
+
+
