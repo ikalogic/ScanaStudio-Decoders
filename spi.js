@@ -1254,10 +1254,15 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 			desc += "[" + firstWordPos + ":" + lastWordPos + "]";
 		}
 
-		if(title == "MOSI")
-			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
+		if (title == "MOSI")
+		{
+			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor, true, ch_mosi);
+		}
 		else
-			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
+		{
+			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor, true, ch_miso);
+		}
+
 		lineNum++;
 	}
 
@@ -1317,3 +1322,7 @@ function get_bit_margin()
 }
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b8f0946d39320ae0c577db522a092a3013ddef4b
