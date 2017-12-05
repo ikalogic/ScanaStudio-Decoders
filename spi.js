@@ -1320,9 +1320,3 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
-
-
-<<<<<<< HEAD
-=======
-
->>>>>>> b8f0946d39320ae0c577db522a092a3013ddef4b
