@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.44: Improved demo signals builder performance
 	V1.43: Add light packet capabilities
 	V1.42: Fixed bug related to number of bits in demo signals builder
 	V1.41: Correted bug related to number of bits in signal generator
@@ -64,7 +65,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.43";
+	return "1.44";
 }
 
 
@@ -158,7 +159,7 @@ function decode()
 	var m; 					// margin between blocks
 	var logic1, logic0;
 	var bit;
-
+		
     get_ui_vals();
 
 	var PKT_COLOR_DATA         = get_ch_light_color(ch);
@@ -441,9 +442,8 @@ function generator_template()
 function build_demo_signals()
 {
 	var demo_cnt = 0;
-
-
-
+	var samples_acc = 0;
+	
 	if (stop == 0) 		// readjust number of stop bits
 	{
 		stop = 1;
@@ -462,14 +462,16 @@ function build_demo_signals()
 	
 	ini_uart_generator(); //must be called to initialise the UART generator.
 	
+	
 	var inter_transaction_silence = n_samples / (100 * samples_per_bit);
 	//debug("inter_transaction_silence = " + inter_transaction_silence);
 	delay(5);
 	put_str("Hello ScanaStudio tester!");
 	
-	while (get_samples_acc(ch) < n_samples)
+	while (samples_acc < n_samples)
 	{
-
+		samples_acc =  get_samples_acc(ch);
+		set_progress(samples_acc*100/n_samples);
 		put_str("demo " + demo_cnt );	
 		demo_cnt++;
 		delay(inter_transaction_silence);
@@ -573,10 +575,7 @@ function put_c (code)
 */
 function delay (n_bits)
 {
-    for (var i = 0; i < n_bits; i++)
-    {
-        add_samples(ch, hi, samples_per_bit);
-    }
+	add_samples(ch, hi, samples_per_bit*n_bits);
 }
 
 
@@ -945,6 +944,8 @@ function get_next_rising_edge (ch, trStart)
 
 	return tr;
 }
+
+
 
 
 
