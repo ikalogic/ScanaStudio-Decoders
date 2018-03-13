@@ -13,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.12: Fix missing PacketView color define
 	V1.11: Now the decoding can be aborted
 	V1.1:  Added to supplementary status information, and enhanced packet view.
 	V1.0:  Initial release
@@ -39,7 +40,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.11";
+	return "1.12";
 }
 
 /* Author 
