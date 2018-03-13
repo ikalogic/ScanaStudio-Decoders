@@ -11,9 +11,10 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.67: BugFix: Decoding stops after an invalid frame.
-	V1.66: Add light packet capabilities.
-	V1.65: Completely reworked PacketView.
+	V1.68: Fix the last byte/word not being decoded
+	V1.67: BugFix: Decoding stops after an invalid frame
+	V1.66: Add light packet capabilities
+	V1.65: Completely reworked PacketView
 	V1.62: Better progress reporting, better demo mode generator, better PacketView
 	V1.61: Upgrade PacketView
 	V1.60: Fixed bug in SPI decoder and improve display
@@ -71,7 +72,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.67";
+	return "1.68";
 }
 
 /* Author 
@@ -152,9 +153,7 @@ function PktObject (mosiArr, misoArr, start, end)
 *************************************************************************************
 */
 
-/* Graphical user interface for this decoder
-*/
-function gui()  //graphical user interface
+function gui()
 {
 	ui_clear();  // clean up the User interface before drawing a new one.
 	ui_add_ch_selector( "ch_mosi", "MOSI (Master Out) Line", "MOSI" );
@@ -169,7 +168,7 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "5" );
 		ui_add_item_to_txt_combo( "6" );
 		ui_add_item_to_txt_combo( "7" );
-		ui_add_item_to_txt_combo( "8", true );
+		ui_add_item_to_txt_combo( "8", true);
 		ui_add_item_to_txt_combo( "9" );
 		ui_add_item_to_txt_combo( "10" );
 		ui_add_item_to_txt_combo( "11" );
@@ -322,9 +321,6 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "Present each byte separately" ); 
 }
 
-/* This is the function that will be called from ScanaStudio
-   to update the decoded items
-*/
 function decode()
 {
 	get_ui_vals();
@@ -373,7 +369,6 @@ function decode()
 
 	while (trs_is_not_last(ch_clk) && (trs_is_not_last(ch_cs) || (opt_cs == 1)) && (stop == false))
 	{
-		
 		if (abort_requested())
 		{
 			stop = true;
@@ -539,19 +534,18 @@ function decode()
 				}
 			}
 
-			
-			if (t_clk.sample > t_end.sample) 									// If we are out of the CS limits
+			if (t_clk.sample > t_end.sample) 										// If we are out of the CS limits
 			{
 				t_clk = trs_get_prev(ch_clk); 										// Back the clock up to sync correctly
 				state = END_FRAME;
-				continue;
 			}
-			
+
 			if ((bits_mosi.length < (nbits)) && (bits_miso.length < (nbits)))		// Invalid cs signal, skip it
 			{
 				t_clk = trs_get_prev(ch_clk); 										// Back the clock up to sync correctly
 				state = END_FRAME;
 				t = t_end;
+
 				continue;
 			}
 
@@ -776,8 +770,6 @@ function generator_template()
 *************************************************************************************
 */
 
-/*
-*/
 function build_demo_signals()
 {
 	var demo_cnt = 0;
@@ -824,8 +816,6 @@ function build_demo_signals()
 	}
 }
 
-/*
-*/
 function ini_spi_generator()
 {
 	samples_per_bit = get_srate() / gen_bit_rate;
@@ -860,8 +850,6 @@ function ini_spi_generator()
 	}
 }
 
-/*
-*/
 function gen_cs (st_sp)
 {
 	add_samples(ch_mosi, 0, samples_per_bit);
@@ -880,15 +868,11 @@ function gen_cs (st_sp)
 	}
 }
 
-/*
-*/
 function spi_n_bits(b)
 {
 	return b - 1;
 }
 
-/*
-*/
 function gen_add_word (w_mosi, w_miso)
 {
 	var bmosi;
@@ -915,8 +899,6 @@ function gen_add_word (w_mosi, w_miso)
 	
 }
 
-/*
-*/
 function gen_add_bit (b_mosi, b_miso)
 {
 	if (cpha == 0)
@@ -945,8 +927,6 @@ function gen_add_bit (b_mosi, b_miso)
 	}
 }
 
-/*
-*/
 function gen_add_delay (d, cs_state)
 {
 	add_samples(ch_mosi, 0, d);
@@ -961,8 +941,6 @@ function gen_add_delay (d, cs_state)
 *************************************************************************************
 */
 
-/* Graphical user interface for the trigger configuration
-*/
 function trig_gui()
 {
 	trig_ui_clear();
@@ -982,8 +960,6 @@ function trig_gui()
 		trig_ui_add_item_to_combo("MISO", false);
 }
 
-/*
-*/
 function trig_seq_gen()
 {
 	flexitrig_set_async_mode(false);
@@ -1118,8 +1094,6 @@ function trig_seq_gen()
 	// flexitrig_print_steps();
 }
 
-/*
-*/
 function trig_build_step (step_desc)
 {
 	var i;
@@ -1146,8 +1120,6 @@ function trig_build_step (step_desc)
 *************************************************************************************
 */
 
-/*
-*/
 function pkt_add_packet (pktObj)
 {
 	var totalWords = (pktObj.mosiArr.length + pktObj.misoArr.length) / 2;
@@ -1203,8 +1175,6 @@ function pkt_add_packet (pktObj)
 	return true;
 }
 
-/*
-*/
 function pkt_add_data (title, titleColor, dataArr, dataColor)
 {
 	if (dataArr.length <= 0)
@@ -1263,18 +1233,21 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 			desc += "[" + firstWordPos + ":" + lastWordPos + "]";
 		}
 
-		if(title == "MOSI")
+		if (title == "MOSI")
+		{
 			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
+		}
 		else
+		{
 			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_miso);
+		}
+
 		lineNum++;
 	}
 
 	return true;
 }
 
-/*
-*/
 function int_to_str_hex (num)
 {
 	var result = "";
@@ -1290,8 +1263,6 @@ function int_to_str_hex (num)
 	return result;
 }
 
-/*
-*/
 function get_ch_light_color (k)
 {
     var chColor = get_ch_color(k);
@@ -1303,8 +1274,6 @@ function get_ch_light_color (k)
     return chColor;
 }
 
-/* ScanaStudio 2.3 compatibility function
-*/
 function get_srate()
 {
 	if (typeof get_sample_rate === "function")
@@ -1317,13 +1286,8 @@ function get_srate()
 	}
 }
 
-/*
-*/
 function get_bit_margin()
 {
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
-
-
-
