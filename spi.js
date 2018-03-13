@@ -11,6 +11,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.67: BugFix: Decoding stops after an invalid frame.
 	V1.66: Add light packet capabilities.
 	V1.65: Completely reworked PacketView.
 	V1.62: Better progress reporting, better demo mode generator, better PacketView
@@ -70,7 +71,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.66";
+	return "1.67";
 }
 
 /* Author 
@@ -86,9 +87,9 @@ function get_dec_auth()
 *************************************************************************************
 */
 
-var	GET_CS 	 = 0;
-var	GET_DATA = 10;
-var	END_FRAME = 20;
+var	GET_CS 	 = "GET_CS";
+var	GET_DATA = "GET_DATA";
+var	END_FRAME = "END_FRAME";
 var OPT_IGNORE_NONE = 0;
 var OPT_IGNORE_MOSI = 1;
 var OPT_IGNORE_MISO = 2;
@@ -372,6 +373,7 @@ function decode()
 
 	while (trs_is_not_last(ch_clk) && (trs_is_not_last(ch_cs) || (opt_cs == 1)) && (stop == false))
 	{
+		
 		if (abort_requested())
 		{
 			stop = true;
@@ -412,7 +414,6 @@ function decode()
 					{
 						t = trs_get_next(ch_cs);
 					}
-
 					t_end = trs_get_next(ch_cs);
 				}
 
@@ -538,12 +539,20 @@ function decode()
 				}
 			}
 
+			
+			if (t_clk.sample > t_end.sample) 									// If we are out of the CS limits
+			{
+				t_clk = trs_get_prev(ch_clk); 										// Back the clock up to sync correctly
+				state = END_FRAME;
+				continue;
+			}
+			
 			if ((bits_mosi.length < (nbits)) && (bits_miso.length < (nbits)))		// Invalid cs signal, skip it
 			{
 				t_clk = trs_get_prev(ch_clk); 										// Back the clock up to sync correctly
 				state = END_FRAME;
 				t = t_end;
-				break;
+				continue;
 			}
 
 			if (order == 0)
@@ -1254,15 +1263,10 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 			desc += "[" + firstWordPos + ":" + lastWordPos + "]";
 		}
 
-		if (title == "MOSI")
-		{
-			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor, true, ch_mosi);
-		}
+		if(title == "MOSI")
+			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_mosi);
 		else
-		{
-			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor, true, ch_miso);
-		}
-
+			pkt_add_item(lineStart, lineEnd, desc, line, titleColor, dataColor,true,ch_miso);
 		lineNum++;
 	}
 
@@ -1320,3 +1324,6 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
+
+
+
