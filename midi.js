@@ -51,7 +51,7 @@ function get_dec_auth()
 
 /* Graphical user interface for this decoder 
 */
-function gui()  //graphical user interface
+function gui()
 {
 	ui_clear();  // clean up the User interface before drawing a new one.
 	ui_add_ch_selector( "ch", "Channel to decode", "MIDI" );
@@ -59,44 +59,52 @@ function gui()  //graphical user interface
 
 /* Global variables
 */
-var Note_On = 0x80;
-var Note_Off = 0x90;
-var Aftertouch = 0xA0;
-var Control_Change = 0xB0;
-var Program_Change = 0xC0;
+var Note_On 	     = 0x80;
+var Note_Off 		 = 0x90;
+var Aftertouch 		 = 0xA0;
+var Control_Change   = 0xB0;
+var Program_Change   = 0xC0;
 var Channel_Pressure = 0xD0;
-var Pitch_Wheel = 0xE0;
-var SysEx_Start = 0xF0;
-var Song_Position = 0xF2;
-var Song_Select = 0xF3;
-var Tuning = 0xF6;
-var SysEx_Stop = 0xF7;
-var Tempo = 0xF8;
-var Start_MIDI = 0xFA;
-var Continue_MIDI = 0xFB;
-var Stop_MIDI = 0xFC;
-var Active_Sensing = 0xFE;
-var Reset = 0xFF;
-var Nothing_Status = 0x00;
+var Pitch_Wheel      = 0xE0;
+var SysEx_Start      = 0xF0;
+var Song_Position    = 0xF2;
+var Song_Select      = 0xF3;
+var Tuning 		     = 0xF6;
+var SysEx_Stop 		 = 0xF7;
+var Tempo 			 = 0xF8;
+var Start_MIDI 		 = 0xFA;
+var Continue_MIDI    = 0xFB;
+var Stop_MIDI        = 0xFC;
+var Active_Sensing   = 0xFE;
+var Reset 		     = 0xFF;
+var Nothing_Status   = 0x00;
 
 var PKT_COLOR_DATA; 
 var PKT_COLOR_DATA_TITLE ;
 
-var PKT_COLOR_START_TITLE ;			var PKT_COLOR_STOP_TITLE;
-var PKT_COLOR_MANUFACTURER_TITLE;	var PKT_COLOR_RESET;
-var PKT_COLOR_SONG_POS_TITLE;		var PKT_COLOR_SONG_SELECT_TITLE;
-var PKT_COLOR_TUNING;				var PKT_COLOR_TEMPO;
-var PKT_COLOR_MIDI_START;			var PKT_COLOR_MIDI_STOP;
-var PKT_COLOR_CONTINUE;				var PKT_COLOR_ACTIVE_SENS;
+var PKT_COLOR_START_TITLE ;			
+var PKT_COLOR_STOP_TITLE;
+var PKT_COLOR_MANUFACTURER_TITLE;	
+var PKT_COLOR_RESET;
+var PKT_COLOR_SONG_POS_TITLE;		
+var PKT_COLOR_SONG_SELECT_TITLE;
+var PKT_COLOR_TUNING;				
+var PKT_COLOR_TEMPO;
+var PKT_COLOR_MIDI_START;			
+var PKT_COLOR_MIDI_STOP;
+var PKT_COLOR_CONTINUE;				
+var PKT_COLOR_ACTIVE_SENS;
 
-var PKT_COLOR_NOTE_ON_TITLE;		var PKT_COLOR_NOTE_OFF_TITLE;
-var PKT_COLOR_AFTERTOUCH_TITLE;		var PKT_COLOR_CONTROL_CHANGE_TITLE;
-var PKT_COLOR_PROGRAM_CHANGE_TITLE; var PKT_COLOR_CHANNEL_PRESSURE_TITLE;
-var PKT_COLOR_PITCH_WHEEL_TITLE;	var PKT_COLOR_CHANNEL_TITLE;
-
+var PKT_COLOR_NOTE_ON_TITLE;		
+var PKT_COLOR_NOTE_OFF_TITLE;
+var PKT_COLOR_AFTERTOUCH_TITLE;		
+var PKT_COLOR_CONTROL_CHANGE_TITLE;
+var PKT_COLOR_PROGRAM_CHANGE_TITLE; 
+var PKT_COLOR_CHANNEL_PRESSURE_TITLE;
+var PKT_COLOR_PITCH_WHEEL_TITLE;	
+var PKT_COLOR_CHANNEL_TITLE;
 
 var strHexData;
-
 var state_voice = Nothing_Status;
 var state_system = Nothing_Status
 var ID_2byte = false;
@@ -114,7 +122,7 @@ var tab_note = ["C-5 ", "C#-5 ", "D-5 ", "D#-5 ", "E-5 ", "F-5 ", "F#-5 ", "G-5 
 				"C3 ", "C#3 ", "D3 ", "D#3 ", "E3 ", "F3 ", "F#3 ", "G3 ", "G#3 ", "A3 ", "A#3 ", "B3 ",
 				"C4 ", "C#4 ", "D4 ", "D#4 ", "E4 ", "F4 ", "F#4 ", "G4 ", "G#4 ", "A4 ", "A#4 ", "B4 ",
 				"C5 ", "C#5 ", "D5 ", "D#5 ", "E5 ", "F5 ", "F#5 ", "G5 "];
-				
+
 var tab_program_instrument = ["Acoustic Grand", "Bright Acoustic", "Electric Grand", "Honky-Tonk", "Electric Piano 1", "Electric Piano 2", 
 								"Harpsichord", "Clavinet", "Celesta", "Glockenspiel", "Music Box", "Vibraphone", "Marimba", "Xylophone", 
 								"Tubular Bells", "Dulcimer", "Drawbar Organ", "Percussive Organ", "Rock Organ", "Church Organ", "Reed Organ", 
@@ -134,6 +142,7 @@ var tab_program_instrument = ["Acoustic Grand", "Bright Acoustic", "Electric Gra
 								"Fiddle", "Shanai", "Tinkle Bell", "Agogo", "Steel Drums", "Woodblock", "Taiko Drum", "Melodic Tom", "Synth Drum", 
 								"Reverse Cymbal", "Guitar Fret Noise", "Breath Noise", "Seashore", "Bird Tweet", "Telephone Ring", "Helicopter", 
 								"Applause", "Gunshot"];
+
 var tab_program_group = ["Piano", "Chromatic Percussion", "Organ", "Guitar", "Bass", "Salo Strings", "Ensemble", "Brass", "Reed", "Pipe", 
 						 "Synth Lead", "Synth PAD", "Synth Effects", "Ethnic", "Percussive", "Sound Effects"];
 					
@@ -256,51 +265,55 @@ var tab_manuf_21 = ["Limex", "Kyodday (Tokai)", "Mutable Instruments", "PreSonus
 					"Spicetone OU", "V3Sound", "IK Multimedia", "Novalia Ltd", "Modor Music"];
 
 var tab_manuf_40 = ["Crimson Technology Inc.", "Softbank Mobile Corp", "D&M Holdings Inc."];
-						
 
 function decode()
 {
 	var baud = 31250;
 	var nbits = 8; 
 	var stop = 1;
-	
 	var byte_status = true;
 	var byte_sys = true;
 	var num_byte_note = 0;
 	var num_byte_sys = 0;
 	var end_pkt = true;
 	var next = true;
-
 	var s_pos, p_pos, b, s, val;
 	var par;
 	var spb;
 	var m;
 	var logic1, logic0;
 	var bit;
-	
+
 	if (!check_scanastudio_support())
     {
         add_to_err_log("Please update your ScanaStudio software to the latest version to use this decoder");
         return;
     }
 
-	PKT_COLOR_DATA         		= get_ch_light_color(ch);
-	PKT_COLOR_DATA_TITLE  		= dark_colors.gray;
-			
-	PKT_COLOR_START_TITLE 		= dark_colors.green;			PKT_COLOR_STOP_TITLE = dark_colors.red;
-	PKT_COLOR_SONG_POS_TITLE	= light_colors.blue;				PKT_COLOR_SONG_SELECT_TITLE = dark_colors.blue;
-	PKT_COLOR_MIDI_START		= dark_colors.pink;					PKT_COLOR_MIDI_STOP = dark_colors.brown;
-	PKT_COLOR_CONTINUE			= dark_colors.orange;				PKT_COLOR_RESET = dark_colors.black;
-	PKT_COLOR_TUNING			= light_colors.green;				PKT_COLOR_TEMPO = dark_colors.violet;
-	PKT_COLOR_ACTIVE_SENS		= light_colors.yellow;			
-	
-	PKT_COLOR_MANUFACTURER_TITLE = dark_colors.blue;
-		
-	PKT_COLOR_NOTE_ON_TITLE		= light_colors.blue;			PKT_COLOR_NOTE_OFF_TITLE = dark_colors.blue;
-	PKT_COLOR_AFTERTOUCH_TITLE	= dark_colors.green;			PKT_COLOR_CHANNEL_PRESSURE_TITLE = light_colors.green;
-	PKT_COLOR_CONTROL_CHANGE_TITLE = dark_colors.brown;			PKT_COLOR_PITCH_WHEEL_TITLE = light_colors.brown;
-	PKT_COLOR_PITCH_WHEEL_TITLE	= light_colors.yellow;			PKT_COLOR_CHANNEL_TITLE = dark_colors.violet;	
-	
+	PKT_COLOR_DATA         			 = get_ch_light_color(ch);
+	PKT_COLOR_DATA_TITLE  			 = dark_colors.gray;
+	PKT_COLOR_START_TITLE 			 = dark_colors.green;			
+	PKT_COLOR_STOP_TITLE 			 = dark_colors.red;
+	PKT_COLOR_SONG_POS_TITLE		 = light_colors.blue;				
+	PKT_COLOR_SONG_SELECT_TITLE 	 = dark_colors.blue;
+	PKT_COLOR_MIDI_START			 = dark_colors.pink;					
+	PKT_COLOR_MIDI_STOP 		     = dark_colors.brown;
+	PKT_COLOR_CONTINUE				 = dark_colors.orange;				
+	PKT_COLOR_RESET 			     = dark_colors.black;
+	PKT_COLOR_TUNING				 = light_colors.green;				
+	PKT_COLOR_TEMPO 				 = dark_colors.violet;
+	PKT_COLOR_ACTIVE_SENS			 = light_colors.yellow;			
+	PKT_COLOR_MANUFACTURER_TITLE 	 = dark_colors.blue;
+	PKT_COLOR_NOTE_ON_TITLE			 = light_colors.blue;			
+	PKT_COLOR_NOTE_OFF_TITLE 		 = dark_colors.blue;
+	PKT_COLOR_AFTERTOUCH_TITLE		 = dark_colors.green;			
+	PKT_COLOR_CHANNEL_PRESSURE_TITLE = light_colors.green;
+	PKT_COLOR_CONTROL_CHANGE_TITLE   = dark_colors.brown;			
+	PKT_COLOR_PITCH_WHEEL_TITLE 	 = light_colors.brown;
+	PKT_COLOR_PITCH_WHEEL_TITLE		 = light_colors.yellow;			
+	PKT_COLOR_CHANNEL_TITLE 		 = dark_colors.violet;
+	PKT_COLOR_PROGRAM_CHANGE_TITLE   = dark_colors.yellow;
+
 	get_ui_vals();
 	var t = trs_get_first(ch);
 
@@ -319,12 +332,12 @@ function decode()
 		}
 
 		t = get_next_falling_edge(ch, t);
-		
+
 		if (t == false)
 		{
 			return;
 		} 
-		
+
 		bit_sampler_ini(ch, spb / 2, spb);
 		bit_sampler_next(ch);
 
@@ -332,37 +345,39 @@ function decode()
 		{
 			break;
 		}
-		
-		if(end_pkt == true)
+
+		if (end_pkt == true)
+		{
 			pkt_start("MIDI");
-		
+		}
+
 		if (num_byte_sys != 2)
 		{
 			if (num_byte_sys == 3)
 			{
-				dec_item_new(ch, id_1s_byte_start_sample, t.sample + (spb * (nbits+1+1)));
+				dec_item_new(ch, id_1s_byte_start_sample, t.sample + (spb * (nbits + 1 + 1)));
 			}
 			else
 			{
-				dec_item_new(ch, t.sample, t.sample + (spb * (nbits+1+1)));
+				dec_item_new(ch, t.sample, t.sample + (spb * (nbits + 1 + 1)));
 			}
 		}
 		else
 		{
 			id_1s_byte_start_sample = t.sample;
 		}
-				
+
 		par = 0;
 		val = 0;
-		var midSample = t.sample + (spb * 3/2);
-		
+		var midSample = t.sample + (spb * 3 / 2);
+
 		for (b = 0; b < nbits; b++)
 		{
 			bit = bit_sampler_next(ch);
-			
+
 			val += Math.pow(2, b) * bit;
 			par = par ^ bit;
-			
+
 			dec_item_add_sample_point(ch, midSample, bit ? DRAW_1 : DRAW_0);
 			midSample += spb;
 		}
@@ -370,13 +385,13 @@ function decode()
 		var asciiChar = String.fromCharCode(val);
 		strHexData = int_to_str_hex(val);
 		var string_status = "";
-		
-		if(byte_sys == true)
+
+		if (byte_sys == true)
 		{
 			next = true;
-			string_status += Status_System(val);
-			
-			if(string_status != "")
+			string_status += get_system_status(val);
+
+			if (string_status != "")
 			{
 				num_byte_sys = 0;
 				byte_sys = false;
@@ -388,16 +403,16 @@ function decode()
 		}
 		else
 		{
-			string_status += Data_System(val, num_byte_sys);
-			
-			if(string_status != "")
+			string_status += get_system_data(val, num_byte_sys);
+
+			if (string_status != "")
 			{
 				num_byte_sys++;
 			}
-			
+
 			if (string_status == "SysEx End ")
 			{
-			    Status_System(val);
+			    get_system_status(val);
 				byte_sys = true;
 				byte_status = true;
 				state_system = Nothing_Status;
@@ -417,63 +432,68 @@ function decode()
 				state_system = Nothing_Status;
 				end_pkt = true;
 			}
-		}		
-	
-		if((byte_status == true) && (next == true))	
+		}
+
+		if ((byte_status == true) && (next == true))	
 		{
-			string_status += Status_Voice(val);
-			if(string_status != "")
+			string_status += get_voice_status(val);
+
+			if (string_status != "")
 			{
 				byte_status = false;
 				num_byte_note++;
 				end_pkt = false;
-			}		
-		}		
-		else if((byte_status == false)&&(byte_sys == true))
-		{
-			string_status += Data_Voice(val, num_byte_note);
-			if(string_status != "")
+			}
+		}
+		else if ((byte_status == false) && (byte_sys == true))
+		{		
+			string_status += get_voice_data(val, num_byte_note);
+
+			if (string_status != "")
 			{
 				num_byte_note++;
-			}	
+			}
 		}
-		
-		if(string_status != "Manufacturer ID ")
+
+		if (string_status != "Manufacturer ID ")
 		{
-			if(string_status == "Other manufacturer ")
+			if (string_status == "Other manufacturer ")
+			{
 				dec_item_add_comment(string_status);
+			}
 			else
-				dec_item_add_comment(string_status + strHexData);	
-		}			
-		else 
+			{
+				dec_item_add_comment(string_status + strHexData);
+			}
+		}
+		else
+		{
 			dec_item_add_comment(string_status);
-			
+		}
+
 		string_status = "";
-		
-		if(num_byte_note == 3)
+
+		if (num_byte_note == 3)
 		{
 			byte_status = true;
 			num_byte_note = 0;
 			state_voice = Nothing_Status;
 			end_pkt = true;
 		}		
-		
+
 		hex_add_byte(ch, -1, -1, val);
-		
 		t.sample += (spb * (nbits + 1));
-			
-		if(end_pkt == true)
-			pkt_end();	
-			
+
+		if (end_pkt == true)
+		{
+			pkt_end();
+		}
+
 		t = trs_go_after(ch, t.sample + (spb * stop * 0.5));
-						
 		set_progress(100 * t.sample / n_samples);
 	}
 }
 
-
-/*
-*/
 function check_scanastudio_support()
 {
     if (typeof(pkt_start) != "undefined")
@@ -486,8 +506,6 @@ function check_scanastudio_support()
     }
 }
 
-/*
-*/
 function int_to_str_hex (num) 
 {
 	var temp = "0x";
@@ -502,8 +520,6 @@ function int_to_str_hex (num)
 	return temp;
 }
 
-/*
-*/
 function get_ch_light_color (k)
 {
     var chColor = get_ch_color(k);
@@ -515,15 +531,13 @@ function get_ch_light_color (k)
     return chColor;
 }
 
-/* Get next transition with falling edge
-*/
 function get_next_falling_edge (ch, trStart)
 {
 	var tr = trStart;
 	
 	while ((tr.val != FALLING) && (trs_is_not_last(ch) == true))
 	{
-		tr = trs_get_next(ch);	// Get the next transition
+		tr = trs_get_next(ch);
 	}
 
 	if (trs_is_not_last(ch) == false) tr = false;
@@ -531,96 +545,113 @@ function get_next_falling_edge (ch, trStart)
 	return tr;
 }
 
-/*
-*/
-function Status_Voice(data)
+function get_voice_status (data)
 {
-	var state_status = "";
 	var channel;
+	var state_status = "";
 	var next = false;
-	
-	if((data>= 0x80) && (data <= 0x8F))
+
+	if ((data >= 0x80) && (data <= 0x8F))
 	{
 		channel = data & 0x0F;
-		
+
 		dec_item_add_pre_text("Note Off ");
 		dec_item_add_pre_text("OFF ");
-		dec_item_add_post_text("channel "+ channel);
-		dec_item_add_post_text("ch "+channel);
-		dec_item_add_post_text("!"+channel);
+		dec_item_add_post_text("channel " + channel);
+		dec_item_add_post_text("ch " + channel);
+		dec_item_add_post_text("!" + channel);
 		dec_item_add_post_text(channel);
-		
+
 		state_status += "Note Off ";
 		state_voice = Note_Off;
-		pkt_add_item(-1, -1, "Note OFF", "Channel " + channel, PKT_COLOR_NOTE_OFF_TITLE, PKT_COLOR_DATA, true);
+
+		pkt_add_item(-1, -1, "Note OFF", "CH" + channel, PKT_COLOR_NOTE_OFF_TITLE, PKT_COLOR_DATA, true);
 	}
-	else if((data>= 0x90) && (data <= 0x9F))
+	else if ((data>= 0x90) && (data <= 0x9F))
 	{
 		channel = data & 0x0F;
+
 		dec_item_add_pre_text("Note On "); 
 		dec_item_add_pre_text("ON ");
-		dec_item_add_post_text("channel "+ channel);
-		dec_item_add_post_text("ch "+channel);
+		dec_item_add_post_text("channel " + channel);
+		dec_item_add_post_text("ch " + channel);
 		dec_item_add_post_text(channel);
+
 		state_status += "Note On ";
 		state_voice = Note_On;
-		pkt_add_item(-1, -1, "Note ON", "Channel " + channel, PKT_COLOR_NOTE_ON_TITLE, PKT_COLOR_DATA, true);
+
+		pkt_add_item(-1, -1, "Note ON", "CH" + channel, PKT_COLOR_NOTE_ON_TITLE, PKT_COLOR_DATA, true);
 	}
-	else if((data>= 0xA0) && (data <= 0xAF))
+	else if((data >= 0xA0) && (data <= 0xAF))
 	{
 		channel = data & 0x0F;
+
 		dec_item_add_pre_text("Aftertouch,"); 
-		dec_item_add_post_text(" channel "+ channel);
-		dec_item_add_post_text(" ch "+channel);
-		dec_item_add_post_text(" "+channel);
+		dec_item_add_post_text(" channel " + channel);
+		dec_item_add_post_text(" ch " + channel);
+		dec_item_add_post_text(" " + channel);
 		dec_item_add_post_text(channel);
+
 		state_status += "Aftertouch";
 		state_voice = Aftertouch;
-		pkt_add_item(-1, -1, "Aftertouch", "Channel " + channel, PKT_COLOR_AFTERTOUCH_TITLE, PKT_COLOR_DATA, true);
+
+		pkt_add_item(-1, -1, "Aftertouch", "CH" + channel, PKT_COLOR_AFTERTOUCH_TITLE, PKT_COLOR_DATA, true);
 	}
-	else if((data>= 0xB0) && (data <= 0xBF))
+	else if ((data >= 0xB0) && (data <= 0xBF))
 	{
 		channel = data & 0x0F;
+
 		dec_item_add_pre_text("Control Change,"); 
-		dec_item_add_post_text(" channel "+ channel);
-		dec_item_add_post_text(" ch "+channel);
-		dec_item_add_post_text(" "+channel);
+		dec_item_add_post_text(" channel " + channel);
+		dec_item_add_post_text(" ch " + channel);
+		dec_item_add_post_text(" " + channel);
+
 		state_status += "Control Change";
 		state_voice = Control_Change;
-		pkt_add_item(-1, -1, "Control Change", "Channel " + channel, PKT_COLOR_CONTROL_CHANGE_TITLE, PKT_COLOR_DATA, true);
+
+		pkt_add_item(-1, -1, "Control Change", "CH" + channel, PKT_COLOR_CONTROL_CHANGE_TITLE, PKT_COLOR_DATA, true);
 	}
-	else if((data>= 0xC0) && (data <= 0xCF))
+	else if ((data>= 0xC0) && (data <= 0xCF))
 	{
 		channel = data & 0x0F;
+
 		dec_item_add_pre_text("Program Change,"); 
-		dec_item_add_post_text(" channel "+ channel);
-		dec_item_add_post_text(" ch "+channel);
-		dec_item_add_post_text(" "+channel);
+		dec_item_add_post_text(" channel " + channel);
+		dec_item_add_post_text(" ch " + channel);
+		dec_item_add_post_text(" " + channel);
+
 		state_status += "Program Change";
 		state_voice = Program_Change;
-		pkt_add_item(-1, -1, "Program Change", "Channel " + channel, PKT_COLOR_PROGRAM_CHANGE_TITLE, PKT_COLOR_DATA, true);
+
+		pkt_add_item(-1, -1, "Program Change", "CH" + channel, PKT_COLOR_PROGRAM_CHANGE_TITLE, PKT_COLOR_DATA, true);
 	}
-	else if((data>= 0xD0) && (data <= 0xDF))
+	else if ((data >= 0xD0) && (data <= 0xDF))
 	{
 		channel = data & 0x0F;
+
 		dec_item_add_pre_text("Channel Pressure,"); 
 		dec_item_add_post_text(" channel "+ channel);
-		dec_item_add_post_text(" ch "+channel);
-		dec_item_add_post_text(" "+channel);
+		dec_item_add_post_text(" ch " + channel);
+		dec_item_add_post_text(" " + channel);
+
 		state_status += "Channel Pressure";
 		state_voice = Channel_Pressure;
-		pkt_add_item(-1, -1, "Channel Pressure", "Channel " + channel, PKT_COLOR_CHANNEL_PRESSURE_TITLE, PKT_COLOR_DATA, true);
+
+		pkt_add_item(-1, -1, "Channel Pressure", "CH" + channel, PKT_COLOR_CHANNEL_PRESSURE_TITLE, PKT_COLOR_DATA, true);
 	}
-	else if((data>= 0xE0) && (data <= 0xEF))
+	else if ((data>= 0xE0) && (data <= 0xEF))
 	{
 		channel = data & 0x0F;
+
 		dec_item_add_pre_text("Pitch Wheel,");
-		dec_item_add_post_text(" channel "+ channel);
-		dec_item_add_post_text(" ch "+channel);
-		dec_item_add_post_text(" "+channel);
+		dec_item_add_post_text(" channel " + channel);
+		dec_item_add_post_text(" ch " + channel);
+		dec_item_add_post_text(" " + channel);
+
 		state_status += "Pitch Wheel";
 		state_voice = Pitch_Wheel;
-		pkt_add_item(-1, -1, "Pitch Wheel", "Channel " + channel, PKT_COLOR_PITCH_WHEEL_TITLE, PKT_COLOR_DATA, true);
+
+		pkt_add_item(-1, -1, "Pitch Wheel", "CH" + channel, PKT_COLOR_PITCH_WHEEL_TITLE, PKT_COLOR_DATA, true);
 	}
 	else
 	{
@@ -630,9 +661,7 @@ function Status_Voice(data)
 	return state_status;
 }
 
-/*
-*/
-function Data_Voice(data, byte_n)
+function get_voice_data (data, byte_n)
 {
 	var state_note = "";
 
@@ -783,10 +812,10 @@ function Data_Voice(data, byte_n)
 
 }
 
-function Status_System(data)
+function get_system_status (data)
 {
 	var state_SysEx = "";
-	
+
 	switch (data)
 	{
 		case 0xF0:
@@ -901,26 +930,28 @@ function Status_System(data)
 	return state_SysEx;
 }
 
-
-function Data_System(data, byte_n)
+function get_system_data (data, byte_n)
 {
 	var state_data_sys = "";
 
 	switch (state_system)
 	{
 		case SysEx_Start:
-			if(data != 0xF7)
+
+			if (data != 0xF7)
 			{
-				state_data_sys += SysEx_Data(data, byte_n);
+				state_data_sys += get_system_ex_data(data, byte_n);
 			}		
 			else
 			{
 				state_data_sys += "SysEx End "
 			}
+
 		break;
-		
+
 		case Song_Position:
-			if(byte_n == 1)
+
+			if (byte_n == 1)
 			{
 				dec_item_add_pre_text("Position LSB "+data);
 				dec_item_add_pre_text("Pos LSB "+data);
@@ -928,19 +959,22 @@ function Data_System(data, byte_n)
 				dec_item_add_pre_text("...");
 				state_note = "Position LSB : ";
 			}
-			
-			if(byte_n == 2)
+
+			if (byte_n == 2)
 			{
 				dec_item_add_pre_text("Position MSB "+data);
 				dec_item_add_pre_text("MSB "+data);
 				dec_item_add_pre_text("...");
 				state_note = "Position MSB : ";
 			}
+
 			pkt_add_item(-1, -1, "Data", strHexData, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
+
 		break;
-		
+
 		case Song_Select:
-			if(byte_n == 1)
+
+			if (byte_n == 1)
 			{
 				dec_item_add_pre_text("Song "+data);
 				dec_item_add_pre_text(data);
@@ -948,13 +982,14 @@ function Data_System(data, byte_n)
 				state_note = "Program : ";
 				pkt_add_item(-1, -1, "Song ", data, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 			}
-			
+
 			if(byte_n == 2)
 			{
 				state_note = "Nothing";
 			}
+
 		break;
-		
+
 /*		case Tuning:
 			if(byte_n == 1)
 			{
@@ -1032,17 +1067,17 @@ function Data_System(data, byte_n)
 			}
 		break;*/
 	}
-	
+
 	return state_data_sys
 }
 
-function SysEx_Data(data, byte_n)
+function get_system_ex_data (data, byte_n)
 {
 	var state_data = "";
 
-	if(byte_n == 1)
+	if (byte_n == 1)
 	{
-		if(data == 0)
+		if (data == 0)
 		{
 			ID_2byte = true;
 			state_data += "Other manufacturer ";
@@ -1059,10 +1094,9 @@ function SysEx_Data(data, byte_n)
 			pkt_add_item(-1, -1, "Manufacturer ID", tab_manufacture[data], PKT_COLOR_MANUFACTURER_TITLE, PKT_COLOR_DATA, true);	
 		}
 	}
-	
-	else if(byte_n == 2)
+	else if (byte_n == 2)
 	{
-		if(ID_2byte == true)
+		if (ID_2byte == true)
 		{
 			byte_1 = data;
 			state_data += "Other manufacturer ";
@@ -1076,11 +1110,11 @@ function SysEx_Data(data, byte_n)
 			pkt_add_item(-1, -1, "Data", strHexData, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 		}		
 	}
-	
-	else if(byte_n == 3)
+
+	else if (byte_n == 3)
 	{
-		if(ID_2byte == true)
-		{		
+		if (ID_2byte == true)
+		{
 			switch (byte_1)
 			{
 				case 0x00:
@@ -1088,39 +1122,44 @@ function SysEx_Data(data, byte_n)
 					dec_item_add_pre_text("...");
 					pkt_add_item(-1, -1, "Manufacturer ID", tab_manuf_00[data], PKT_COLOR_MANUFACTURER_TITLE, PKT_COLOR_DATA, true);	
 				break;
+				
 				case 0x01:
 					dec_item_add_pre_text(tab_manuf_01[data]);
 					dec_item_add_pre_text("...");
 					pkt_add_item(-1, -1, "Manufacturer ID", tab_manuf_01[data], PKT_COLOR_MANUFACTURER_TITLE, PKT_COLOR_DATA, true);	
 				break;
+				
 				case 0x02:
 					dec_item_add_pre_text(tab_manuf_02[data]);
 					dec_item_add_pre_text("...");
 					pkt_add_item(-1, -1, "Manufacturer ID", tab_manuf_02[data], PKT_COLOR_MANUFACTURER_TITLE, PKT_COLOR_DATA, true);	
 				break;
+				
 				case 0x020:
 					dec_item_add_pre_text(tab_manuf_20[data]);
 					dec_item_add_pre_text("...");
 					pkt_add_item(-1, -1, "Manufacturer ID", tab_manuf_20[data], PKT_COLOR_MANUFACTURER_TITLE, PKT_COLOR_DATA, true);	
 				break;
+				
 				case 0x21:
 					dec_item_add_pre_text(tab_manuf_21[data]);
 					dec_item_add_pre_text("...");
 					pkt_add_item(-1, -1, "Manufacturer ID", tab_manuf_21[data], PKT_COLOR_MANUFACTURER_TITLE, PKT_COLOR_DATA, true);	
 				break;
+				
 				case 0x40:
 					dec_item_add_pre_text(tab_manuf_40[data]);
 					dec_item_add_pre_text("...");
 					pkt_add_item(-1, -1, "Manufacturer ID", tab_manuf_40[data], PKT_COLOR_MANUFACTURER_TITLE, PKT_COLOR_DATA, true);	
 				break;
+				
 				default:
 					dec_item_add_pre_text("Error");
 				break;
 			}
-			
+
 			state_data += ("Manufacturer ID ");
 			ID_2byte = false;
-
 		}
 		else
 		{
@@ -1131,23 +1170,16 @@ function SysEx_Data(data, byte_n)
 			pkt_add_item(-1, -1, "Data", strHexData, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 		}
 	}
-	
-	else if(byte_n > 3)
+	else if (byte_n > 3)
 	{
 		dec_item_add_pre_text("Data ");
 		dec_item_add_pre_text("...");
 		state_data += "Data ";
 		
 		dec_item_add_data(data);
-		
 		pkt_add_item(-1, -1, "Data", strHexData, PKT_COLOR_DATA_TITLE, PKT_COLOR_DATA, true);
 			
 	}
-			
+
 	return state_data;
 }
-
-
-
-
-
