@@ -1,7 +1,9 @@
 /*
 *************************************************************************************
 							SCANASTUDIO 2 SPI DECODER
+
 The following commented block allows some related informations to be displayed online
+
 <DESCRIPTION>
 
 	SPI Protocol Decoder.
@@ -11,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.69: Fix PacketView packets search iisue
 	V1.68: Fix the last byte/word not being decoded
 	V1.67: BugFix: Decoding stops after an invalid frame
 	V1.66: Add light packet capabilities
@@ -72,7 +75,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.68";
+	return "1.69";
 }
 
 /* Author 
@@ -1147,19 +1150,19 @@ function pkt_add_packet (pktObj)
 		while (totalWords > words)
 		{
 			var word = "";
-			
+
 			if (pktObj.mosiArr.length > 0)
 			{
 				word = int_to_str_hex(pktObj.mosiArr[words].value);
-				pkt_add_item(pktObj.mosiArr[words].start, pktObj.mosiArr[words].end, "MOSI", word, get_ch_color(ch_mosi), get_ch_light_color(ch_mosi),true,ch_mosi);
+				pkt_add_item(pktObj.mosiArr[words].start, pktObj.mosiArr[words].end, "MOSI", word, get_ch_color(ch_mosi), get_ch_light_color(ch_mosi), true, ch_mosi);
 			}
-			
+
 			if (pktObj.misoArr.length > 0)
 			{
 				word = int_to_str_hex(pktObj.misoArr[words].value);
-				pkt_add_item(pktObj.misoArr[words].start, pktObj.misoArr[words].end, "MISO", word, get_ch_color(ch_miso), get_ch_light_color(ch_miso),true,ch_miso);
+				pkt_add_item(pktObj.misoArr[words].start, pktObj.misoArr[words].end, "MISO", word, get_ch_color(ch_miso), get_ch_light_color(ch_miso), true, ch_miso);
 			}
-			
+
 			words++;
 		}
 	}
@@ -1219,10 +1222,7 @@ function pkt_add_data (title, titleColor, dataArr, dataColor)
 		var firstWordPos = (wordsTotal - wordsInLine);
 		var lastWordPos = (wordsTotal - 1);
 
-		if (lineNum <= 0)
-		{
-			desc += title + " ";
-		}
+		desc += title;
 
 		if (firstWordPos == lastWordPos)
 		{
