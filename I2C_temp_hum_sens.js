@@ -13,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.35: Fix missing PacketView vars initialization
 	V1.34: Add light packet capabilities
 	V1.33: Prevented incompatible workspaces from using the decoder
 	V1.32: Now the decoding can be aborted
@@ -44,7 +45,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.34";
+	return "1.35";
 }
 
 /* Author 
@@ -58,7 +59,7 @@ function get_dec_auth()
 */
 function gui()
 {
-	ui_clear();	// clean up the User interface before drawing a new one.
+	ui_clear();
 			
 	if ((typeof(get_device_max_channels) == 'function') && (typeof(get_device_name) == 'function'))
 	{
@@ -74,7 +75,7 @@ function gui()
 		ui_add_info_label("error", "Please update your ScanaStudio software to use this decoder version");
 		return;
 	}
-	
+
 	ui_add_ch_selector("chSda", "(SDA) Serial Data", "SDA");
 	ui_add_ch_selector("chScl", "(SCL) Serial Clock", "SCL");
 	
@@ -146,7 +147,6 @@ var I2C_CMD =
 	READ_FIRMWARE_REVISION_LSB		: 0xB8,
 };
 
-
 /* Global variables
 */
 var device_write;
@@ -177,20 +177,19 @@ var PKT_COLOR_STOP_TITLE;
 var PKT_COLOR_NOISE_TITLE;
 var PKT_COLOR_COMMAND_TITLE;
 
-
 function decode()
 {
 	get_ui_vals();			// Update the content of all user interface related variables
 	clear_dec_items();		// Clears all the the decoder items and its content
 
-	PKT_COLOR_DATA        = get_ch_light_color(chSda);
-	PKT_COLOR_DATA_TITLE  = dark_colors.gray;
-	PKT_COLOR_START_TITLE = dark_colors.orange;
-	PKT_COLOR_ADR_TITLE   = dark_colors.yellow;
-	PKT_COLOR_ACK_TITLE   = dark_colors.green;
-	PKT_COLOR_NACK_TITLE  = dark_colors.red;
-	PKT_COLOR_STOP_TITLE  = dark_colors.blue;
-	PKT_COLOR_NOISE_TITLE = dark_colors.black;
+	PKT_COLOR_DATA          = get_ch_light_color(chSda);
+	PKT_COLOR_DATA_TITLE    = dark_colors.gray;
+	PKT_COLOR_START_TITLE   = dark_colors.orange;
+	PKT_COLOR_ADR_TITLE     = dark_colors.yellow;
+	PKT_COLOR_ACK_TITLE     = dark_colors.green;
+	PKT_COLOR_NACK_TITLE    = dark_colors.red;
+	PKT_COLOR_STOP_TITLE    = dark_colors.blue;
+	PKT_COLOR_NOISE_TITLE   = dark_colors.black;
 	PKT_COLOR_COMMAND_TITLE = dark_colors.pink;
 
 	if (!check_scanastudio_support())
@@ -212,13 +211,13 @@ function decode()
     }
 
 	decBuf = pre_decode("i2c.js", "chSda = " + chSda + ";" + "chScl = " + chScl + ";" + "adrShow = " + adrShow + ";" + "hexView = " + 3);
-	
-	objCnt = 0;
+
 	var byteValue = 0;
 	var trScl = trs_get_first(chScl);
-	var AvgtHigh;
+	var avgtHigh;
 
-	AvgtHigh = get_avg_thigh(trScl);
+	objCnt = 0;
+	avgtHigh = get_avg_thigh(trScl);
 
 	while (decBuf.length > objCnt)
 	{
@@ -226,31 +225,28 @@ function decode()
 		{
 			return false;
 		}
-	
+
 		I2Cdata = decBuf[objCnt];
 		objCnt++;
 
-		if((I2Cdata.pre_text == "MASTER START CONDITION") && (noACK == true))
+		if ((I2Cdata.pre_text == "MASTER START CONDITION") && (noACK == true))
 		{
-			dec_item_new(chSda, (I2Cdata.start_s + AvgtHigh), I2Cdata.start_s + (AvgtHigh*2));
+			dec_item_new(chSda, (I2Cdata.start_s + avgtHigh), I2Cdata.start_s + (avgtHigh * 2));
 		}
 		else if ((I2Cdata.pre_text == "NOISE ON SDA") || (I2Cdata.pre_text == "NOISE ON SCL"))
 		{
-			dec_item_new(chScl, (I2Cdata.start_s - (AvgtHigh / 2)), I2Cdata.start_s + (AvgtHigh / 2));
+			dec_item_new(chScl, (I2Cdata.start_s - (avgtHigh / 2)), I2Cdata.start_s + (avgtHigh / 2));
 		}
 		else
 		{
 			dec_item_new(chSda, I2Cdata.start_s, I2Cdata.end_s);
 		}
-		
+
 		Text(Device.grp);
 		hex_add_byte(chSda, -1, -1, I2Cdata.data);
 	}
 }
 
-
-/*
-*/
 function check_scanastudio_support()
 {
     if (typeof(pkt_start) != "undefined")
@@ -263,8 +259,6 @@ function check_scanastudio_support()
     }
 }
 
-/*
-*/
 function get_ch_light_color (k)
 {
     var chColor = get_ch_color(k);
@@ -276,9 +270,6 @@ function get_ch_light_color (k)
 	return chColor;
 }
 
-
-/*
-*/
 function int_to_str_hex (num) 
 {
 	var temp = "0x";
@@ -293,12 +284,9 @@ function int_to_str_hex (num)
 	return temp;
 }
 
-
-/*
-*/
-function Text(grp)
+function Text (grp)
 {
-	var color;
+	var color = PKT_COLOR_DATA;
 	var title = "";
 	var data = "";	
 	var write_packet = false;
@@ -307,9 +295,9 @@ function Text(grp)
 	var data_measure;
 	var registre_packet = false;
 	var data_status_bat = "";
-
+	
 	if (I2Cdata.data == I2C_CMD.T_MEASURE_HM)
-	{
+	{		
 		dec_item_add_pre_text("TEMPERATURE MEASURE HOLD MASTER");
 		dec_item_add_pre_text("TEMP MEASURE HOLD MASTER");
 		dec_item_add_pre_text("TEMP HM");
@@ -324,7 +312,7 @@ function Text(grp)
 		T = true;
 	}
 	else if (I2Cdata.data == I2C_CMD.RH_MEASURE_HM)
-	{
+	{		
 		dec_item_add_pre_text("HUMIDITE MEASURE HOLD MASTER");
 		dec_item_add_pre_text("HUM MEASURE HOLD MASTER");
 		dec_item_add_pre_text("HUM HM");
@@ -339,7 +327,7 @@ function Text(grp)
 		RH = true;
 	}
 	else if (I2Cdata.data == I2C_CMD.T_MEASURE_noHM)
-	{
+	{		
 		dec_item_add_pre_text("TEMPERATURE MEASURE NO HOLD MASTER");
 		dec_item_add_pre_text("TEMP MEASURE !HOLD MASTER");
 		dec_item_add_pre_text("TEMP !HM");
@@ -354,7 +342,7 @@ function Text(grp)
 		T = true;
 	}
 	else if (I2Cdata.data == I2C_CMD.RH_MEASURE_noHM)
-	{
+	{	
 		dec_item_add_pre_text("HUMIDITE MEASURE NO HOLD MASTER");
 		dec_item_add_pre_text("HUM MEASURE !HOLD MASTER");
 		dec_item_add_pre_text("HUM !HM");
@@ -368,8 +356,8 @@ function Text(grp)
 		befor_data = false;
 		RH = true;
 	}
-	else if(I2Cdata.data == I2C_CMD.WRITE_REGISTER)
-	{
+	else if (I2Cdata.data == I2C_CMD.WRITE_REGISTER)
+	{	
 		dec_item_add_pre_text("WRITE IN REGISTER");
 		dec_item_add_pre_text("WR R");
 		
@@ -380,8 +368,8 @@ function Text(grp)
 		befor_data = false;
 		Registre = true;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_REGISTER)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_REGISTER)
+	{		
 		dec_item_add_pre_text("READ IN REGISTER");
 		dec_item_add_pre_text("RD R");
 		
@@ -392,9 +380,8 @@ function Text(grp)
 		befor_data = false;
 		Registre = true;
 	}
-		
-	else if(I2Cdata.data == I2C_CMD.SOFT_RESET)
-	{
+	else if (I2Cdata.data == I2C_CMD.SOFT_RESET)
+	{		
 		dec_item_add_pre_text("RESET");
 		dec_item_add_pre_text("RST");
 		
@@ -404,8 +391,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.MEASURE_ANOLOG_VOLTAGE_OR_THERMISTOR_TEMERATURE)
-	{
+	else if (I2Cdata.data == I2C_CMD.MEASURE_ANOLOG_VOLTAGE_OR_THERMISTOR_TEMERATURE)
+	{	
 		dec_item_add_pre_text("MEASURE ANOLOG VOLTAGE OR THERMISTOR TEMERATURE");
 		dec_item_add_pre_text("MEASURE AN VOLT OR THERMIS TEMP");
 		dec_item_add_pre_text("MEAS AN V OR THER TEMP");
@@ -417,8 +404,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_TEMPERATURE_VALUE_FROM_PREVIOUS_RH_MEASUREMENT)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_TEMPERATURE_VALUE_FROM_PREVIOUS_RH_MEASUREMENT)
+	{		
 		dec_item_add_pre_text("READ TEMPERATURE VALUE FROM PREVIOUS RH MEASUREMENT");
 		dec_item_add_pre_text("READ TEMP VAL FROM PREVIOUS RH MEASUREMENT");
 		dec_item_add_pre_text("R TEMP VAL FROM PREVIOUS RH");
@@ -431,8 +418,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.WRITE_VOLTAGE_MEASUREMENT_SETUP)
-	{
+	else if (I2Cdata.data == I2C_CMD.WRITE_VOLTAGE_MEASUREMENT_SETUP)
+	{	
 		dec_item_add_pre_text("WRITE VOLTAGE MEASUREMENT SETUP");
 		dec_item_add_pre_text("W VOLT MEAS SETUP");
 		dec_item_add_pre_text("W VOLT MEAS");
@@ -444,8 +431,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_VOLTAGE_MEASUREMENT_SETUP)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_VOLTAGE_MEASUREMENT_SETUP)
+	{	
 		dec_item_add_pre_text("READ VOLTAGE MEASUREMENT SETUP");
 		dec_item_add_pre_text("R VOLT MEAS SETUP");
 		dec_item_add_pre_text("R VOLT MEAS");
@@ -457,8 +444,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.WRITE_HEATER_SETUP)
-	{
+	else if (I2Cdata.data == I2C_CMD.WRITE_HEATER_SETUP)
+	{	
 		dec_item_add_pre_text("WRITE HEATER SETUP");
 		dec_item_add_pre_text("W HEATER");
 		dec_item_add_pre_text("...");
@@ -469,8 +456,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_HEATER_SETUP)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_HEATER_SETUP)
+	{		
 		dec_item_add_pre_text("READ HEATER SETUP");
 		dec_item_add_pre_text("R HEATER");
 		dec_item_add_pre_text("...");
@@ -481,8 +468,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.WRITE_THERMISTOR_CORREC_COEF)
-	{
+	else if (I2Cdata.data == I2C_CMD.WRITE_THERMISTOR_CORREC_COEF)
+	{		
 		dec_item_add_pre_text("WRITE THERMISTOR CORREC COEF");
 		dec_item_add_pre_text("W THERM CORREC COEF");
 		dec_item_add_pre_text("W THERM COEF");
@@ -494,8 +481,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_THERMISTOR_CORREC_COEF)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_THERMISTOR_CORREC_COEF)
+	{		
 		dec_item_add_pre_text("READ THERMISTOR CORREC COEF");
 		dec_item_add_pre_text("R THERM CORREC COEF");
 		dec_item_add_pre_text("R THERM COEF");
@@ -507,8 +494,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_1ST_BYTE_MSB)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_1ST_BYTE_MSB)
+	{		
 		dec_item_add_pre_text("READ ELECTRONIC ID 1ST BYTE MSB");
 		dec_item_add_pre_text("R ELEC ID 1ST BYTE MSB");
 		dec_item_add_pre_text("R ELEC ID 1ST BYTE");
@@ -520,8 +507,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_1ST_BYTE_LSB)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_1ST_BYTE_LSB)
+	{		
 		dec_item_add_pre_text("READ ELECTRONIC ID 1ST BYTE LSB");
 		dec_item_add_pre_text("R ELEC ID 1ST BYTE LSB");
 		dec_item_add_pre_text("R ELEC ID 1ST BYTE");
@@ -533,8 +520,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_2ND_BYTE_MSB)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_2ND_BYTE_MSB)
+	{		
 		dec_item_add_pre_text("READ ELECTRONIC ID 2ND BYTE MSB");
 		dec_item_add_pre_text("R ELEC ID 2ND BYTE MSB");
 		dec_item_add_pre_text("R ELEC ID 2ND BYTE");
@@ -546,8 +533,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_2ND_BYTE_LSB)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_ELECTRONIC_ID_2ND_BYTE_LSB)
+	{		
 		dec_item_add_pre_text("READ ELECTRONIC ID 2ND BYTE LSB");
 		dec_item_add_pre_text("R ELEC ID 2ND BYTE LSB");
 		dec_item_add_pre_text("R ELEC ID 2ND BYTE");
@@ -559,8 +546,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_FIRMWARE_REVISION_MSB)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_FIRMWARE_REVISION_MSB)
+	{		
 		dec_item_add_pre_text("READ FIRMWARE REVISION MSB");
 		dec_item_add_pre_text("READ FIRMWARE MSB");
 		dec_item_add_pre_text("R FIRMWARE");
@@ -572,8 +559,8 @@ function Text(grp)
 		write_packet = true;
 		befor_data = false;
 	}
-	else if(I2Cdata.data == I2C_CMD.READ_FIRMWARE_REVISION_LSB)
-	{
+	else if (I2Cdata.data == I2C_CMD.READ_FIRMWARE_REVISION_LSB)
+	{		
 		dec_item_add_pre_text("READ FIRMWARE REVISION LSB");
 		dec_item_add_pre_text("READ FIRMWARE LSB");
 		dec_item_add_pre_text("R FIRMWARE");
@@ -586,7 +573,7 @@ function Text(grp)
 		befor_data = false;
 	}
 	else if ((I2Cdata.pre_text == "WRITE TO: ") || (I2Cdata.pre_text == "READ FROM: "))
-	{
+	{		
 		if(grp == 1)
 		{
 			R_W_grp1();
@@ -595,24 +582,25 @@ function Text(grp)
 		{
 			R_W_grp2();
 		}	
+
 		befor_data = false;
 	}
 	else if (I2Cdata.pre_text == "GENERAL CALL ")
-	{
+	{		
 		dec_item_add_pre_text("GENERAL CALL");
 		dec_item_add_pre_text("GEN");
 
 		befor_data = false;
 	}
 	else if (I2Cdata.pre_text == "START BYTE")
-	{
+	{		
 		dec_item_add_pre_text("START BYTE");
 		dec_item_add_pre_text("STBYTE");
 
 		befor_data = false;
 	}
 	else if(I2Cdata.pre_text == "NOISE ON SDA")
-	{
+	{		
 		dec_item_add_pre_text("NOISE ON SDA");
 		dec_item_add_pre_text("!");
 		dec_item_add_comment("NOISE ON SDA");
@@ -620,7 +608,7 @@ function Text(grp)
 		befor_data = false;
 	}
 	else if (I2Cdata.pre_text == "NOISE ON SCL")
-	{
+	{		
 		dec_item_add_pre_text("NOISE ON SCL");
 		dec_item_add_pre_text("!");
 		dec_item_add_comment("NOISE ON SCL");
@@ -628,23 +616,24 @@ function Text(grp)
 		befor_data = false;
 	}
 	else if (I2Cdata.pre_text == "CBUS ADDRESS ")
-	{
+	{		
 		dec_item_add_pre_text("CBUS ADDRESS (");
 		dec_item_add_pre_text("CBUS ");
 		dec_item_add_data(I2Cdata.data);
 		dec_item_add_post_text(I2Cdata.post_text);
-		
+
 		befor_data = false;
 	}
 	else if (I2Cdata.pre_text == "MASTER START CONDITION")
-	{
-		if(noACK == false)
+	{		
+		if (noACK == false)
 		{
-			if(befor_data == true)
+			if (befor_data == true)
 			{
 				pkt_end();
 				start_packet = true;
 			}
+
 			if (start_packet == true)
 			{
 				pkt_start("I2C");
@@ -674,7 +663,7 @@ function Text(grp)
 		}
 	}
 	else if (I2Cdata.pre_text == "MASTER STOP CONDITION")
-	{
+	{		
 		dec_item_add_pre_text("MASTER STOP CONDITION");
 		dec_item_add_pre_text("STOP CONDITION");
 		dec_item_add_pre_text("STOP");
@@ -686,16 +675,16 @@ function Text(grp)
 		befor_data = false;
 		noACK = false;
 	}
-	else if(I2Cdata.pre_text == "SLAVE ACKNOWLEDGE")
-	{
+	else if (I2Cdata.pre_text == "SLAVE ACKNOWLEDGE")
+	{		
 		dec_item_add_pre_text("SLAVE ACKNOWLEDGE");
 		dec_item_add_pre_text("ACKNOWLEDGE");
 		dec_item_add_pre_text("ACK");
 		dec_item_add_pre_text("A");
 		dec_item_add_comment("SLAVE ACKNOWLEDGE");
 	}
-	else if(I2Cdata.pre_text == "SLAVE NO ACKNOWLEDGE")
-	{
+	else if (I2Cdata.pre_text == "SLAVE NO ACKNOWLEDGE")
+	{		
 		noACK = true;
 		dec_item_add_pre_text("SLAVE NO ACKNOWLEDGE");
 		dec_item_add_pre_text("NO ACKNOWLEDGE");
@@ -703,8 +692,8 @@ function Text(grp)
 		dec_item_add_pre_text("N");
 		dec_item_add_comment("SLAVE NO ACKNOWLEDGE");
 	}
-	else if(I2Cdata.pre_text == "WARNING: NO ACKNOWLEDGE")
-	{
+	else if (I2Cdata.pre_text == "WARNING: NO ACKNOWLEDGE")
+	{		
 		dec_item_add_pre_text("WARNING: NO ACKNOWLEDGE");
 		dec_item_add_pre_text("WARN: NO ACK");
 		dec_item_add_pre_text("WARN");
@@ -712,11 +701,12 @@ function Text(grp)
 	}
 	else 
 	{
-		if((res == 3)&&((T == true)||(RH == true)))
-		{
+		if ((res == 3) && ((T == true) || (RH == true)))
+		{			
 			data_measure = Calculate_value(I2Cdata.data);
 			data_measure = Math.round(data_measure);
-			if(T == true)
+
+			if (T == true)
 			{
 				dec_item_add_pre_text(data_measure+" ?C");
 				T = false;
@@ -730,12 +720,12 @@ function Text(grp)
 				data = data_measure+" %";
 				title = "HUMIDITY";
 			}
-			
-			color = PKT_COLOR_DATA_TITLE
+
+			color = PKT_COLOR_DATA_TITLE;
 		}
 		else if ((T == true) || (RH == true))
-		{
-			if(temp_1st_byte == true)
+		{			
+			if (temp_1st_byte == true)
 			{
 				dec_item_add_pre_text("Measure MSB : ");
 				dec_item_add_data(I2Cdata);
@@ -743,7 +733,7 @@ function Text(grp)
 				temp_1st_byte = false;
 			}
 			else
-			{
+			{				
 				dec_item_add_pre_text("Measure LSB : ");
 				dec_item_add_data(I2Cdata);
 			
@@ -753,7 +743,7 @@ function Text(grp)
 				data_measure = Calculate_value(tmp_int);
 				data_measure = Math.round(data_measure);
 				
-				if(T == true)
+				if (T == true)
 				{
 					dec_item_add_post_text(" : "+data_measure+" ?C");
 					T = false;
@@ -772,78 +762,84 @@ function Text(grp)
 			}
 		}
 		else if (Registre == true)
-		{
+		{		
 			dec_item_add_data(I2Cdata.data);
 			Registre == false;
-			
+
 			title = "DATA";
 			color = PKT_COLOR_DATA_TITLE
 			data = I2Cdata.data;
-			
+
 			registre_packet = true;
-			
 		}
-	
-		I2Cdata_next = decBuf[objCnt+1];
-		
+
 		write_packet = true;
-		
-		if((I2Cdata_next.pre_text == "MASTER START CONDITION") || (I2Cdata_next.pre_text == "MASTER STOP CONDITION"))
+
+		if (decBuf.length < objCnt)
 		{
-			befor_data = true;
+			I2Cdata_next = decBuf[objCnt + 1];
+			
+			if ((I2Cdata_next.pre_text == "MASTER START CONDITION") || (I2Cdata_next.pre_text == "MASTER STOP CONDITION"))
+			{
+				befor_data = true;
+			}
 		}
-		
 	}
-	
-	if((write_packet == true) && (start_packet == false))
+
+	if ((write_packet == true) && (start_packet == false))
 	{
-		if(registre_packet == true)
+		if (registre_packet == true)
 		{
 			pkt_add_item(-1, -1, "Register", data, color, PKT_COLOR_DATA, true);
 			registre_packet = false;
-			
-			pkt_start("Registr bits description");
-				pkt_add_item(-1, -1, "Disable OTP Reload", ((data&0x02)>>1), color, PKT_COLOR_DATA, true, chSda);
-				pkt_add_item(-1, -1, "Enable on-chip heater", ((data&0x04)>>2), color, PKT_COLOR_DATA, true, chSda);
-				data_status_bat = (data&0x40)>>6;
-				if(data_status_bat == 0)
-				{
-					data_status_bat += " -> VDD > 2.25V";
-				}
-				else if (data_status_bat == 1)
-				{
-					data_status_bat += " -> VDD < 2.25V";
-				}
-				pkt_add_item(-1, -1, "Status : End of battery", data_status_bat, color, PKT_COLOR_DATA, true, chSda);
-				tmp_int = (data&0x80)>>6;
-				data = data&0x01;
-				data |= tmp_int;
-				
-				if(data == 0)
-				{
-					data += " -> RH:12bit  T:14bit";
-				}
-				else if(data == 1)
-				{
-					data += " -> RH:8bit  T:12bit";
-				}
-				else if(data == 2)
-				{
-					data += " -> RH:10bit  T:13bit";
-				}
-				else if(data == 3)
-				{
-					data += " -> RH:11bit  T:11bit";
-				}
-				
-				pkt_add_item(-1, -1, "Measurement resolution", data, color, PKT_COLOR_DATA, true, chSda);
-				pkt_end();	
+
+			pkt_start("Register bits description");
+			pkt_add_item(-1, -1, "Disable OTP Reload", ((data & 0x02) >> 1), color, PKT_COLOR_DATA, true, chSda);
+			pkt_add_item(-1, -1, "Enable on-chip heater", ((data & 0x04) >> 2), color, PKT_COLOR_DATA, true, chSda);
+
+			data_status_bat = (data & 0x40) >> 6;
+
+			if (data_status_bat == 0)
+			{
+				data_status_bat += " -> VDD > 2.25V";
+			}
+			else if (data_status_bat == 1)
+			{
+				data_status_bat += " -> VDD < 2.25V";
+			}
+
+			pkt_add_item(-1, -1, "Status : End of battery", data_status_bat, color, PKT_COLOR_DATA, true, chSda);
+
+			tmp_int = (data & 0x80) >> 6;
+			data = data & 0x01;
+			data |= tmp_int;
+
+			if (data == 0)
+			{
+				data += " -> RH:12bit  T:14bit";
+			}
+			else if (data == 1)
+			{
+				data += " -> RH:8bit  T:12bit";
+			}
+			else if (data == 2)
+			{
+				data += " -> RH:10bit  T:13bit";
+			}
+			else if (data == 3)
+			{
+				data += " -> RH:11bit  T:11bit";
+			}
+
+			pkt_add_item(-1, -1, "Measurement resolution", data, color, PKT_COLOR_DATA, true, chSda);
+			pkt_end();	
 		}
 		else if (end_packt == false)
 		{
 			pkt_add_item(-1, -1, title, data, color, PKT_COLOR_DATA, true, chSda);
 		}
-		if((end_packt == true) && (last_end_state == false))
+
+		if ((end_packt == true) && (last_end_state == false))
 		{
 			pkt_end();
 			start_packet = true;
@@ -864,7 +860,7 @@ function R_W_grp1()
 			dec_item_add_post_text(I2Cdata.post_text);
 			tmp_int = +I2Cdata.data ;
 			dec_item_add_comment("WRITE TO : "+int_to_str_hex(tmp_int));
-			
+
 			color = PKT_COLOR_ADR_TITLE;
 			title = "ADRESS";
 			data = "WRITE TO "+Device.str;	
@@ -878,10 +874,11 @@ function R_W_grp1()
 			dec_item_add_post_text(I2Cdata.post_text);
 		}
 	}
-	else if(I2Cdata.pre_text == "READ FROM: ")
+	else if (I2Cdata.pre_text == "READ FROM: ")
 	{
-		tmp_int = +I2Cdata.data ;
+		tmp_int = +I2Cdata.data;
 		tmp_int++;
+
 		if (tmp_int == device_read)
 		{
 			dec_item_add_pre_text(I2Cdata.pre_text+Device.str);
@@ -1009,7 +1006,7 @@ function get_avg_thigh (trSt)
 	return avgtHigh;
 }
 
-function Calculate_value(value)
+function Calculate_value (value)
 {
 	var result = 0;
 	var tmp;
@@ -1075,13 +1072,3 @@ function Calculate_value(value)
 	
 	return result
 }
-
-
-
-
-
-
-
-
-
-
