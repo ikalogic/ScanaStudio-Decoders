@@ -6,13 +6,14 @@ The following commented block allows some related informations to be displayed o
 
 <DESCRIPTION>
 
-	SPI Protocol Decoder.
-	Highly configurable SPI bus decoder.
+	SPI Protocol Decoder
+	Highly configurable SPI bus decoder
 
 </DESCRIPTION>
 
 <RELEASE_NOTES>
 
+	V1.70: Fix decoding issue with missing CS signal at the start
 	V1.69: Fix PacketView packets search iisue
 	V1.68: Fix the last byte/word not being decoded
 	V1.67: BugFix: Decoding stops after an invalid frame
@@ -75,7 +76,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.69";
+	return "1.70";
 }
 
 /* Author 
@@ -378,7 +379,7 @@ function decode()
 		}
 
 		if (state == GET_CS)
-		{			
+		{
 			if (opt_cs != 0) 												// If we want to ignore the CS line
 			{
 				t_end.sample = n_samples;
@@ -391,17 +392,15 @@ function decode()
 				if (skip_first_cs_falling_edge)
 				{
 					skip_first_cs_falling_edge = false;
-	
+
 					t_end.sample = t.sample;
 					t_end.val = t.val;
-					t.sample = 0;
+					t.sample = 1;
 					t.val = cspol;
-	
+
 					dec_item_new(ch_cs, t.sample, t_end.sample);
-					dec_item_add_pre_text("Warning: The leading edge of CS (Chip Select) line is missing!");
 					dec_item_add_pre_text("Warning: CS leading edge is missing!");
 					dec_item_add_pre_text("Warning: CS!");
-					dec_item_add_pre_text("W: CS!");
 					dec_item_add_pre_text("!CS!");
 					dec_item_add_pre_text("!");
 					dec_item_add_comment ("Leading edge edge of CS line is missing!");
@@ -412,6 +411,7 @@ function decode()
 					{
 						t = trs_get_next(ch_cs);
 					}
+
 					t_end = trs_get_next(ch_cs);
 				}
 
@@ -527,6 +527,7 @@ function decode()
 
 							delta_clk = t_clk.sample - t_clk_prev.sample
 							state = END_FRAME;							
+
 							break;
 						}
 					}
@@ -561,6 +562,7 @@ function decode()
 						data_miso = (data_miso * 2) + bits_miso[b];
 					}
 				}
+
 				if (opt != OPT_IGNORE_MOSI)
 				{
 					for (b = 0; b < bits_mosi.length; b++)
@@ -578,6 +580,7 @@ function decode()
 						data_miso = (data_miso * 2) + bits_miso[b];
 					}
 				}
+
 				if (opt != OPT_IGNORE_MOSI)
 				{
 					for (b = bits_mosi.length - 1; b >= 0; b--)
@@ -587,32 +590,45 @@ function decode()
 				}
 			}
 
-			s_end = t_clk_prev.sample + get_bit_margin();
-
-			if (opt == OPT_IGNORE_MOSI)
+			if (s_start >= disp_margin)
 			{
-				dec_item_new(ch_miso, (s_start - disp_margin), (s_end + disp_margin));
-				dec_item_add_data(data_miso);
-
-				pktObj.misoArr.push(new SpiObject(SPI_OBJECT_TYPE.MISO, data_miso, (s_start - disp_margin), (s_end + disp_margin)));
+				s_start = s_start - disp_margin;
 			}
-			else if (opt == OPT_IGNORE_MISO)
+
+			s_end = t_clk_prev.sample + get_bit_margin() + disp_margin;
+
+			switch (opt)
 			{
-				dec_item_new(ch_mosi, (s_start - disp_margin), (s_end + disp_margin));
-				dec_item_add_data(data_mosi);
+				case OPT_IGNORE_MOSI:
 
-				pktObj.mosiArr.push(new SpiObject(SPI_OBJECT_TYPE.MOSI, data_mosi, (s_start - disp_margin), (s_end + disp_margin)));
-			}
-			else if (opt == OPT_IGNORE_NONE)
-			{
-				dec_item_new(ch_mosi, (s_start - disp_margin), (s_end + disp_margin));
-				dec_item_add_data(data_mosi);
+					dec_item_new(ch_miso, s_start, s_end);
+					dec_item_add_data(data_miso);
 
-				dec_item_new(ch_miso, (s_start - disp_margin), (s_end + disp_margin));
-				dec_item_add_data(data_miso);
+					pktObj.misoArr.push(new SpiObject(SPI_OBJECT_TYPE.MISO, data_miso, s_start, s_end));
 
-				pktObj.misoArr.push(new SpiObject(SPI_OBJECT_TYPE.MISO, data_miso, (s_start - disp_margin), (s_end + disp_margin)));
-				pktObj.mosiArr.push(new SpiObject(SPI_OBJECT_TYPE.MOSI, data_mosi, (s_start - disp_margin), (s_end + disp_margin)));
+				break;
+
+				case OPT_IGNORE_MISO:
+
+					dec_item_new(ch_mosi, s_start, s_end);
+					dec_item_add_data(data_mosi);
+
+					pktObj.mosiArr.push(new SpiObject(SPI_OBJECT_TYPE.MOSI, data_mosi, s_start, s_end));
+
+				break;
+
+				case OPT_IGNORE_NONE:
+
+					dec_item_new(ch_mosi, s_start, s_end);
+					dec_item_add_data(data_mosi);
+
+					dec_item_new(ch_miso, s_start, s_end);
+					dec_item_add_data(data_miso);
+
+					pktObj.misoArr.push(new SpiObject(SPI_OBJECT_TYPE.MISO, data_miso, s_start, s_end));
+					pktObj.mosiArr.push(new SpiObject(SPI_OBJECT_TYPE.MOSI, data_mosi, s_start, s_end));
+
+				break;
 			}
 
 			var byte_mosi, byte_miso;
