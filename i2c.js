@@ -1188,6 +1188,7 @@ function put_c (data, start, gen_ack, stop)
 function trig_gui()
 {
 	trig_ui_clear();
+
 	trig_ui_add_alternative("ALT_ANY_FRAME", "Trigger on a any frame", false);
 		
 		trig_ui_add_combo("trig_frame_type", "Trigger on:");
@@ -1196,15 +1197,10 @@ function trig_gui()
 		trig_ui_add_item_to_combo("Any UnAcknowledged address");
 		trig_ui_add_item_to_combo("Any Acknowledged address");
 
-
 	trig_ui_add_alternative("ALT_SPECIFIC_ADD", "Trigger on I2C address", true);
 	
-		trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is an 7 bit field.");
+		trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is an 8 bit field containing the R/W Flag");
 		trig_ui_add_free_text("trig_add", "Slave Address: ");
-		trig_ui_add_combo("rw_type","Access type");
-			trig_ui_add_item_to_combo("Any (Read or Write)",true);
-			trig_ui_add_item_to_combo("Read");
-			trig_ui_add_item_to_combo("Write");		
 		trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", false);
 }
 
@@ -1214,6 +1210,7 @@ function trig_seq_gen()
 {
 	var i = 0;
 	var i2c_step = {sda: "", scl:""};
+
 	get_ui_vals();
 
 	i2c_trig_steps.length = 0;
@@ -1295,34 +1292,19 @@ function trig_seq_gen()
 	else if (ALT_SPECIFIC_ADD == true)
 	{
 		trig_add = Number(trig_add);
-		rw_type = Number(rw_type);
-		
 
 		i2c_step.sda = "F";		// Add the start condition
 		i2c_step.scl = "1";
 		
 		i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
 
-		for (i = 7; i >= 1; i--)	// Add address 
+		for (i = 7; i >= 0; i--)	// Add address and R/W field
 		{
 			i2c_step.sda = ((trig_add >> i) & 0x1).toString();
 			i2c_step.scl = "R";
+
 			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
 		}
-
-		//add R/W field
-		switch(rw_type)
-		{
-			case 0: //any
-				i2c_step.sda = "X";
-			case 1: //read
-				i2c_step.sda = "1";
-			case 2: //write
-				i2c_step.sda = "0";
-		}
-		i2c_step.scl = "R";
-		i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
-			
 		if (ack_needed_a == true)	// Add ACK field (if needed)
 		{
 		
@@ -1330,17 +1312,8 @@ function trig_seq_gen()
 			i2c_step.scl = "R";
 			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
 		}
-		
-		switch(rw_type)
-		{
-			case 0: //any
-				flexitrig_set_summary_text("Trig on I2C R/W @ 0x" + trig_add.toString(16));
-			case 1: //read
-				flexitrig_set_summary_text("Trig on I2C Read @ 0x" + trig_add.toString(16));
-			case 2: //write
-				flexitrig_set_summary_text("Trig on I2C Write @ 0x" + trig_add.toString(16));
-		}
-		
+
+		flexitrig_set_summary_text("Trig on I2C Add: 0x" + trig_add.toString(16));
 	}
 
 	flexitrig_set_async_mode(false);
@@ -1676,5 +1649,4 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
-
 
