@@ -13,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.71: Fix bug that caused decodering to fail if CS is ignored.
 	V1.70: Fix decoding issue with missing CS signal at the start
 	V1.69: Fix PacketView packets search iisue
 	V1.68: Fix the last byte/word not being decoded
@@ -76,7 +77,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.70";
+	return "1.71";
 }
 
 /* Author 
@@ -385,7 +386,7 @@ function decode()
 				t_end.sample = n_samples;
 				state = GET_DATA;
 				t = t_clk;
-				break;
+				continue;
 			}
 			else
 			{
@@ -1307,3 +1308,5 @@ function get_bit_margin()
 	var k = 0;
 	return ((k * get_srate()) / 100000000);
 }
+
+

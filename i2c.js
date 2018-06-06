@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.72: More comprehensive trigger system (7 bit address instead of 8 bit addressing)
 	V1.71: Add light packet capabilities.
 	V1.70: Reworked PacketView.
 	V1.69: Show packet frames event if there is no data available.
@@ -77,7 +78,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.71";
+	return "1.72";
 }
 
 
@@ -1199,8 +1200,12 @@ function trig_gui()
 
 	trig_ui_add_alternative("ALT_SPECIFIC_ADD", "Trigger on I2C address", true);
 	
-		trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is an 8 bit field containing the R/W Flag");
+	trig_ui_add_label("lab1", "Type Decimal value (65) or HEX value (0x41). Address is a 7 bit field.");
 		trig_ui_add_free_text("trig_add", "Slave Address: ");
+		trig_ui_add_combo("rw_type","Access type");
+			trig_ui_add_item_to_combo("Any (Read or Write)",true);
+			trig_ui_add_item_to_combo("Read");
+			trig_ui_add_item_to_combo("Write");		
 		trig_ui_add_check_box("ack_needed_a", "Address must be aknowledged by a slave", false);
 }
 
@@ -1292,19 +1297,37 @@ function trig_seq_gen()
 	else if (ALT_SPECIFIC_ADD == true)
 	{
 		trig_add = Number(trig_add);
-
+		rw_type = Number(rw_type);
+		
 		i2c_step.sda = "F";		// Add the start condition
 		i2c_step.scl = "1";
 		
 		i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
 
-		for (i = 7; i >= 0; i--)	// Add address and R/W field
+		for (i = 6; i >= 0; i--)	// Add address and R/W field
 		{
 			i2c_step.sda = ((trig_add >> i) & 0x1).toString();
 			i2c_step.scl = "R";
 
 			i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
 		}
+		
+		//add R/W field
+		switch(rw_type)
+		{
+			case 0: //any
+				i2c_step.sda = "X";	//don't care
+				break;
+			case 1: //read
+				i2c_step.sda = "1";
+				break;
+			case 2: //write
+				i2c_step.sda = "0";
+				break;
+		}
+		i2c_step.scl = "R";
+		i2c_trig_steps.push(new i2c_trig_step_t(i2c_step.sda,i2c_step.scl));
+		
 		if (ack_needed_a == true)	// Add ACK field (if needed)
 		{
 		
@@ -1649,4 +1672,5 @@ function check_noise (tr1, tr2)
 
 	return false;
 }
+
 
