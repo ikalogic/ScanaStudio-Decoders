@@ -13,7 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.70: Fix bug that caused decodering to fail if CS is ignored.
+	V1.71: Fix bug that caused decodering to fail if CS is ignored.
 	V1.70: Fix decoding issue with missing CS signal at the start
 	V1.69: Fix PacketView packets search iisue
 	V1.68: Fix the last byte/word not being decoded
