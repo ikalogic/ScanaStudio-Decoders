@@ -13,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.23:  Added stopbits options
 	V1.22:  Add light packet capabilities
 	V1.21:  Add recognition of byte in PacketView
 	V1.2:   Add inverting capability
@@ -53,7 +54,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.22";
+	return "1.23";
 }
 
 /* Author 
@@ -73,6 +74,9 @@ var channel_color;
 var PARITY_NONE = 0;
 var PARITY_ODD = 1;
 var PARITY_EVEN = 2;
+var STOP_NORM = 0;
+var STOP_ONE = 1;
+var STOP_TWO = 2;
 
 var ch;
 var baud;
@@ -100,6 +104,10 @@ function gui()  //graphical user interface
 		ui_add_item_to_txt_combo( "No parity bit", true );
 		ui_add_item_to_txt_combo( "Odd parity bit" );
 		ui_add_item_to_txt_combo( "Even parity bit" );
+	ui_add_txt_combo( "STOP_SELECTOR", "Stop bit:" );
+		ui_add_item_to_txt_combo( "Depend on the parity (true standard)", true );
+		ui_add_item_to_txt_combo( "1" );
+		ui_add_item_to_txt_combo( "2" );
 	ui_add_txt_combo( "invert", "Inverted logic" );
 		ui_add_item_to_txt_combo( "Non inverted logic (default)", true );
 		ui_add_item_to_txt_combo( "Inverted logic: All signals inverted" );
@@ -143,10 +151,21 @@ function decode_RTU()
   	clear_dec_items();            // Clears all the the decoder items and its content
 	
 	var stop_bit;
-	if (PARITY_SELECTOR == PARITY_NONE)
-		stop_bit=2;
-	else
-		stop_bit=0;
+	if (STOP_SELECTOR == STOP_NORM)
+	{
+		if (PARITY_SELECTOR == PARITY_NONE)
+			stop_bit=2;
+		else
+			stop_bit=0;
+	}
+	else if (STOP_SELECTOR == STOP_ONE)
+	{
+			stop_bit=0;
+	}
+	else if (STOP_SELECTOR == STOP_TWO)
+	{
+			stop_bit=2;
+	}
   
   	buffer = pre_decode("uart.js","ch = "+ CH_SELECTOR +"; baud = "+ BAUD_SELECTOR +"; nbits = 3; parity = "+ PARITY_SELECTOR +"; stop = "+ stop_bit +"; order = 0; invert = "+ invert);
   
@@ -2407,6 +2426,9 @@ function function_to_str(data, r_a)
 			break;
 	}
 }
+
+
+
 
 
 
