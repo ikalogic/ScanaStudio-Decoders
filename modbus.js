@@ -13,6 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.24:  Prevent glitches from doing bugs
 	V1.23:  Added stopbits options
 	V1.22:  Add light packet capabilities
 	V1.21:  Add recognition of byte in PacketView
@@ -54,7 +55,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.23";
+	return "1.24";
 }
 
 /* Author 
@@ -81,6 +82,7 @@ var STOP_TWO = 2;
 var ch;
 var baud;
 var parity;
+var nbr_stop_bit;
 var nbits;
 var invert;
 var samples_per_bit;
@@ -193,6 +195,11 @@ function decode_RTU()
      			t=trs_go_before(CH_SELECTOR,buffer[i].start_s - spb);
 				t_sample = t.sample;
 				t = trs_get_prev(CH_SELECTOR);
+				if(t_sample - t.sample < spb*0.05)
+				{
+					t = trs_get_prev(CH_SELECTOR);
+					t = trs_get_prev(CH_SELECTOR);
+				}
 				if( (t_first <= t_sample) && (t_sample - t.sample >= 28*spb) )
 				{
 					state = 1;
@@ -210,6 +217,7 @@ function decode_RTU()
 				}
 				else
 				{
+					
 					state = 0;
 					pkt_end();
 					break;
@@ -1755,6 +1763,8 @@ function generator_template()
 	invert = 0; // options are 0 for no invertion, and 1 for logical invertion
 	
 	parity = PARITY_NONE; // options are PARITY_NONE, PARITY_ODD, PARITY_EVEN;
+	
+	nbr_stop_bit = STOP_NORM; // options are STOP_NORM, STOP_ONE, STOP_TWO;
 	/*
 		Signal generation part !! Change this part according to your application !!
 	*/
@@ -1900,11 +1910,18 @@ function put_c (code)
 		}
 
 		add_samples(ch, par, samples_per_bit);
-    	add_samples(ch, hi, samples_per_bit); 	// Add stop bits
+		if(nbr_stop_bit == STOP_TWO)
+    		add_samples(ch, hi, samples_per_bit * 2); 	// Add stop bits
+		else
+    		add_samples(ch, hi, samples_per_bit); 	// Add stop bits
 	}
 	else
-    	add_samples(ch, hi, samples_per_bit * 2); 	// Add stop bits
-
+	{
+		if(nbr_stop_bit == STOP_ONE)
+    		add_samples(ch, hi, samples_per_bit); 	// Add stop bits
+		else
+    		add_samples(ch, hi, samples_per_bit * 2); 	// Add stop bits
+	}
 }
 
 
@@ -2426,6 +2443,9 @@ function function_to_str(data, r_a)
 			break;
 	}
 }
+
+
+
 
 
 
