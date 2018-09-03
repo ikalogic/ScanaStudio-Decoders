@@ -13,7 +13,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
-	V1.36: Fix SHT2X temp & hum values calculation. Fix PacketView.
+	V1.36: Fix SHT2X temp and hum values calculation. Fix PacketView.
 	V1.35: Fix missing PacketView vars initialization
 	V1.34: Add light packet capabilities
 	V1.33: Prevented incompatible workspaces from using the decoder
