@@ -54,7 +54,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.26";
+	return "1.27";
 }
 
 
