@@ -15,6 +15,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.27  Removed wrong help url
 	V1.26  Prevented incompatible workspaces from using the decoder
 	V1.25  Added HexView support.
 	V1.21: Hotfixes.
@@ -33,7 +34,6 @@ The following commented block allows some related informations to be displayed o
 
 <HELP_URL>
 
-	http://www.ikalogic.com/ikalogic-products/scanastudio-2/decoders-repository/parallel-bus-decoder-online/
 
 </HELP_URL>
 

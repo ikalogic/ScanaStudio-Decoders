@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.2: Removed wrong help url
 	V1.1: Added offset and logic 1 state convention options.
 	V1.0: Initial release.
 
@@ -27,7 +28,6 @@ The following commented block allows some related informations to be displayed o
 
 <HELP_URL>
 
-	http://www.ikalogic.com/ikalogic-products/scanastudio-2/decoders-repository/manchester/
 
 </HELP_URL>
 
