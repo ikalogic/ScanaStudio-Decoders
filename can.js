@@ -1,6 +1,6 @@
 /*
 *************************************************************************************
-							
+
 						    SCANASTUDIO 2 CAN DECODER
 The following commented block allows some related informations to be displayed online
 <DESCRIPTION>
@@ -14,6 +14,7 @@ The following commented block allows some related informations to be displayed o
 
 <RELEASE_NOTES>
 
+	V1.46: Added progress reporting when generating demo signals
 	V1.45: Fix ACK recognition
 	V1.44: Add resynchronization on each recessif to dominant transition
 	V1.43: Allow desinchronization and permit resynchronization
@@ -62,7 +63,7 @@ function get_dec_name()
 */
 function get_dec_ver()
 {
-	return "1.45";
+	return "1.46";
 }
 
 
@@ -147,38 +148,38 @@ function gui()  //graphical user interface
    to update the decoded items
 */
 function decode()
-{	
+{
 	get_ui_vals();
 
 
-	if (typeof hex_opt === 'undefined') 
+	if (typeof hex_opt === 'undefined')
 	{
 		hex_opt = 0;
 	}
-	
-	
+
+
 
 	if (rate == 0)
 	{
 		return;
 	}
-	
+
 	spb = sample_rate / rate; 		// Calculate the number of Samples Per Bit.
-			
-	try 
+
+	try
 	{
-		spb_hs = sample_rate / high_rate;		
+		spb_hs = sample_rate / high_rate;
 	}
 	catch(e)
 	{
 		spb_hs = sample_rate / 2000000;
 	}
-	
+
 	m = spb / 10; 					// Margin = 1 tenth of a bit time (expresed in number of samples)
 	m_hs = spb_hs / 10;
 
 	var t = trs_get_first(ch);
-	
+
 	channel_color = get_ch_light_color(ch);
 
 	while (trs_is_not_last(ch) && (stop == false))
@@ -198,14 +199,14 @@ function decode()
 				}
 
 				s = t.sample + (spb * 0.5); 		// Position our reader on the middle of first bit
-				
+
 				bit_sampler_ini(ch,spb /2, spb); 	// Initialize the bit sampler (to be able tu use "bit_sampler_next()")
 				bit_sampler_next(ch); 				// Read and skip the start bit
 
 				dec_item_new(ch,t.sample,t.sample + spb - m); 	// Add the start bit item
-				dec_item_add_pre_text("Start of Frame"); 
-				dec_item_add_pre_text("Start"); 
-				dec_item_add_pre_text("SOF"); 
+				dec_item_add_pre_text("Start of Frame");
+				dec_item_add_pre_text("Start");
+				dec_item_add_pre_text("SOF");
 				dec_item_add_pre_text("S");
 
 				pkt_start("CAN");
@@ -214,7 +215,7 @@ function decode()
 				bits = [];
 				rb = 0;
 				frame_length_in_sample = 0;
-				b = 0; sb = 0; 
+				b = 0; sb = 0;
 				bit_pos = [];
 				ide_mode = false;
 				data_size = 0;
@@ -239,17 +240,17 @@ function decode()
 					if (abort_requested() == true)	// Allow the user to abort this script
 					{
 						return false;
-					}	
-					
+					}
+
 					if(edl_mode && (((b==35)&&ide_mode) || ((b==16)&&!ide_mode)) )
 					{
 						bit_sampler_ini(ch,spb_hs / 2, spb_hs); 	// use High speed since now
 						bit_sampler_next(ch);
 					}
-							
+
 					if (sb == 4)
 					{
-						
+
 						stuffing_ok = check_stuffing();		// Stuffed bit
 						if (stuffing_ok == false) break; 	// Break on the first stuffing error
 						sb = 0;
@@ -263,7 +264,7 @@ function decode()
 							{
 								trs_tmp = trs_get_prev(ch);
 								frame_length_in_sample = trs_tmp.sample - s + spb_hs/2;
-								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit 
+								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, trs_tmp.sample + spb_hs/2, DRAW_POINT);
 								bit_sampler_ini(ch,spb_hs / 2, spb_hs);
 								bit_sampler_next(ch);
@@ -272,7 +273,7 @@ function decode()
 							{
 								trs_tmp = trs_get_prev(ch);
 								frame_length_in_sample = trs_tmp.sample - s + spb/2;
-								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit 
+								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, trs_tmp.sample + spb/2, DRAW_POINT);
 								bit_sampler_ini(ch,spb / 2, spb);
 								bit_sampler_next(ch);
@@ -280,10 +281,10 @@ function decode()
 						}
 						else
 						{
-							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit
 							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
 						}
-							
+
 
 
 						if (bits[b] == last_bit)
@@ -304,15 +305,15 @@ function decode()
 						frame_length_in_sample += spb_hs;
 					else
 						frame_length_in_sample += spb;
-						
-						
+
+
 					if(edl_mode && (((b==36)&&ide_mode) || ((b==17)&&!ide_mode)) )
 					{
 						bit_sampler_next(ch);
 						frame_length_in_sample += spb_hs;
 					}
 
-					if ((b == 14) && (bits[13] == 1)) 
+					if ((b == 14) && (bits[13] == 1))
 					{
 						ide_mode = true;
 						rtr_mode = false; 	// Reset rtr, will be checked at bit 32
@@ -346,7 +347,7 @@ function decode()
 						{
 							break;
 						}
-	
+
 						if ((ide_mode == false) && (b == 22))
 						{
 							break;
@@ -358,7 +359,7 @@ function decode()
 						{
 							break;
 						}
-	
+
 						if ((ide_mode == false) && (b == 19))
 						{
 							break;
@@ -373,24 +374,24 @@ function decode()
 					state = GET_SOF;
 					break;
 				}
-				
+
 				if(edl_mode) //if it's CAN-FD
 				{
 					// Check if we are in normal or extended ID mode
 					if (ide_mode == false)	 	// Normal frame
 					{
 						val = 0;				// Calculate the value of the ID
-	
+
 						for (c = 1; c < 12; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
 						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[11] + (0.5 * spb) - m); 		// Add the ID item
-						dec_item_add_pre_text("IDENTIFIER: "); 
-						dec_item_add_pre_text("ID: "); 
+						dec_item_add_pre_text("IDENTIFIER: ");
+						dec_item_add_pre_text("ID: ");
 						dec_item_add_pre_text("ID");
 						dec_item_add_data(val);
-	
+
 						if (hex_opt > 0)
 						{
 							var tmp_val = (val >> 8);
@@ -398,58 +399,58 @@ function decode()
 							tmp_val = (val & 0xFF);
 							hex_add_byte(ch, -1, -1, tmp_val);
 						}
-	
+
 						pkt_add_item(-1, -1, "ID", int_to_str_hex(val), dark_colors.green, channel_color);
 						pkt_start("Frame Type");
-						
+
 						dec_item_new(ch,bit_pos[12] - (0.5 * spb) + m, bit_pos[12] + (0.5 * spb) - m);  	// Add the RTR bit
-	
+
 						if (rtr_mode == true)
 						{
-							dec_item_add_pre_text("RTR FRAME"); 
-							dec_item_add_pre_text("RTR"); 
+							dec_item_add_pre_text("RTR FRAME");
+							dec_item_add_pre_text("RTR");
 							dec_item_add_pre_text("R");
 							pkt_add_item(-1, -1, "RTR = 1", "RTR FRAME", dark_colors.green, channel_color, true);
 						}
 						else
 						{
-							dec_item_add_pre_text("DATA FRAME"); 
-							dec_item_add_pre_text("DATA"); 
+							dec_item_add_pre_text("DATA FRAME");
+							dec_item_add_pre_text("DATA");
 							dec_item_add_pre_text("D");
 							pkt_add_item(-1, -1, "RTR = 0", "DATA FRAME", dark_colors.green, channel_color, true);
 						}
-	
-						dec_item_new(ch, bit_pos[13] - (0.5 * spb) + m, bit_pos[13] + (0.5 * spb) - m); 
+
+						dec_item_new(ch, bit_pos[13] - (0.5 * spb) + m, bit_pos[13] + (0.5 * spb) - m);
 						dec_item_add_pre_text("BASE FRAME FORMAT");
-						dec_item_add_pre_text("BASE FRAME"); 
-						dec_item_add_pre_text("BASE"); 
+						dec_item_add_pre_text("BASE FRAME");
+						dec_item_add_pre_text("BASE");
 						dec_item_add_pre_text("B");
 						pkt_add_item(-1, -1, "IDE = 0","BASE FRAME FORMAT", dark_colors.green, channel_color, true);
 						pkt_end();
-	
+
 						dec_item_new(ch, bit_pos[14] - (0.5 * spb) + m, bit_pos[14] + (0.5 * spb) - m);
-						dec_item_add_pre_text("Extended Data Length"); 
-						dec_item_add_pre_text("EDL"); 
+						dec_item_add_pre_text("Extended Data Length");
+						dec_item_add_pre_text("EDL");
 						dec_item_new(ch, bit_pos[15] - (0.5 * spb) + m, bit_pos[15] + (0.5 * spb) - m);
-						dec_item_add_pre_text("r0"); 
+						dec_item_add_pre_text("r0");
 						dec_item_new(ch, bit_pos[16] - (0.5 * spb) + m, bit_pos[16] + (0.5 * spb) - m);
-						dec_item_add_pre_text("Bit Rate Switch"); 
-						dec_item_add_pre_text("BRS"); 
+						dec_item_add_pre_text("Bit Rate Switch");
+						dec_item_add_pre_text("BRS");
 						if(!edl_mode)
 							dec_item_new(ch, bit_pos[17] - (0.5 * spb) + m, bit_pos[17] + (0.5 * spb) - m);
 						else
 							dec_item_new(ch, bit_pos[17] - (0.5 * spb_hs) + m_hs, bit_pos[17] + (0.5 * spb_hs) - m_hs);
-						dec_item_add_pre_text("Error State Indicator)"); 
-						dec_item_add_pre_text("ESI"); 
+						dec_item_add_pre_text("Error State Indicator)");
+						dec_item_add_pre_text("ESI");
 						val = 0;
-	
+
 						for (c = 18; c < 22; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						data_size = val;
-						
+
 						if(edl_mode)
 						{
 							switch (val)
@@ -464,50 +465,50 @@ function decode()
 							default : break;
 							}
 						}
-						
+
 						if(!edl_mode)
 							dec_item_new(ch,bit_pos[18] - (0.5 * spb) + m, bit_pos[21] + (0.5 * spb) - m); 	// Add the DLC item
 						else
 							dec_item_new(ch,bit_pos[18] - (0.5 * spb_hs) + m_hs, bit_pos[21] + (0.5 * spb_hs) - m_hs); 	// Add the DLC item
-						dec_item_add_pre_text("DATA LENGTH CODE: "); 
+						dec_item_add_pre_text("DATA LENGTH CODE: ");
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
 						dec_item_add_pre_text("DLC: ");
 						dec_item_add_pre_text("L:");
 						dec_item_add_data(val);
-						
-						
-	
+
+
+
 						if (hex_opt > 1)
 						{
 							hex_add_byte(ch, -1, -1, val);
 						}
-		
+
 						pkt_add_item(-1, -1, "DLC", int_to_str_hex(val), dark_colors.orange, channel_color, true);
 					}
 					else
 					{
 						val = 0;
-	
+
 						for (c = 1; c < 12; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						for (c = 14; c < 32; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[31] + (0.5 * spb) - m); 	// Add the EID item
-						dec_item_add_pre_text("EXTENDED IDENTIFIER: "); 
+						dec_item_add_pre_text("EXTENDED IDENTIFIER: ");
 						dec_item_add_pre_text("EID: ");
 						dec_item_add_data(val);
-	
-						if (hex_opt > 0) 
+
+						if (hex_opt > 0)
 						{
 							var tmp_val = val;
-							
+
 							for (var i = 0; i < 4; i++)
 							{
 								var tmp_byte = (tmp_val & 0xFF);
@@ -515,50 +516,50 @@ function decode()
 								tmp_val = (tmp_val - tmp_byte) / 256;
 							}
 						}
-	
+
 						pkt_add_item(-1, -1, "EID", int_to_str_hex(val), dark_colors.violet, channel_color);
 						pkt_start("Frame Type");
 						dec_item_new(ch, bit_pos[32] - (0.5 * spb) + m, bit_pos[32] + (0.5 * spb) - m);  // Add the RTR bit
-	
+
 						if (rtr_mode == true)
 						{
-							dec_item_add_pre_text("RTR FRAME"); 
-							dec_item_add_pre_text("RTR"); 
+							dec_item_add_pre_text("RTR FRAME");
+							dec_item_add_pre_text("RTR");
 							dec_item_add_pre_text("R");
 							pkt_add_item(-1, -1, "RTR = 1", "RTR FRAME", dark_colors.violet, channel_color, true);
 						}
 						else
 						{
-							dec_item_add_pre_text("DATA FRAME"); 
-							dec_item_add_pre_text("DATA"); 
+							dec_item_add_pre_text("DATA FRAME");
+							dec_item_add_pre_text("DATA");
 							dec_item_add_pre_text("D");
 							pkt_add_item(-1, -1, "RTR = 0", "DATA FRAME", dark_colors.violet, channel_color, true);
 						}
-						
+
 						dec_item_new(ch, bit_pos[33] - (0.5 * spb) + m, bit_pos[33] + (0.5 * spb) - m);
-						dec_item_add_pre_text("Extended Data Length"); 
-						dec_item_add_pre_text("EDL"); 
+						dec_item_add_pre_text("Extended Data Length");
+						dec_item_add_pre_text("EDL");
 						dec_item_new(ch, bit_pos[34] - (0.5 * spb) + m, bit_pos[34] + (0.5 * spb) - m);
-						dec_item_add_pre_text("r0"); 
+						dec_item_add_pre_text("r0");
 						dec_item_new(ch, bit_pos[35] - (0.5 * spb) + m, bit_pos[35] + (0.5 * spb) - m);
-						dec_item_add_pre_text("Bit Rate Switch"); 
-						dec_item_add_pre_text("BRS"); 
+						dec_item_add_pre_text("Bit Rate Switch");
+						dec_item_add_pre_text("BRS");
 						dec_item_new(ch, bit_pos[36] - (0.5 * spb_hs) + m_hs, bit_pos[36] + (0.5 * spb_hs) - m_hs);
-						dec_item_add_pre_text("Error State Indicator)"); 
-						dec_item_add_pre_text("ESI"); 
-	
+						dec_item_add_pre_text("Error State Indicator)");
+						dec_item_add_pre_text("ESI");
+
 						pkt_add_item(0, 0, "IDE = 1", "EXTENDED FRAME FORMAT", dark_colors.violet, channel_color, true);
 						pkt_end();
-	
+
 						val = 0;
-	
+
 						for (c = 37; c < 41; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						data_size = val;
-						
+
 						if(edl_mode)
 						{
 							switch (val)
@@ -573,23 +574,23 @@ function decode()
 							default : break;
 							}
 						}
-	
+
 						if(!edl_mode)
 							dec_item_new(ch,bit_pos[37] - (0.5 * spb) + m, bit_pos[40] + (0.5 * spb) - m); 	// Add the DLC item
 						else
-							dec_item_new(ch,bit_pos[37] - (0.5 * spb_hs) + m_hs, bit_pos[40] + (0.5 * spb_hs) - m_hs); 	// Add the DLC item		
-						dec_item_add_pre_text("DATA LENGTH CODE: "); 
+							dec_item_new(ch,bit_pos[37] - (0.5 * spb_hs) + m_hs, bit_pos[40] + (0.5 * spb_hs) - m_hs); 	// Add the DLC item
+						dec_item_add_pre_text("DATA LENGTH CODE: ");
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
 						dec_item_add_pre_text("DLC: ");
 						dec_item_add_pre_text("L:");
 						dec_item_add_data(val);
-	
+
 						if (hex_opt > 1)
 						{
 							hex_add_byte(ch, -1, -1, val);
 						}
-	
+
 						pkt_add_item(t.sample, t.sample + spb - m, "DLC", int_to_str_hex(val), dark_colors.orange, channel_color,true);
 					}
 				}
@@ -599,18 +600,18 @@ function decode()
 					if (ide_mode == false)	 	// Normal frame
 					{
 						val = 0;				// Calculate the value of the ID
-	
+
 						for (c = 1; c < 12; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[11] + (0.5 * spb) - m); 		// Add the ID item
-						dec_item_add_pre_text("IDENTIFIER: "); 
-						dec_item_add_pre_text("ID: "); 
+						dec_item_add_pre_text("IDENTIFIER: ");
+						dec_item_add_pre_text("ID: ");
 						dec_item_add_pre_text("ID");
 						dec_item_add_data(val);
-	
+
 						if (hex_opt > 0)
 						{
 							var tmp_val = (val >> 8);
@@ -618,82 +619,82 @@ function decode()
 							tmp_val = (val & 0xFF);
 							hex_add_byte(ch, -1, -1, tmp_val);
 						}
-	
+
 						pkt_add_item(-1, -1, "ID", int_to_str_hex(val), dark_colors.green, channel_color);
 						pkt_start("Frame Type");
-						
+
 						dec_item_new(ch,bit_pos[12] - (0.5 * spb) + m, bit_pos[12] + (0.5 * spb) - m);  	// Add the RTR bit
-	
+
 						if (rtr_mode == true)
 						{
-							dec_item_add_pre_text("RTR FRAME"); 
-							dec_item_add_pre_text("RTR"); 
+							dec_item_add_pre_text("RTR FRAME");
+							dec_item_add_pre_text("RTR");
 							dec_item_add_pre_text("R");
 							pkt_add_item(-1, -1, "RTR = 1", "RTR FRAME", dark_colors.green, channel_color, true);
 						}
 						else
 						{
-							dec_item_add_pre_text("DATA FRAME"); 
-							dec_item_add_pre_text("DATA"); 
+							dec_item_add_pre_text("DATA FRAME");
+							dec_item_add_pre_text("DATA");
 							dec_item_add_pre_text("D");
 							pkt_add_item(-1, -1, "RTR = 0", "DATA FRAME", dark_colors.green, channel_color, true);
 						}
-	
+
 						dec_item_new(ch, bit_pos[13] - (0.5 * spb) + m, bit_pos[13] + (0.5 * spb) - m); 	// Add the IDE bit
 						dec_item_add_pre_text("BASE FRAME FORMAT");
-						dec_item_add_pre_text("BASE FRAME"); 
-						dec_item_add_pre_text("BASE"); 
+						dec_item_add_pre_text("BASE FRAME");
+						dec_item_add_pre_text("BASE");
 						dec_item_add_pre_text("B");
 						pkt_add_item(-1, -1, "IDE = 0","BASE FRAME FORMAT", dark_colors.green, channel_color, true);
 						pkt_end();
-	
+
 						val = 0;
-	
+
 						for (c = 15; c < 19; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						data_size = val;
-	
+
 						dec_item_new(ch,bit_pos[15] - (0.5 * spb) + m, bit_pos[18] + (0.5 * spb) - m); 	// Add the DLC item
-						dec_item_add_pre_text("DATA LENGTH CODE: "); 
+						dec_item_add_pre_text("DATA LENGTH CODE: ");
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
 						dec_item_add_pre_text("DLC: ");
 						dec_item_add_pre_text("L:");
 						dec_item_add_data(val);
-	
+
 						if (hex_opt > 1)
 						{
 							hex_add_byte(ch, -1, -1, val);
 						}
-		
+
 						pkt_add_item(-1, -1, "DLC", int_to_str_hex(val), dark_colors.orange, channel_color, true);
 					}
 					else
 					{
 						val = 0;
-	
+
 						for (c = 1; c < 12; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						for (c = 14; c < 32; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						dec_item_new(ch,bit_pos[1] - (0.5 * spb) + m, bit_pos[31] + (0.5 * spb) - m); 	// Add the EID item
-						dec_item_add_pre_text("EXTENDED IDENTIFIER: "); 
+						dec_item_add_pre_text("EXTENDED IDENTIFIER: ");
 						dec_item_add_pre_text("EID: ");
 						dec_item_add_data(val);
-	
-						if (hex_opt > 0) 
+
+						if (hex_opt > 0)
 						{
 							var tmp_val = val;
-							
+
 							for (var i = 0; i < 4; i++)
 							{
 								var tmp_byte = (tmp_val & 0xFF);
@@ -701,51 +702,51 @@ function decode()
 								tmp_val = (tmp_val - tmp_byte) / 256;
 							}
 						}
-	
+
 						pkt_add_item(-1, -1, "EID", int_to_str_hex(val), dark_colors.violet, channel_color);
 						pkt_start("Frame Type");
 						dec_item_new(ch, bit_pos[32] - (0.5 * spb) + m, bit_pos[32] + (0.5 * spb) - m);  // Add the RTR bit
-	
+
 						if (rtr_mode == true)
 						{
-							dec_item_add_pre_text("RTR FRAME"); 
-							dec_item_add_pre_text("RTR"); 
+							dec_item_add_pre_text("RTR FRAME");
+							dec_item_add_pre_text("RTR");
 							dec_item_add_pre_text("R");
 							pkt_add_item(-1, -1, "RTR = 1", "RTR FRAME", dark_colors.violet, channel_color, true);
 						}
 						else
 						{
-							dec_item_add_pre_text("DATA FRAME"); 
-							dec_item_add_pre_text("DATA"); 
+							dec_item_add_pre_text("DATA FRAME");
+							dec_item_add_pre_text("DATA");
 							dec_item_add_pre_text("D");
 							pkt_add_item(-1, -1, "RTR = 0", "DATA FRAME", dark_colors.violet, channel_color, true);
 						}
-	
+
 						pkt_add_item(0, 0, "IDE = 1", "EXTENDED FRAME FORMAT", dark_colors.violet, channel_color, true);
 						pkt_end();
-	
+
 						val = 0;
-	
+
 						for (c = 35; c < 39; c++)
 						{
 							val = (val * 2) + bits[c];
 						}
-	
+
 						data_size = val;
-	
-						dec_item_new(ch, bit_pos[35] - (0.5 * spb) + m, bit_pos[38] + (0.5 * spb) - m); 	// Add the DLC item				
-						dec_item_add_pre_text("DATA LENGTH CODE: "); 
+
+						dec_item_new(ch, bit_pos[35] - (0.5 * spb) + m, bit_pos[38] + (0.5 * spb) - m); 	// Add the DLC item
+						dec_item_add_pre_text("DATA LENGTH CODE: ");
 						dec_item_add_pre_text("DATA LENGTH: ");
 						dec_item_add_pre_text("DATA LEN: ");
 						dec_item_add_pre_text("DLC: ");
 						dec_item_add_pre_text("L:");
 						dec_item_add_data(val);
-	
+
 						if (hex_opt > 1)
 						{
 							hex_add_byte(ch, -1, -1, val);
 						}
-	
+
 						pkt_add_item(t.sample, t.sample + spb - m, "DLC", int_to_str_hex(val), dark_colors.orange, channel_color,true);
 					}
 				}
@@ -756,7 +757,7 @@ function decode()
 				}
 				else	// Skip the data in case of RTR frame
 				{
-					state = GET_CRC; 
+					state = GET_CRC;
 				}
 
 				break;
@@ -774,7 +775,7 @@ function decode()
 					{
 						stuffing_ok = check_stuffing();		// Stuffed bit
 
-						if (stuffing_ok == false) 
+						if (stuffing_ok == false)
 						{
 							break;
 						}
@@ -790,7 +791,7 @@ function decode()
 							{
 								trs_tmp = trs_get_prev(ch);
 								frame_length_in_sample = trs_tmp.sample - s + spb_hs/2;
-								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit 
+								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, trs_tmp.sample + spb_hs/2, DRAW_POINT);
 								bit_sampler_ini(ch,spb_hs / 2, spb_hs);
 								bit_sampler_next(ch);
@@ -799,7 +800,7 @@ function decode()
 							{
 								trs_tmp = trs_get_prev(ch);
 								frame_length_in_sample = trs_tmp.sample - s + spb/2;
-								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit 
+								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, trs_tmp.sample + spb/2, DRAW_POINT);
 								bit_sampler_ini(ch,spb / 2, spb);
 								bit_sampler_next(ch);
@@ -807,10 +808,10 @@ function decode()
 						}
 						else
 						{
-							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+							bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit
 							dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
 						}
-							
+
 
 						if (bits[b] == last_bit)
 						{
@@ -831,7 +832,7 @@ function decode()
 						frame_length_in_sample += spb;
 					else
 						frame_length_in_sample += spb_hs;
-					
+
 				}
 
 				if (stuffing_ok == false)
@@ -859,7 +860,7 @@ function decode()
 						dec_item_new(ch, bit_pos[b + (i * 8)] - (0.5 * spb_hs) + m_hs, bit_pos[b + (i * 8) + 7] + (0.5 * spb_hs) - m_hs); 	// Add the ID item
 					dec_item_add_pre_text("DATA: ");
 					dec_item_add_pre_text("D: ");
-					dec_item_add_pre_text("D "); 
+					dec_item_add_pre_text("D ");
 					dec_item_add_data(val);
 					hex_add_byte(ch, -1, -1, val);
 
@@ -879,14 +880,14 @@ function decode()
 				// add packet for CRC, and error frames
 				// add the packet stop
 			break;
-			
+
 			case GET_CRC:
 				var nbr_stf_b = 0;
 				db = 0;
 				if(edl_mode)
 				{
 					bit_sampler_ini(ch,spb_hs /2, spb_hs); 	// use High speed since now
-					
+
 					while (db-nbr_stf_b < crc_len) //read crc bits
 					{
 						if (db % 5 ==0)
@@ -903,79 +904,79 @@ function decode()
 							{
 								trs_tmp = trs_get_prev(ch);
 								frame_length_in_sample = trs_tmp.sample - s + spb_hs/2;
-								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit 
+								bit_pos.push(trs_tmp.sample + spb_hs/2); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, trs_tmp.sample + spb_hs/2, DRAW_POINT);
 								bit_sampler_ini(ch,spb_hs / 2, spb_hs);
 								bit_sampler_next(ch);
 							}
 							else
 							{
-								bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+								bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
 							}
 							last_bit = bits[b];
-							
+
 							b++;
 							db++;
 						}
-	
+
 						rb++;
 						frame_length_in_sample += spb_hs;
 					}
-	
+
 					if (stuffing_ok == false)
 					{
 						t = trs_go_after(ch, bit_pos[b - 1] + (10.5 * spb));
 						set_progress(100 * t.sample / n_samples);
 						state = GET_SOF;
-	
+
 						break;
 					}
-	
+
 					val = 0;
 					b -= crc_len;
-	
+
 					for (c = 0; c < crc_len; c++)
 					{
 						val = (val * 2) + bits[b + c];
 					}
-	
+
 					crc_rg = 0;		// Now calculate our own crc to compare
-	
+
 
 					for (c = 1; c < b; c++)
 					{
 						crc_nxt = bits[c] ^ ((crc_rg >> (crc_len)) & 0x1);
 						crc_rg = crc_rg << 1;
-	
+
 						if (crc_nxt == 1)
-						{ 
+						{
 							if (crc_len==17)
 								crc_rg ^= 0x3685B;
 							else if (crc_len==21)
 								crc_rg ^= 0x302898;
 						}
-						
+
 						if (crc_len==17)
 							crc_rg &= 0x1ffff;
 						else if (crc_len==21)
 							crc_rg &= 0x1fffff
 					}
-					
+
 					dec_item_new(ch, bit_pos[b] - (0.5 * spb_hs) + m_hs, bit_pos[b + crc_len-1] + (0.5 * spb_hs) - m_hs); 	// Add the ID item
-					dec_item_add_pre_text("CRC : "); 
+					dec_item_add_pre_text("CRC : ");
 					dec_item_add_pre_text("CRC ");
-					dec_item_add_pre_text("CRC"); 
+					dec_item_add_pre_text("CRC");
 					dec_item_add_data(val);
-	
-					if (hex_opt > 1) 
+
+					if (hex_opt > 1)
 					{
 						var tmp_val = (val >> 8);
 						hex_add_byte(ch, -1, -1, tmp_val);
 						tmp_val = (val & 0xFF);
-						hex_add_byte(ch, -1, -1, tmp_val);	
+						hex_add_byte(ch, -1, -1, tmp_val);
 					}
-	
+
 					if (val == crc_rg)
 					{
 						dec_item_add_post_text(" OK");
@@ -988,17 +989,17 @@ function decode()
 						dec_item_add_post_text(" WRONG, Should be: " + int_to_str_hex(crc_rg));
 						dec_item_add_post_text(" WRONG!");
 						dec_item_add_post_text("E!");
-	
+
 						pkt_add_item(-1, -1, "CRC", int_to_str_hex(val) + "(WRONG)", dark_colors.red, channel_color);
-	
+
 						pkt_start("CRC ERROR");
 						pkt_add_item(0, 0, "CRC (captured)",int_to_str_hex(val), dark_colors.red, channel_color);
 						pkt_add_item(0, 0, "CRC (calculated)", int_to_str_hex(crc_rg), dark_colors.red, channel_color);
 						pkt_end();
-	
+
 						dec_item_add_post_text("!");
 					}
-	
+
 					b += crc_len-1;
 					bit_pos[b] += spb;
 					state = GET_ACK;
@@ -1010,12 +1011,12 @@ function decode()
 						if (sb == 4)
 						{
 							stuffing_ok = check_stuffing();		// Stuffed bit
-	
-							if (stuffing_ok == false) 
+
+							if (stuffing_ok == false)
 							{
 								break;
 							}
-	
+
 							sb = 0;
 						}
 						else
@@ -1025,18 +1026,18 @@ function decode()
 							{
 								trs_tmp = trs_get_prev(ch);
 								frame_length_in_sample = trs_tmp.sample - s + spb/2;
-								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit 
+								bit_pos.push(trs_tmp.sample + spb/2); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, trs_tmp.sample + spb/2, DRAW_POINT);
 								bit_sampler_ini(ch,spb / 2, spb);
 								bit_sampler_next(ch);
 							}
 							else
 							{
-								bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit 
+								bit_pos.push(s + frame_length_in_sample); 		// Store the position of that bit
 								dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_POINT);
 							}
-							
-	
+
+
 							if (bits[b] == last_bit)
 							{
 								sb++;
@@ -1045,68 +1046,68 @@ function decode()
 							{
 								sb = 0;
 							}
-	
+
 							last_bit = bits[b];
 							b++;
 							db++;
 						}
-	
+
 						rb++;
 						if(!edl_mode)
 							frame_length_in_sample += spb;
 						else
 							frame_length_in_sample += spb_hs;
 					}
-	
+
 					if (stuffing_ok == false)
 					{
 						t = trs_go_after(ch, bit_pos[b - 1] + (10.5 * spb));
 						set_progress(100 * t.sample / n_samples);
 						state = GET_SOF;
-	
+
 						break;
 					}
-	
+
 					val = 0;
 					b -= 16;
-	
+
 					for (c = 0; c < 15; c++)
 					{
 						val = (val * 2) + bits[b + c];
 					}
-	
+
 					crc_rg = 0;		// Now calculate our own crc to compare
-	
+
 					for (c = 0; c < b; c++)
 					{
 						crc_nxt = bits[c] ^ ((crc_rg >> 14) & 0x1);
 						crc_rg = crc_rg << 1;
-	
+
 						if (crc_nxt == 1)
-						{ 
+						{
 							crc_rg ^= 0x4599;
 						}
-	
+
 						crc_rg &= 0x7fff;
 					}
-					
+
 					if(!edl_mode)
 						dec_item_new(ch, bit_pos[b] - (0.5 * spb) + m, bit_pos[b + 14] + (0.5 * spb) - m); 	// Add the ID item
 					else
 						dec_item_new(ch, bit_pos[b] - (0.5 * spb_hs) + m_hs, bit_pos[b + 14] + (0.5 * spb_hs) - m_hs); 	// Add the ID item
-					dec_item_add_pre_text("CRC : "); 
+					dec_item_add_pre_text("CRC : ");
 					dec_item_add_pre_text("CRC ");
-					dec_item_add_pre_text("CRC"); 
+					dec_item_add_pre_text("CRC");
 					dec_item_add_data(val);
-	
-					if (hex_opt > 1) 
+
+					if (hex_opt > 1)
 					{
 						var tmp_val = (val >> 8);
 						hex_add_byte(ch, -1, -1, tmp_val);
 						tmp_val = (val & 0xFF);
-						hex_add_byte(ch, -1, -1, tmp_val);	
+						hex_add_byte(ch, -1, -1, tmp_val);
 					}
-	
+
 					if (val == crc_rg)
 					{
 						dec_item_add_post_text(" OK");
@@ -1119,17 +1120,17 @@ function decode()
 						dec_item_add_post_text(" WRONG, Should be: " + int_to_str_hex(crc_rg));
 						dec_item_add_post_text(" WRONG!");
 						dec_item_add_post_text("E!");
-	
+
 						pkt_add_item(-1, -1, "CRC", int_to_str_hex(val) + "(WRONG)", dark_colors.red, channel_color);
-	
+
 						pkt_start("CRC ERROR");
 						pkt_add_item(0, 0, "CRC (captured)",int_to_str_hex(val), dark_colors.red, channel_color);
 						pkt_add_item(0, 0, "CRC (calculated)", int_to_str_hex(crc_rg), dark_colors.red, channel_color);
 						pkt_end();
-	
+
 						dec_item_add_post_text("!");
 					}
-	
+
 					b += 15;
 					state = GET_ACK;
 				}
@@ -1144,7 +1145,7 @@ function decode()
 					dec_item_new(ch,bit_pos[b] + (1.5 * spb) + m, bit_pos[b] + (3.5 * spb) - m); 	// Add the ACK item
 				else
 					dec_item_new(ch,bit_pos[b] + (2.5 * spb_hs) + m, bit_pos[b] + (2.5 * spb_hs) + 2*spb - m); 	// Add the ACK item
-				
+
 				if(ack_chk == 1)
 				{
 					dec_item_add_pre_text("NO ACK");
@@ -1152,14 +1153,14 @@ function decode()
 					dec_item_add_pre_text("!A");
 				}
 				else
-				{	
+				{
 					dec_item_add_pre_text("ACK");
 					dec_item_add_pre_text("ACK");
 					dec_item_add_pre_text("A");
 				}
 				pkt_add_item(-1, -1, "ACK", ack_chk.toString(10), dark_colors.black, channel_color);
 				eof_chk = 0;
-				for (c = 0; c < 7; c++) 
+				for (c = 0; c < 7; c++)
 				{
 					eof_chk += bit_sampler_next(ch);
 				}
@@ -1201,11 +1202,11 @@ function decode()
 
 /* Check if the CAN bit stuffing is correct
 */
-function check_stuffing() 
+function check_stuffing()
 {
 	var tmp_bit = bit_sampler_next(ch); 	// Read stuffed bit and advance to next bit
 
-	if (last_bit == tmp_bit) 				// Check for stuffing error 
+	if (last_bit == tmp_bit) 				// Check for stuffing error
 	{
 		if(!edl_mode)
 			dec_item_new(ch, s + frame_length_in_sample -0.5 * spb, s + frame_length_in_sample - 0.5 * spb); 	// Add a stuffing error item
@@ -1216,19 +1217,19 @@ function check_stuffing()
 
 		if (potential_overload == true)
 		{
-			dec_item_add_pre_text("Overload frame"); 
-			dec_item_add_pre_text("OVERLOAD"); 
-			dec_item_add_pre_text("OL"); 
-			dec_item_add_pre_text("O"); 
+			dec_item_add_pre_text("Overload frame");
+			dec_item_add_pre_text("OVERLOAD");
+			dec_item_add_pre_text("OL");
+			dec_item_add_pre_text("O");
 			dec_item_add_pre_text("!");
 			pkt_add_item(-1, -1, "OVERLOAD", "", dark_colors.red, channel_color, true);
 		}
 		else
 		{
-			dec_item_add_pre_text("ERROR: bit Stuffing missing or Error frame"); 
-			dec_item_add_pre_text("ERROR FRAME"); 
-			dec_item_add_pre_text("ERROR"); 
-			dec_item_add_pre_text("E!"); 
+			dec_item_add_pre_text("ERROR: bit Stuffing missing or Error frame");
+			dec_item_add_pre_text("ERROR FRAME");
+			dec_item_add_pre_text("ERROR");
+			dec_item_add_pre_text("E!");
 			dec_item_add_pre_text("!");
 			pkt_add_item(-1, -1, "STUFFING ERROR", "", dark_colors.red, channel_color, true);
 		}
@@ -1242,7 +1243,7 @@ function check_stuffing()
 	{
 		potential_overload = false; 	// if we got at least one stuffed bit, then it's no more possible to have an overload frame
 		dec_item_add_sample_point(ch, s + frame_length_in_sample, DRAW_CROSS);
-		
+
 		last_bit = tmp_bit;
 
 		return true;
@@ -1260,17 +1261,18 @@ function check_stuffing()
 function build_demo_signals()
 {
 	var i = 0, k = 0;
-
+	var silence_period = (n_samples/200);
 	spb = (get_srate() / rate); 	// Calculate the number of samples per bit
+
 
 	while (get_samples_acc(ch) < (n_samples - (spb * 200)))
 	{
-		add_samples(ch, 1, (spb * 100));
+		add_samples(ch, 1, silence_period);
 		demo_add_base_arbit(k, 0x08);
 		demo_add_data(i, 8);
 		demo_add_crc();
 		demo_generate();
-
+		set_progress(get_samples_acc(ch)*100/n_samples);
 		i += 8;
 		k++;
 	}
@@ -1323,7 +1325,7 @@ function demo_generate()
 			else
 			{
 				stuffedBitArr.push(1);
-				last_stuffbit_add = 1;		
+				last_stuffbit_add = 1;
 			}
 
 			sameBitCnt = -1;
@@ -1437,7 +1439,7 @@ function demo_add_crc()
 		crc = crc << 1;
 
 		if (currBit == 1)
-		{ 
+		{
 			crc ^= 0x4599;
 		}
 
@@ -1547,7 +1549,7 @@ function trig_seq_gen()
 		{
 			case 0: break;				// RTR = X
 			case 1: bitArr.push(0);		// RTR = 0
-		 	case 2: bitArr.push(1); 	// RTR = 1		
+		 	case 2: bitArr.push(1); 	// RTR = 1
 		}
 
 		trig_add_stuffing_bits(bitArr);
@@ -1564,7 +1566,7 @@ function trig_seq_gen()
 			{
 				if ((trig_frame_type == 1) && (i == trigBitArr.length - 1))
 				{
-					tBitSMax *= 2; 
+					tBitSMax *= 2;
 				}
 
 				step = trig_build_step(trigBitArr[i]);
@@ -1659,7 +1661,7 @@ function trig_add_stuffing_bits (bitArr)
 			}
 			else
 			{
-				trigBitArr.push(1);		
+				trigBitArr.push(1);
 			}
 
 			sameBitCnt = -1;
@@ -1690,7 +1692,7 @@ function get_srate()
 
 /*
 */
-function int_to_str_hex (num) 
+function int_to_str_hex (num)
 {
 	var temp = "0x";
 
@@ -1717,11 +1719,5 @@ function get_ch_light_color (k)
 
 	return chColor;
 }
-
-
-
-
-
-
 
 
